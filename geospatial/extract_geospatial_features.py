@@ -25,6 +25,7 @@ import json
 import os
 import sys
 
+import numpy as np
 import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -36,7 +37,7 @@ from geospatial.gee_config import (
     VIIRS_MONTHLY,
     initialize_ee,
 )
-from config import PROCESSED_DIR
+from config import PROCESSED_DIR, GEE_START_DATE, GEE_END_DATE
 
 
 def mask_s2_clouds(image, ee):
@@ -93,12 +94,12 @@ def extract_features_for_district(ee, district, start_date, end_date):
 
     # --- Sentinel-2 composite + NDVI ---
     composite, n_images = get_sentinel2_composite(ee, geometry, start_date, end_date)
-    if composite is not None:
+    if composite is not None and n_images > 0:
         ndvi_img = compute_ndvi(ee, composite)
         row["ndvi_mean"] = reduce_mean(ee, ndvi_img, geometry, "NDVI", scale=100)
         row["s2_image_count"] = n_images
     else:
-        row["ndvi_mean"] = None
+        row["ndvi_mean"] = np.nan
         row["s2_image_count"] = 0
         print(f"  WARNING: no cloud-free Sentinel-2 images found for "
               f"{district['area_name']} in {start_date}..{end_date}")
@@ -112,30 +113,39 @@ def extract_features_for_district(ee, district, start_date, end_date):
     )
     row["nightlight_mean"] = reduce_mean(ee, viirs, geometry, VIIRS_BAND, scale=500)
 
-    # --- GHSL built-up ---
+    # --- GHSL built-up (built surface m2 per 100m grid cell -> true 0..100 percentage) ---
     try:
         builtup = ee.ImageCollection(GHSL_BUILTUP).sort("system:time_start", False).first()
-        builtup_band = builtup.bandNames().get(0)  # take first band; verify name via catalog if this fails
+        builtup_band = builtup.bandNames().get(0)
         builtup_val = builtup.select([builtup_band]).reduceRegion(
             reducer=ee.Reducer.mean(), geometry=geometry, scale=100,
             maxPixels=1e9, bestEffort=True,
         ).getInfo()
-        row["builtup_pct"] = list(builtup_val.values())[0] if builtup_val else None
+        raw_bu = list(builtup_val.values())[0] if builtup_val else None
+        if raw_bu is not None:
+            row["builtup_pct"] = float(np.clip((raw_bu / 10000.0) * 100.0, 0.0, 100.0))
+        else:
+            row["builtup_pct"] = np.nan
     except Exception as e:
-        row["builtup_pct"] = None
+        row["builtup_pct"] = np.nan
         print(f"  WARNING: built-up extraction failed for {district['area_name']}: {e}")
 
-    # --- GHSL population ---
+    # --- GHSL population (total district population / area in km2 -> persons per km2) ---
     try:
         pop = ee.ImageCollection(GHSL_POP).sort("system:time_start", False).first()
         pop_band = pop.bandNames().get(0)
         pop_val = pop.select([pop_band]).reduceRegion(
-            reducer=ee.Reducer.mean(), geometry=geometry, scale=100,
+            reducer=ee.Reducer.sum(), geometry=geometry, scale=100,
             maxPixels=1e9, bestEffort=True,
         ).getInfo()
-        row["population_density"] = list(pop_val.values())[0] if pop_val else None
+        tot_pop = list(pop_val.values())[0] if pop_val else None
+        area_km2 = geometry.area(maxError=1000).getInfo() / 1e6
+        if tot_pop is not None and area_km2 > 0:
+            row["population_density"] = float(tot_pop / area_km2)
+        else:
+            row["population_density"] = np.nan
     except Exception as e:
-        row["population_density"] = None
+        row["population_density"] = np.nan
         print(f"  WARNING: population extraction failed for {district['area_name']}: {e}")
 
     return row
@@ -145,8 +155,8 @@ def main():
     parser = argparse.ArgumentParser(description="Extract nightlight/NDVI/built-up/population features per district")
     parser.add_argument("--districts", type=str, required=True,
                          help="Path to JSON file from fetch_district_boundaries.py")
-    parser.add_argument("--start_date", type=str, default="2023-01-01")
-    parser.add_argument("--end_date", type=str, default="2023-12-31")
+    parser.add_argument("--start_date", type=str, default=GEE_START_DATE)
+    parser.add_argument("--end_date", type=str, default=GEE_END_DATE)
     parser.add_argument("--out", type=str, default=None)
     args = parser.parse_args()
 

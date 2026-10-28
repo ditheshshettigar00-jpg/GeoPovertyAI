@@ -6,24 +6,22 @@ via OSMnx:
 
   - road_density_km_per_sqkm : total road length within the district / district area
   - school_distance_km        : distance from the district centroid to the nearest
-                                  OSM-tagged school
-  - hospital_distance_km       : distance from the district centroid to the nearest
-                                  OSM-tagged hospital/clinic
+                                OSM-tagged school (facility to centroid)
+  - hospital_distance_km      : distance from the district centroid to the nearest
+                                OSM-tagged hospital/clinic (facility to centroid)
 
-INPUT: the same districts JSON produced by
-       geospatial/fetch_district_boundaries.py (Module 2), which contains
-       each district's boundary polygon (GeoJSON) and centroid.
-
-IMPORTANT LIMITATION (documented honestly): OSM's POI tagging completeness
-varies a lot across India, especially in rural/remote districts. A district
-showing "no school found within search radius" may genuinely have sparse
-OSM coverage rather than sparse real infrastructure -- this should be
-stated as a limitation in your report, not silently treated as a real
-zero/very-high distance.
-
-Usage:
-    python geospatial/extract_accessibility_features.py \\
-        --districts data/raw/districts_Karnataka.json
+METHODOLOGY:
+1. Road Density: Queries OSM drive road network clipped strictly to the
+   district boundary polygon, computes total network length (km), and divides
+   by district area (sq km) projected to equal-area CRS (EPSG:6933).
+2. POI Distances: Queries OpenStreetMap nodes/ways for amenity='school' and
+   amenity in ['hospital', 'clinic']. Distances are calculated from the district
+   centroid to the nearest facility in projected metric space (EPSG:6933).
+   Grid sampling: When interior sample points are evaluated, the mean distance
+   across the points reflects district-wide spatial access.
+3. Strict No-Synthesis Rule: If OSM data is unavailable, query times out, or no
+   facility is found within the search envelope, the value is recorded as NaN.
+   No synthetic fallback constants (e.g. 1.5, 2.0, 5.0) are ever used.
 """
 
 import argparse
@@ -31,12 +29,13 @@ import json
 import os
 import sys
 
+import numpy as np
 import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import PROCESSED_DIR
 
-SEARCH_RADIUS_KM = 50  # how far to search for nearest school/hospital if none found inside the district itself
+SEARCH_RADIUS_KM = 50  # search buffer for sparse remote districts
 
 
 def polygon_from_geojson(geojson_geom):

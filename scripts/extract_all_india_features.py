@@ -10,11 +10,12 @@ Outputs:
   data/processed/real_geospatial_features.csv  -- merged features for all districts
 """
 import json, os, sys, time
+import numpy as np
 import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from geospatial.gee_config import initialize_ee, GAUL_LEVEL2, VIIRS_MONTHLY, VIIRS_BAND, GHSL_BUILTUP, GHSL_POP, SENTINEL2_SR
-from config import RAW_DIR, PROCESSED_DIR
+from config import RAW_DIR, PROCESSED_DIR, GEE_START_DATE, GEE_END_DATE
 
 STATES = [
     "Andaman and Nicobar","Andhra Pradesh","Arunachal Pradesh","Assam",
@@ -26,10 +27,10 @@ STATES = [
     "Uttar Pradesh","Uttarakhand","West Bengal"
 ]
 
-START_DATE = "2023-01-01"
-END_DATE   = "2023-12-31"
+START_DATE = GEE_START_DATE  # Aligned with NFHS-5 survey period (Nov 2019 - Apr 2021)
+END_DATE   = GEE_END_DATE
 OUT_CSV    = os.path.join(PROCESSED_DIR, "real_geospatial_features.csv")
-PROGRESS_FILE = "data/raw/gee_extraction_progress.json"
+PROGRESS_FILE = os.path.join(RAW_DIR, "gee_extraction_progress.json")
 
 def mask_s2_clouds(image, ee):
     scl = image.select("SCL")
@@ -82,30 +83,41 @@ def extract_features(ee, district):
         n = col.size().getInfo()
         if n > 0:
             ndvi = col.median().clip(geom).normalizedDifference(["B8","B4"]).rename("NDVI")
-            row["ndvi_mean"] = reduce_mean(ee, ndvi, geom, "NDVI", 10)
+            row["ndvi_mean"] = reduce_mean(ee, ndvi, geom, "NDVI", 100)
             row["s2_image_count"] = n
         else:
-            row["ndvi_mean"] = None; row["s2_image_count"] = 0
+            row["ndvi_mean"] = np.nan
+            row["s2_image_count"] = 0
     except Exception as ex:
-        row["ndvi_mean"] = None; row["s2_image_count"] = 0
+        row["ndvi_mean"] = np.nan
+        row["s2_image_count"] = 0
         print(f"    NDVI error: {ex}")
-    # GHSL built-up
+    # GHSL built-up (built surface m2 per 100m grid cell -> true 0..100 percentage)
     try:
         bu = ee.ImageCollection(GHSL_BUILTUP).sort("system:time_start", False).first()
         band = bu.bandNames().get(0)
         val = bu.select([band]).reduceRegion(reducer=ee.Reducer.mean(), geometry=geom, scale=100, maxPixels=1e9, bestEffort=True).getInfo()
-        row["builtup_pct"] = list(val.values())[0] if val else None
+        raw_bu = list(val.values())[0] if val else None
+        if raw_bu is not None:
+            row["builtup_pct"] = float(np.clip((raw_bu / 10000.0) * 100.0, 0.0, 100.0))
+        else:
+            row["builtup_pct"] = np.nan
     except Exception as ex:
-        row["builtup_pct"] = None
+        row["builtup_pct"] = np.nan
         print(f"    builtup error: {ex}")
-    # GHSL population
+    # GHSL population (total district population / area in km2 -> persons per km2)
     try:
         pop = ee.ImageCollection(GHSL_POP).sort("system:time_start", False).first()
         band = pop.bandNames().get(0)
-        val = pop.select([band]).reduceRegion(reducer=ee.Reducer.mean(), geometry=geom, scale=100, maxPixels=1e9, bestEffort=True).getInfo()
-        row["population_density"] = list(val.values())[0] if val else None
+        val = pop.select([band]).reduceRegion(reducer=ee.Reducer.sum(), geometry=geom, scale=100, maxPixels=1e9, bestEffort=True).getInfo()
+        tot_pop = list(val.values())[0] if val else None
+        area_km2 = geom.area(maxError=1000).getInfo() / 1e6
+        if tot_pop is not None and area_km2 > 0:
+            row["population_density"] = float(tot_pop / area_km2)
+        else:
+            row["population_density"] = np.nan
     except Exception as ex:
-        row["population_density"] = None
+        row["population_density"] = np.nan
         print(f"    population error: {ex}")
     return row
 

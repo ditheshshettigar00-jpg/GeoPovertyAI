@@ -40,6 +40,20 @@ DEMO_VGG_FEATURE_COUNT = 16
 # Random seed for reproducibility across all demo/training scripts
 RANDOM_SEED = 42
 
+# GEE imagery window aligned with NFHS-5 survey fieldwork (Nov 2019 to Apr 2021)
+GEE_START_DATE = "2019-11-01"
+GEE_END_DATE = "2021-04-30"
+
+# String matching threshold within the same state (strict, in-state only)
+FUZZY_MATCH_CUTOFF = 0.85
+
+# Spatial hotspot detection parameters (Haversine distance in radians)
+HOTSPOT_EPS_KM = 150.0  # cluster search radius in km
+EARTH_RADIUS_KM = 6371.0
+HOTSPOT_EPS_RAD = HOTSPOT_EPS_KM / EARTH_RADIUS_KM
+HOTSPOT_MIN_SAMPLES = 3
+
+
 # Ensure required directories exist
 for _dir in [RAW_DIR, PROCESSED_DIR, SATELLITE_DIR, GROUND_TRUTH_DIR, DEMO_DIR,
              MODELS_DIR, DATABASE_DIR, EXPLAIN_DIR]:

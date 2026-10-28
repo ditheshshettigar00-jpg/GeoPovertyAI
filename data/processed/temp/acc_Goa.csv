@@ -1,3 +1,0 @@
-area_id,area_name,state_name,data_mode,road_density_km_per_sqkm,school_distance_km,hospital_distance_km
-1,North Goa,Goa,real,1.5,2.0,5.0
-2,South Goa,Goa,real,1.5,2.0,5.0
