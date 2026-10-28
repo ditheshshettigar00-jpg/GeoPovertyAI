@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GeoPoverty AI — An explainable, multimodal AI system for area-level socioeconomic deprivation estimation using satellite imagery and geospatial features.">
+    <meta name="keywords" content="poverty mapping, AI, satellite imagery, geospatial, deprivation, India, SHAP, machine learning">
+    <meta name="author" content="GeoPoverty AI Project">
+    <meta property="og:title" content="{% block og_title %}GeoPoverty AI{% endblock %}">
+    <meta property="og:description" content="Explainable AI for area-level socioeconomic deprivation estimation.">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>{% block title %}GeoPoverty AI{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">GeoPoverty AI</div>
+        <div class="navbar-links">
+            <a href="/">Home</a>
+            
+            <div class="dropdown">
+                <a class="dropbtn">Dashboard ▾</a>
+                <div class="dropdown-content">
+                    <a href="/prediction">District Prediction</a>
+                    <a href="/map">Interactive Map</a>
+                    <a href="/data-quality">Data Quality Monitor</a>
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <a class="dropbtn">Analytics ▾</a>
+                <div class="dropdown-content">
+                    <a href="/matchmaker">AI District Matchmaker 🤖</a>
+                    <a href="/hotspots">Hotspot Detection</a>
+                    <a href="/whatif">Policy Simulator 🎯</a>
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <a class="dropbtn">AI & Models ▾</a>
+                <div class="dropdown-content">
+                    <a href="/explanation">Explainable AI (SHAP)</a>
+                    <a href="/performance">Model Performance</a>
+                </div>
+            </div>
+
+            <a href="/about">About</a>
+
+            <span id="auth-links" style="margin-left: auto;">
+                <a href="/login">Login</a>
+                <a href="/register">Register</a>
+            </span>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>GeoPoverty AI &mdash; MCA Final Year Project Prototype. Research/demonstration system only,
+           not validated for operational welfare-targeting decisions.</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/formatters.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+    <script>
+        // Check authentication state
+        fetch('/api/auth/profile')
+            .then(res => {
+                if(res.ok) {
+                    return res.json();
+                }
+                throw new Error('Not logged in');
+            })
+            .then(user => {
+                let adminLink = '';
+                if(user.role === 'ADMIN') {
+                    adminLink = '<a href="/admin" style="margin-right:15px; color:#f39c12; font-weight:bold;">Admin Dashboard</a>';
+                }
+                
+                document.getElementById('auth-links').innerHTML = `
+                    ${adminLink}
+                    <span style="color: white; margin-right: 10px;">Welcome, ${user.name} (${user.role})</span>
+                    <a href="#" id="logout-btn">Logout</a>
+                `;
+                document.getElementById('logout-btn').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    fetch('/api/auth/logout', { method: 'POST' })
+                        .then(() => window.location.href = '/');
+                });
+            })
+            .catch(() => {
+                // Not logged in, leave default login/register links
+            });
+    </script>
+</body>
+</html>

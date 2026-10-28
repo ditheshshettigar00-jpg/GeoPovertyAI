@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}Home - GeoPoverty AI{% endblock %}
+
+{% block extra_head %}
+<style>
+.hero {
+    background: linear-gradient(135deg, var(--color-primary) 0%, #1a4a35 100%);
+    color: white;
+    padding: 3rem 2rem;
+    border-radius: 16px;
+    margin-bottom: 2rem;
+    box-shadow: 0 10px 25px rgba(27, 67, 50, 0.2);
+    text-align: center;
+}
+.hero h1 {
+    margin: 0 0 1rem 0;
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+.hero p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    max-width: 700px;
+    margin: 0 auto 1.5rem auto;
+}
+.hero-btns {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+.btn-glass {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 10px 24px;
+    border-radius: 30px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+.btn-glass:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+}
+.btn-solid {
+    background: white;
+    color: var(--color-primary);
+    padding: 10px 24px;
+    border-radius: 30px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+.btn-solid:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+.stat-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    transition: transform 0.2s ease;
+}
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.05);
+}
+.stat-val {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--color-primary);
+    margin-bottom: 0.2rem;
+}
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--color-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+.feature-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+.feature-card h3 {
+    margin-top: 0;
+    color: var(--color-primary);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1>GeoPoverty AI</h1>
+    <p>An explainable, multimodal AI system for area-level socioeconomic deprivation estimation using satellite imagery, nighttime lights, and geospatial features.</p>
+    <div class="hero-btns">
+        <a href="/prediction" class="btn-solid">Live Predictor</a>
+        <a href="/map" class="btn-glass">Interactive Map</a>
+    </div>
+</div>
+
+<div class="stats-grid" id="dashboardStats">
+    <div class="stat-card">
+        <div class="stat-val" id="statDistricts">--</div>
+        <div class="stat-label">Districts Analyzed</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-val" id="statFeatures">--</div>
+        <div class="stat-label">Geospatial Records</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-val" id="statSat">--</div>
+        <div class="stat-label">Satellite Images</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-val" id="statModels">RF / XGB</div>
+        <div class="stat-label">Trained Models</div>
+    </div>
+</div>
+
+<div class="features-grid">
+    <div class="feature-card">
+        <h3>🔍 Explainable AI</h3>
+        <p style="flex-grow: 1;">Every prediction is backed by SHAP feature attributions and Grad-CAM visual heatmaps, ensuring transparency in how geographic indicators influence the deprivation score.</p>
+        <a href="/explanation" style="font-weight: 600; text-decoration: none;">View Explanations →</a>
+    </div>
+    <div class="feature-card">
+        <h3>📈 Scenario Simulation</h3>
+        <p style="flex-grow: 1;">Test "What-If" scenarios to see how policy changes (e.g., building a hospital or improving roads) could theoretically impact a district's socioeconomic outlook.</p>
+        <a href="/whatif" style="font-weight: 600; text-decoration: none;">Try What-If Simulator →</a>
+    </div>
+    <div class="feature-card">
+        <h3>🔥 Hotspot Detection</h3>
+        <p style="flex-grow: 1;">Uses DBSCAN spatial clustering to identify regional pockets of contiguous high-deprivation areas, helping prioritize broader intervention strategies.</p>
+        <a href="/hotspots" style="font-weight: 600; text-decoration: none;">View Regional Hotspots →</a>
+    </div>
+</div>
+
+<div class="disclaimer" style="margin-top: 2rem;">
+    <strong>Research/demonstration prototype.</strong> This system estimates deprivation for a
+    geographic <em>area</em> (district), learned against survey-based ground truth. It does not
+    identify or classify individual people, and satellite/geospatial signals are treated as
+    statistically associated with &mdash; not a direct measurement or causal explanation of &mdash;
+    socioeconomic conditions. It is not validated for operational welfare-targeting decisions.
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+window.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const res = await fetch('/api/data-quality');
+        const data = await res.json();
+        
+        document.getElementById('statDistricts').textContent = data.total_districts || '--';
+        document.getElementById('statFeatures').textContent = data.geospatial_features.total_records || '--';
+        document.getElementById('statSat').textContent = data.satellite_data.total_records || '--';
+    } catch (e) {
+        console.error("Failed to load dashboard stats", e);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Explanation - GeoPoverty AI{% endblock %}
+{% block content %}
+<h1>Explainability</h1>
+<p>SHAP shows which features drove a district's score. Grad-CAM shows which parts of the satellite
+   image mattered most to the CNN's visual features.</p>
+
+<div class="card">
+    <label for="areaSelect"><strong>District:</strong></label>
+    <select id="areaSelect"></select>
+</div>
+
+<div id="content" style="display:none;">
+    <div class="card">
+        <h2 style="margin-top:0" id="areaTitle"></h2>
+        <p><strong>Predicted score:</strong> <span id="score"></span>
+           &nbsp; <span id="categoryBadge"></span></p>
+    </div>
+
+    <div class="two-col">
+        <div class="card">
+            <h2 style="margin-top:0">SHAP Feature Contributions</h2>
+            <p style="font-size:0.85rem; color:var(--color-muted);">
+                Red = pushes deprivation score up. Green = pushes it down.
+                Base value: <span id="baseValue"></span>
+            </p>
+            <div id="shapBars"></div>
+        </div>
+        <div class="card">
+            <h2 style="margin-top:0">🛰️ Satellite Image & Visual Attention</h2>
+            <div id="gradcamContent"></div>
+        </div>
+    </div>
+</div>
+
+<div id="errorCard" class="card disclaimer" style="display:none;"></div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+async function loadAreas(preselectId) {
+    const res = await fetch('/api/areas');
+    const areas = await res.json();
+    const select = document.getElementById('areaSelect');
+    select.innerHTML = '<option value="">-- select a district --</option>';
+    areas.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.area_id;
+        opt.textContent = `${a.area_name} (${a.state_name})` + (a.data_mode === 'demo' ? '  [DEMO]' : '');
+        select.appendChild(opt);
+    });
+    if (preselectId) {
+        select.value = preselectId;
+        loadExplanation(preselectId);
+    }
+}
+
+function renderShapBars(topContributions) {
+    const container = document.getElementById('shapBars');
+    container.innerHTML = '';
+    const maxAbs = Math.max(...topContributions.map(c => Math.abs(c.shap_contribution)), 0.0001);
+
+    topContributions.forEach(c => {
+        const pct = (Math.abs(c.shap_contribution) / maxAbs) * 100;
+        const cls = c.shap_contribution >= 0 ? 'positive' : 'negative';
+        const row = document.createElement('div');
+        row.className = 'shap-bar-row';
+        row.innerHTML = `
+            <div class="shap-bar-label">${formatFeatureName(c.feature)}</div>
+            <div class="shap-bar-track">
+                <div class="shap-bar-fill ${cls}" style="width:${pct}%"></div>
+            </div>
+            <div style="width:70px; text-align:right;">${c.shap_contribution.toFixed(4)}</div>
+        `;
+        container.appendChild(row);
+    });
+}
+
+async function loadExplanation(areaId) {
+    const content = document.getElementById('content');
+    const errorCard = document.getElementById('errorCard');
+    content.style.display = 'none';
+    errorCard.style.display = 'none';
+    if (!areaId) return;
+
+    const res = await fetch(`/api/explain/${areaId}`);
+    const data = await res.json();
+    if (!res.ok) {
+        errorCard.textContent = data.error || 'Something went wrong.';
+        errorCard.style.display = 'block';
+        return;
+    }
+
+    document.getElementById('areaTitle').textContent = data.area_name;
+    document.getElementById('score').textContent = data.predicted_score.toFixed(4);
+    document.getElementById('categoryBadge').innerHTML =
+        `<span class="badge badge-${data.predicted_category.toLowerCase()}">${data.predicted_category}</span>`;
+    document.getElementById('baseValue').textContent = data.shap_explanation.base_value.toFixed(4);
+
+    renderShapBars(data.shap_explanation.top_contributions);
+
+    const gradcamDiv = document.getElementById('gradcamContent');
+    let satHtml = '';
+    if (data.satellite_available) {
+        satHtml += `
+            <div style="position:relative; display:inline-block; border-radius:8px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.12); margin-bottom:12px;">
+                <img src="${data.satellite_url}" class="img-fluid" style="max-height:240px; width:auto; display:block; border-radius:8px;" alt="Sentinel-2 Satellite Image">
+                <div style="position:absolute; bottom:6px; left:6px; background:rgba(0,0,0,0.7); color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:600;">
+                    ESA Sentinel-2 RGB
+                </div>
+            </div>
+            <div>
+                <a href="${data.satellite_url}" target="_blank" style="font-size:0.8rem; color:#2563eb; text-decoration:none; font-weight:600;">🔍 View Full Image</a>
+            </div>
+        `;
+    }
+    
+    if (data.gradcam_available) {
+        satHtml += `
+            <div style="margin-top:14px; padding-top:10px; border-top:1px dashed #e2e8f0;">
+                <img class="gradcam-img" src="${data.gradcam_url}" alt="Grad-CAM heatmap" style="max-height:220px; border-radius:6px;">
+                <p style="font-size:0.8rem; color:var(--color-muted); margin-top:0.5rem;">
+                Highlighted regions influenced the model's visual representation most strongly.</p>
+            </div>
+        `;
+    }
+
+    if (!data.satellite_available && !data.gradcam_available) {
+        satHtml = `<div style="background:#f8fafc; border:1px dashed #cbd5e1; padding:24px 16px; border-radius:8px; color:#64748b; text-align:center;">
+            <div style="font-size:2rem; margin-bottom:6px;">🛰️</div>
+            <div style="font-weight:600; color:#334155; font-size:0.9rem; margin-bottom:4px;">No Satellite Imagery Cached</div>
+            <p style="font-size:0.8rem; margin:0;">Imagery patch for this district has not been downloaded from Earth Engine yet.</p>
+        </div>`;
+    }
+
+    gradcamDiv.innerHTML = satHtml;
+
+    content.style.display = 'block';
+}
+
+document.getElementById('areaSelect').addEventListener('change', (e) => loadExplanation(e.target.value));
+
+const urlParams = new URLSearchParams(window.location.search);
+loadAreas(urlParams.get('area_id'));
+</script>
+{% endblock %}

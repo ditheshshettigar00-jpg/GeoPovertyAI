@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Explore India - GeoPoverty AI{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    .map-container { display: flex; gap: 20px; flex-wrap: wrap; }
+    .filters { flex: 1; min-width: 250px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    #map { flex: 3; min-width: 600px; height: 70vh; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .filter-group { margin-bottom: 15px; }
+    .filter-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+    .filter-group select, .filter-group input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+    .legend { background: white; padding: 10px; line-height: 1.5; color: #555; border-radius: 5px; box-shadow: 0 0 15px rgba(0,0,0,0.2); }
+    .legend i { width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.9; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <h1>Explore India: Deprivation Map</h1>
+    <p>Interactive choropleth visualization of area-level socioeconomic deprivation.</p>
+</div>
+
+<div class="map-container">
+    <div class="filters">
+        <h3>Filters & Search</h3>
+        <div class="filter-group">
+            <label for="search-district">Search District</label>
+            <input type="text" id="search-district" placeholder="Type a district name...">
+        </div>
+        <div class="filter-group">
+            <label for="filter-state">State</label>
+            <select id="filter-state">
+                <option value="all">All States</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="filter-category">Deprivation Category</label>
+            <select id="filter-category">
+                <option value="all">All</option>
+                <option value="High">High Deprivation</option>
+                <option value="Medium">Medium Deprivation</option>
+                <option value="Low">Low Deprivation</option>
+            </select>
+        </div>
+        <button id="apply-filters" style="width: 100%; padding: 10px; background: #2c3e50; color: white; border: none; border-radius: 4px; cursor: pointer;">Apply Filters</button>
+    </div>
+    
+    <div id="map-loader" style="flex: 3; min-width: 600px; height: 70vh; border-radius: 8px; background:#f8fafc; display:flex; justify-content:center; align-items:center; flex-direction:column; border: 1px solid #e2e8f0;">
+        <div style="width: 40px; height: 40px; border: 4px solid #cbd5e1; border-top: 4px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem;"></div>
+        <div style="color: #64748b; font-weight: 600;">Loading map data...</div>
+        <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+    </div>
+    
+    <div id="map" style="display:none;"></div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+{% endblock %}

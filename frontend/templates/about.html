@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}About - GeoPoverty AI{% endblock %}
+{% block content %}
+<h1>About This Project</h1>
+
+<div class="card">
+    <h2 style="margin-top:0">The problem</h2>
+    <p>Reliable poverty/deprivation statistics usually come from large household surveys that are
+       expensive, slow, and conducted only once every several years. Between survey rounds, and in
+       areas with sparse coverage, there is very little fine-grained visibility into how conditions
+       are changing.</p>
+</div>
+
+<div class="card">
+    <h2 style="margin-top:0">The approach</h2>
+    <p>Satellite imagery is captured repeatedly and covers the entire country, including remote areas.
+       Published research has shown that visual patterns in imagery, and auxiliary layers like
+       nighttime-light emissions, correlate with area-level economic activity and living standards.
+       This project combines those signals with existing survey-based ground truth using machine
+       learning, to estimate deprivation for districts, with every prediction accompanied by an
+       explanation of what drove it.</p>
+</div>
+
+<div class="card">
+    <h2 style="margin-top:0">Pipeline</h2>
+    <p>Ground truth (district-level socioeconomic indicators) &rarr; satellite imagery (Sentinel-2)
+       &rarr; VGG-16 feature extraction &rarr; nighttime-light / NDVI / built-up / population features
+       (Google Earth Engine) &rarr; road/accessibility features (OpenStreetMap) &rarr; feature fusion
+       &rarr; Random Forest / XGBoost &rarr; SHAP + Grad-CAM explanations &rarr; this dashboard.</p>
+</div>
+
+<div class="card">
+    <h2 style="margin-top:0">Limitations</h2>
+    <ul>
+        <li>District-level (not village/household) resolution, due to public data privacy constraints.</li>
+        <li>Associative, not causal, relationships between features and outcomes.</li>
+        <li>Dependent on the quality and age of the underlying survey ground truth.</li>
+        <li>OpenStreetMap POI tagging density varies significantly across India.</li>
+        <li>This is a student research prototype, not a validated operational tool.</li>
+    </ul>
+</div>
+{% endblock %}

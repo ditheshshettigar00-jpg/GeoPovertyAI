@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoPovertyAI - UI Prototype</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="brand">
+            <span class="material-symbols-rounded" style="font-size: 32px;">language</span>
+            GeoPovertyAI
+        </div>
+        
+        <ul class="nav-links">
+            <li class="nav-item active">
+                <a href="#">
+                    <span class="material-symbols-rounded">dashboard</span>
+                    Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#">
+                    <span class="material-symbols-rounded">map</span>
+                    Geospatial Map
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#">
+                    <span class="material-symbols-rounded">analytics</span>
+                    Predictions
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#">
+                    <span class="material-symbols-rounded">tune</span>
+                    What-If Scenarios
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#">
+                    <span class="material-symbols-rounded">fact_check</span>
+                    Data Quality
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-bottom">
+            <ul class="nav-links">
+                <li class="nav-item">
+                    <a href="#">
+                        <span class="material-symbols-rounded">settings</span>
+                        Settings
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="search-bar">
+                <span class="material-symbols-rounded">search</span>
+                <input type="text" placeholder="Search regions, districts...">
+            </div>
+            
+            <div class="user-profile">
+                <button class="btn" style="background: rgba(255,255,255,0.1); color: var(--text-main);">
+                    <span class="material-symbols-rounded">notifications</span>
+                </button>
+                <div class="avatar">
+                    Admin
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard View -->
+        <div class="dashboard-area">
+            <h1 class="page-title">Overview Dashboard</h1>
+
+            <!-- Key Metrics -->
+            <div class="stats-grid">
+                <div class="stat-card glass">
+                    <div class="stat-header">
+                        <span>Total Regions Analyzed</span>
+                        <span class="material-symbols-rounded">public</span>
+                    </div>
+                    <div class="stat-value">1,248</div>
+                    <div class="stat-trend trend-up">
+                        <span class="material-symbols-rounded" style="font-size: 16px;">trending_up</span>
+                        +12% this month
+                    </div>
+                </div>
+
+                <div class="stat-card glass">
+                    <div class="stat-header">
+                        <span>High Risk Zones Identified</span>
+                        <span class="material-symbols-rounded">warning</span>
+                    </div>
+                    <div class="stat-value">84</div>
+                    <div class="stat-trend trend-down">
+                        <span class="material-symbols-rounded" style="font-size: 16px;">trending_down</span>
+                        -3 since last update
+                    </div>
+                </div>
+
+                <div class="stat-card glass">
+                    <div class="stat-header">
+                        <span>Model Accuracy (Overall)</span>
+                        <span class="material-symbols-rounded">psychology</span>
+                    </div>
+                    <div class="stat-value">91.4%</div>
+                    <div class="stat-trend trend-up">
+                        <span class="material-symbols-rounded" style="font-size: 16px;">trending_up</span>
+                        +0.2% improvement
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visuals & Lists -->
+            <div class="visuals-grid">
+                
+                <!-- Map Section Mockup -->
+                <div class="map-container glass">
+                    <div class="map-header">
+                        <h3>Poverty Heatmap</h3>
+                        <button class="btn">
+                            <span class="material-symbols-rounded">filter_alt</span> Filter Data
+                        </button>
+                    </div>
+                    <div class="map-placeholder">
+                        <div class="mock-map-bg"></div>
+                        <div class="mock-heatmap-point" style="top: 20%; left: 30%;"></div>
+                        <div class="mock-heatmap-point" style="top: 50%; left: 60%; background: radial-gradient(circle, rgba(245, 158, 11, 0.4) 0%, transparent 70%);"></div>
+                        <div class="mock-heatmap-point" style="top: 70%; left: 20%; background: radial-gradient(circle, rgba(16, 185, 129, 0.4) 0%, transparent 70%);"></div>
+                        
+                        <span class="material-symbols-rounded" style="font-size: 48px; color: var(--text-muted); position: relative; z-index: 2;">explore</span>
+                        <p style="position: relative; z-index: 2;">Interactive Map Rendering Area</p>
+                    </div>
+                </div>
+
+                <!-- Recent Predictions List -->
+                <div class="predictions-list glass">
+                    <h3 class="list-header">Recent High-Risk Predictions</h3>
+                    
+                    <div class="prediction-item">
+                        <div class="pred-info">
+                            <h4>District Alpha</h4>
+                            <p>Low infrastructure score</p>
+                        </div>
+                        <div class="pred-score high">0.89 Risk</div>
+                    </div>
+
+                    <div class="prediction-item">
+                        <div class="pred-info">
+                            <h4>Region Beta</h4>
+                            <p>High unemployment rate</p>
+                        </div>
+                        <div class="pred-score high">0.82 Risk</div>
+                    </div>
+
+                    <div class="prediction-item">
+                        <div class="pred-info">
+                            <h4>Zone Gamma</h4>
+                            <p>Agricultural decline detected</p>
+                        </div>
+                        <div class="pred-score warning">0.65 Risk</div>
+                    </div>
+
+                    <div class="prediction-item">
+                        <div class="pred-info">
+                            <h4>Sector Delta</h4>
+                            <p>Stable indicators</p>
+                        </div>
+                        <div class="pred-score low">0.12 Risk</div>
+                    </div>
+
+                    <button class="btn" style="width: 100%; margin-top: 16px; justify-content: center; background: rgba(255,255,255,0.05); color: var(--text-main);">
+                        View All Predictions
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+</body>
+</html>

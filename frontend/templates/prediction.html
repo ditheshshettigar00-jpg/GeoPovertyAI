@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+{% block title %}Live AI Predictor - GeoPoverty AI{% endblock %}
+
+{% block extra_head %}
+<style>
+/* Tab Navigation */
+.tabs-nav {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid #e2e0da;
+    padding-bottom: 4px;
+}
+.tab-btn {
+    background: none;
+    border: none;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--color-muted);
+    padding: 8px 16px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.tab-btn.active {
+    color: var(--color-primary);
+    border-bottom: 3px solid var(--color-primary);
+    background: rgba(45, 106, 79, 0.08);
+}
+
+/* Preset Chips */
+.presets-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 1rem 0;
+}
+.preset-chip {
+    background: #edf2f7;
+    border: 1px solid #cbd5e0;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #2d3748;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.preset-chip:hover {
+    background: var(--color-primary-light);
+    color: white;
+    border-color: var(--color-primary-light);
+    transform: translateY(-1px);
+}
+
+/* Grid layout for inputs */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.2rem;
+    margin: 1.5rem 0;
+}
+.feature-box {
+    background: #fdfdfd;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+.feature-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+.feature-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #1a202c;
+}
+.feature-meta {
+    font-size: 0.78rem;
+    color: var(--color-muted);
+    margin-bottom: 0.7rem;
+}
+.feature-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.feature-controls input[type="range"] {
+    flex: 1;
+    accent-color: var(--color-primary-light);
+    cursor: pointer;
+}
+.feature-controls input[type="number"] {
+    width: 85px;
+    padding: 5px 8px;
+    font-size: 0.9rem;
+    text-align: right;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+}
+
+/* Big Action Button */
+.predict-btn-container {
+    text-align: center;
+    margin: 1.8rem 0;
+}
+.btn-predict {
+    background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 12px 36px;
+    border-radius: 30px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(27, 67, 50, 0.35);
+    transition: all 0.25s ease;
+}
+.btn-predict:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(27, 67, 50, 0.45);
+}
+
+/* Result Dashboard Card */
+.result-panel {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.8rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    margin-top: 1.5rem;
+    animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    border-bottom: 1px solid #edf2f7;
+    padding-bottom: 1.2rem;
+    margin-bottom: 1.2rem;
+}
+.score-badge-large {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--color-primary);
+}
+.category-pill {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.cat-low { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+.cat-medium { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.cat-high { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+/* Gauge meter */
+.gauge-bar-container {
+    height: 12px;
+    background: #e2e8f0;
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 10px 0 16px;
+    position: relative;
+}
+.gauge-fill {
+    height: 100%;
+    transition: width 0.6s ease;
+}
+
+/* SHAP Attribution Bars */
+.contributions-list {
+    margin: 1.2rem 0;
+}
+.contribution-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 0.88rem;
+}
+.contrib-label {
+    width: 210px;
+    font-weight: 600;
+}
+.contrib-bar-wrap {
+    flex: 1;
+    height: 16px;
+    background: #edf2f7;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+.contrib-bar {
+    height: 100%;
+    transition: width 0.5s ease;
+}
+.contrib-bar.neg { background: #10b981; } /* Decreases poverty (Good) */
+.contrib-bar.pos { background: #ef4444; } /* Increases poverty (Bad) */
+.contrib-val {
+    width: 90px;
+    text-align: right;
+    font-weight: 700;
+    font-family: monospace;
+}
+
+.policy-card {
+    background: #f8fafc;
+    border-left: 4px solid #3b82f6;
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-size: 0.92rem;
+    color: #1e293b;
+    margin-top: 1.2rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; margin-bottom:1rem;">
+    <div>
+        <h1 style="margin:0;">🎯 AI Deprivation Predictor</h1>
+        <p style="color:var(--color-muted); margin:4px 0 0;">
+            Provide input features to calculate real-time machine learning predictions and Explainable AI (SHAP) attributions.
+        </p>
+    </div>
+    <div id="topModelBadge" style="background:#e6f4ea; border:1px solid #ceead6; padding:6px 14px; border-radius:20px; font-size:0.85rem; font-weight:600; color:#137333;">
+        ⚡ Model: Loading...
+    </div>
+</div>
+
+<!-- Tabs Navigation -->
+<div class="tabs-nav">
+    <button class="tab-btn active" id="tabBtnCustom" onclick="switchTab('custom')">🎛️ Live Parameter Predictor</button>
+    <button class="tab-btn" id="tabBtnDistrict" onclick="switchTab('district')">🗺️ District Explorer (532 Areas)</button>
+</div>
+
+<!-- ==================== TAB 1: CUSTOM INPUT PREDICTOR ==================== -->
+<div id="tabCustom">
+    <div class="card" style="margin-top:0;">
+        <h3 style="margin-top:0; margin-bottom:6px;">🚀 Quick Scenario Presets (Viva / Evaluation Demos):</h3>
+        <p style="color:var(--color-muted); font-size:0.88rem; margin:0 0 10px;">
+            Click any button below to instantly populate realistic geographic profiles:
+        </p>
+        <div class="presets-container">
+            <button type="button" class="preset-chip" onclick="applyPreset('rural')">🌾 Remote Rural Village (High Deprivation)</button>
+            <button type="button" class="preset-chip" onclick="applyPreset('semiurban')">🏭 Developing Industrial Town (Medium Deprivation)</button>
+            <button type="button" class="preset-chip" onclick="applyPreset('metro')">🏙️ Metropolitan City Core (Low Deprivation)</button>
+            <button type="button" class="preset-chip" onclick="applyPreset('arid')">🏜️ Arid / Drought-Prone Belt</button>
+        </div>
+    </div>
+
+    <!-- Inputs Grid -->
+    <div class="features-grid">
+        <!-- Nighttime Lights -->
+        <div class="feature-box">
+            <div class="feature-header">
+                <span class="feature-title">💡 Nighttime Lights Radiance</span>
+                <span id="badge_ntl" style="font-size:0.8rem; font-weight:700; color:#2d6a4f;">2.50 nW</span>
+            </div>
+            <div class="feature-meta">Source: NOAA / VIIRS Nighttime Sensor (0.0 = dark, 15+ = illuminated city)</div>
+            <div class="feature-controls">
+                <input type="range" id="slider_nightlight_mean" min="0.0" max="20.0" step="0.05" value="2.5" oninput="syncVal('nightlight_mean', this.value)">
+                <input type="number" id="num_nightlight_mean" min="0.0" max="100.0" step="0.05" value="2.5" oninput="syncSlider('nightlight_mean', this.value)">
+            </div>
+        </div>
+
+        <!-- NDVI Vegetation -->
+        <div class="feature-box">
+            <div class="feature-header">
+                <span class="feature-title">🌿 Vegetation Index (NDVI)</span>
+                <span id="badge_ndvi" style="font-size:0.8rem; font-weight:700; color:#2d6a4f;">0.42</span>
+            </div>
+            <div class="feature-meta">Source: ESA Sentinel-2 MSI (0.0 = barren/urban, 0.7 = lush crops)</div>
+            <div class="feature-controls">
+                <input type="range" id="slider_ndvi_mean" min="0.0" max="0.85" step="0.01" value="0.42" oninput="syncVal('ndvi_mean', this.value)">
+                <input type="number" id="num_ndvi_mean" min="0.0" max="1.0" step="0.01" value="0.42" oninput="syncSlider('ndvi_mean', this.value)">
+            </div>
+        </div>
+
+        <!-- Built-up Density -->
+        <div class="feature-box">
+            <div class="feature-header">
+                <span class="feature-title">🏢 Built-Up Settlement Surface</span>
+                <span id="badge_builtup" style="font-size:0.8rem; font-weight:700; color:#2d6a4f;">180.0</span>
+            </div>
+            <div class="feature-meta">Source: European Commission GHSL (Spatial building density)</div>
+            <div class="feature-controls">
+                <input type="range" id="slider_builtup_pct" min="10.0" max="600.0" step="5.0" value="180.0" oninput="syncVal('builtup_pct', this.value)">
+                <input type="number" id="num_builtup_pct" min="0.0" max="1000.0" step="1.0" value="180.0" oninput="syncSlider('builtup_pct', this.value)">
+            </div>
+        </div>
+
+        <!-- Population Density -->
+        <div class="feature-box">
+            <div class="feature-header">
+                <span class="feature-title">👥 Population Density</span>
+                <span id="badge_pop" style="font-size:0.8rem; font-weight:700; color:#2d6a4f;">450 /km²</span>
+            </div>
+            <div class="feature-meta">Source: GHSL Population Grid (Residents per sq. km)</div>
+            <div class="feature-controls">
+                <input type="range" id="slider_population_density" min="20.0" max="2500.0" step="10.0" value="450.0" oninput="syncVal('population_density', this.value)">
+                <input type="number" id="num_population_density" min="0.0" max="10000.0" step="10.0" value="450.0" oninput="syncSlider('population_density', this.value)">
+            </div>
+        </div>
+
+        <!-- Distance to Hospital -->
+        <div class="feature-box">
+            <div class="feature-header">
+                <span class="feature-title">🏥 Distance to Nearest Hospital</span>
+                <span id="badge_hospital" style="font-size:0.8rem; font-weight:700; color:#2d6a4f;">4.50 km</span>
+            </div>
+            <div class="feature-meta">Source: Healthcare Access / Primary Health Infrastructure (km)</div>
+            <div class="feature-controls">
+                <input type="range" id="slider_hospital_distance_km" min="0.5" max="30.0" step="0.5" value="4.5" oninput="syncVal('hospital_distance_km', this.value)">
+                <input type="number" id="num_hospital_distance_km" min="0.0" max="100.0" step="0.1" value="4.5" oninput="syncSlider('hospital_distance_km', this.value)">
+            </div>
+        </div>
+
+        <!-- Road Network Density -->
+        <div class="feature-box">
+            <div class="feature-header">
+                <span class="feature-title">🛣️ Road Network Density</span>
+                <span id="badge_road" style="font-size:0.8rem; font-weight:700; color:#2d6a4f;">2.10 km/km²</span>
+            </div>
+            <div class="feature-meta">Source: Road Infrastructure / Transport Connectivity (km per sq. km)</div>
+            <div class="feature-controls">
+                <input type="range" id="slider_road_density_km_per_sqkm" min="0.1" max="5.0" step="0.05" value="2.1" oninput="syncVal('road_density_km_per_sqkm', this.value)">
+                <input type="number" id="num_road_density_km_per_sqkm" min="0.0" max="10.0" step="0.05" value="2.1" oninput="syncSlider('road_density_km_per_sqkm', this.value)">
+            </div>
+        </div>
+
+        <!-- Distance to School -->
+        <div class="feature-box">
+            <div class="feature-header">
+                <span class="feature-title">🏫 Distance to Nearest School</span>
+                <span id="badge_school" style="font-size:0.8rem; font-weight:700; color:#2d6a4f;">2.00 km</span>
+            </div>
+            <div class="feature-meta">Source: Education Access / Primary & Secondary Facilities (km)</div>
+            <div class="feature-controls">
+                <input type="range" id="slider_school_distance_km" min="0.2" max="15.0" step="0.1" value="2.0" oninput="syncVal('school_distance_km', this.value)">
+                <input type="number" id="num_school_distance_km" min="0.0" max="50.0" step="0.1" value="2.0" oninput="syncSlider('school_distance_km', this.value)">
+            </div>
+        </div>
+
+        <!-- Visual Texture Features -->
+        <div class="feature-box">
+            <div class="feature-header">
+                <span class="feature-title">🎨 Satellite Visual Texture (Roughness)</span>
+                <span id="badge_texture" style="font-size:0.8rem; font-weight:700; color:#2d6a4f;">0.28</span>
+            </div>
+            <div class="feature-meta">Source: Sentinel-2 Computer Vision Texture Features (Spatial roughness)</div>
+            <div class="feature-controls">
+                <input type="range" id="slider_visual_texture" min="0.05" max="0.80" step="0.01" value="0.28" oninput="syncTextureVal(this.value)">
+                <input type="number" id="num_visual_texture" min="0.0" max="1.0" step="0.01" value="0.28" oninput="syncTextureSlider(this.value)">
+            </div>
+        </div>
+    </div>
+
+    <!-- Predict Button -->
+    <div class="predict-btn-container">
+        <button type="button" class="btn-predict" onclick="runLivePrediction()">
+            🔮 Run Live AI Prediction
+        </button>
+    </div>
+
+    <!-- Output Panel -->
+    <div id="liveResultPanel" class="result-panel" style="display:none;">
+        <div class="result-header">
+            <div>
+                <div style="font-size:0.88rem; color:var(--color-muted); text-transform:uppercase; font-weight:700;">
+                    Predicted Area Deprivation Index:
+                </div>
+                <div class="score-badge-large" id="liveScoreText">0.0000</div>
+                <div style="font-size:0.82rem; color:var(--color-muted);">Scale: 0.0 (Least Deprived) to 1.0 (Most Deprived)</div>
+            </div>
+            <div>
+                <span id="liveCategoryBadge" class="category-pill cat-medium">Medium</span>
+            </div>
+        </div>
+
+        <!-- Visual Gauge Bar -->
+        <div class="gauge-bar-container">
+            <div id="liveGaugeFill" class="gauge-fill" style="width: 50%; background: linear-gradient(90deg, #10b981 0%, #f59e0b 50%, #ef4444 100%);"></div>
+        </div>
+
+        <!-- SHAP Explanations -->
+        <h4 style="margin: 1.2rem 0 0.4rem; color:#1e293b;">📊 Real-Time Explainable AI (SHAP Feature Impacts):</h4>
+        <p style="font-size:0.85rem; color:var(--color-muted); margin-bottom:1rem;">
+            Shows how much each input pulled the deprivation score relative to the nationwide baseline (<span id="liveBaseValText">0.3934</span>):
+        </p>
+
+        <div id="liveContributionsList" class="contributions-list"></div>
+
+        <!-- Policy Takeaway -->
+        <div class="policy-card" id="livePolicyCard"></div>
+    </div>
+</div>
+
+<!-- ==================== TAB 2: DISTRICT EXPLORER ==================== -->
+<div id="tabDistrict" style="display:none;">
+    <div class="card" style="margin-top:0;">
+        <label for="districtSelect"><strong>Select an Indian District:</strong></label>
+        <select id="districtSelect" style="width:100%; max-width:400px; margin-top:8px;" onchange="onDistrictChange(this.value)">
+            <option value="">-- Loading all 532 districts... --</option>
+        </select>
+    </div>
+
+    <div id="districtResultCard" class="card" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; border-bottom:1px solid #edf2f7; padding-bottom:12px; margin-bottom:15px;">
+            <div>
+                <h2 style="margin:0;" id="distNameText">District Name</h2>
+                <div id="distStateText" style="color:var(--color-muted); font-size:0.9rem;">State</div>
+            </div>
+            <div>
+                <span id="distCatBadge" class="category-pill cat-low">Low</span>
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:1.5rem;">
+            <div style="background:#f8fafc; padding:12px; border-radius:6px;">
+                <div style="font-size:0.8rem; color:var(--color-muted);">Predicted Score</div>
+                <div style="font-size:1.6rem; font-weight:800; color:var(--color-primary);" id="distScoreText">0.0000</div>
+            </div>
+            <div style="background:#f8fafc; padding:12px; border-radius:6px;">
+                <div style="font-size:0.8rem; color:var(--color-muted);">Nighttime Lights</div>
+                <div style="font-size:1.3rem; font-weight:700;" id="distNtlText">--</div>
+            </div>
+            <div style="background:#f8fafc; padding:12px; border-radius:6px;">
+                <div style="font-size:0.8rem; color:var(--color-muted);">NDVI Vegetation</div>
+                <div style="font-size:1.3rem; font-weight:700;" id="distNdviText">--</div>
+            </div>
+            <div style="background:#f8fafc; padding:12px; border-radius:6px;">
+                <div style="font-size:0.8rem; color:var(--color-muted);">Built-up Surface</div>
+                <div style="font-size:1.3rem; font-weight:700;" id="distBuiltupText">--</div>
+            </div>
+            <div style="background:#f8fafc; padding:12px; border-radius:6px;">
+                <div style="font-size:0.8rem; color:var(--color-muted);">🏥 Hospital Distance</div>
+                <div style="font-size:1.3rem; font-weight:700;" id="distHospText">--</div>
+            </div>
+            <div style="background:#f8fafc; padding:12px; border-radius:6px;">
+                <div style="font-size:0.8rem; color:var(--color-muted);">🛣️ Road Density</div>
+                <div style="font-size:1.3rem; font-weight:700;" id="distRoadText">--</div>
+            </div>
+            <div style="background:#f8fafc; padding:12px; border-radius:6px;">
+                <div style="font-size:0.8rem; color:var(--color-muted);">🏫 School Distance</div>
+                <div style="font-size:1.3rem; font-weight:700;" id="distSchoolText">--</div>
+            </div>
+            <div style="background:#f8fafc; padding:12px; border-radius:6px;">
+                <div style="font-size:0.8rem; color:var(--color-muted);">🎨 Visual Texture</div>
+                <div style="font-size:1.3rem; font-weight:700;" id="distTexText">--</div>
+            </div>
+        </div>
+
+        <!-- Satellite Image Preview Box -->
+        <div id="distSatContainer" style="display:none; margin-bottom:1.5rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:15px; align-items:center; gap:20px; flex-wrap:wrap;">
+            <img id="distSatImg" src="" style="width:110px; height:110px; object-fit:cover; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.12);" alt="Satellite Image">
+            <div style="flex:1; min-width:220px;">
+                <div style="font-weight:700; color:#1e293b; margin-bottom:3px;">🛰️ ESA Sentinel-2 Optical Satellite Patch</div>
+                <div style="font-size:0.85rem; color:var(--color-muted); margin-bottom:8px;">Cloud-free RGB composite (10m resolution) captured for this district centroid & boundary.</div>
+                <a id="distSatLink" href="#" target="_blank" style="font-size:0.82rem; color:#2563eb; text-decoration:none; font-weight:600;">🔍 Open Full Resolution Image</a>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:1rem;">
+            <button type="button" style="background:#2d6a4f; color:white; font-weight:600;" onclick="loadDistrictIntoCustom()">
+                ⚡ Load into Live Predictor to Simulate Policy Changes
+            </button>
+            <a id="distFullExplainLink" href="#" style="align-self:center; color:#2563eb; font-weight:600; text-decoration:none;">
+                → View Explainability (SHAP &amp; Grad-CAM)
+            </a>
+            <a id="distReportLink" href="#"
+               style="display:inline-flex; align-items:center; gap:6px; align-self:center;
+                      padding: 9px 20px;
+                      background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+                      color: white; border-radius: 22px;
+                      font-size: 0.88rem; font-weight: 700; text-decoration: none;
+                      box-shadow: 0 3px 10px rgba(27,67,50,0.28);
+                      transition: transform 0.2s, box-shadow 0.2s;"
+               onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 5px 16px rgba(27,67,50,0.4)'"
+               onmouseout="this.style.transform='';this.style.boxShadow='0 3px 10px rgba(27,67,50,0.28)'">
+                📄 Generate District Report
+            </a>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/predict.js') }}"></script>
+{% endblock %}

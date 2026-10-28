@@ -1,0 +1,779 @@
+{% extends "base.html" %}
+{% block title %}District Report - GeoPoverty AI{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ─── Report page CSS ──────────────────────────────────────────────────── */
+.report-page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 0 3rem;
+    font-family: 'Inter', sans-serif;
+    color: #2b2b2b;
+}
+
+/* Top action bar */
+.report-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 1.1rem 1.5rem;
+    background: white;
+    border: 1px solid #e6e4de;
+    border-radius: 8px;
+    margin-bottom: 1.6rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.report-actions h2 { margin: 0; font-size: 1.1rem; color: #1b4332; }
+.report-actions .meta { font-size: 0.82rem; color: #6b6b6b; margin-top: 3px; }
+.report-btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.btn-primary {
+    background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+    color: white;
+    padding: 9px 22px;
+    border: none;
+    border-radius: 22px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 3px 12px rgba(27,67,50,0.3);
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 18px rgba(27,67,50,0.4); }
+.btn-secondary {
+    background: white;
+    color: #2d6a4f;
+    padding: 9px 22px;
+    border: 2px solid #2d6a4f;
+    border-radius: 22px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-secondary:hover { background: #f0faf4; }
+
+/* Report document card */
+.report-document {
+    background: white;
+    border: 1px solid #e6e4de;
+    border-radius: 8px;
+    padding: 2.5rem 3rem;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+}
+
+/* Report header */
+.rpt-header { border-bottom: 3px solid #1b4332; padding-bottom: 16px; margin-bottom: 22px; }
+.rpt-header h1 { margin: 0 0 4px; font-size: 1.7rem; color: #1b4332; }
+.rpt-header .rpt-sub { color: #6b6b6b; font-size: 0.9rem; margin: 0; }
+
+/* Section heading */
+.rpt-section { margin-top: 2rem; }
+.rpt-section h2 {
+    font-size: 1.05rem;
+    color: #1b4332;
+    border-left: 4px solid #2d6a4f;
+    padding-left: 10px;
+    margin-bottom: 12px;
+    margin-top: 0;
+}
+
+/* Info table */
+.info-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.info-table tr:nth-child(odd) { background: #f7f6f3; }
+.info-table td { padding: 7px 10px; border: 1px solid #e6e4de; vertical-align: top; }
+.info-table td:first-child { font-weight: 700; width: 220px; color: #2b2b2b; }
+
+/* Score block */
+.score-block {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: linear-gradient(135deg, #f7f6f3 0%, #ffffff 100%);
+    border: 1px solid #e6e4de;
+    border-radius: 10px;
+    padding: 1.5rem 2rem;
+    flex-wrap: wrap;
+}
+.score-number {
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: #1b4332;
+    line-height: 1;
+    letter-spacing: -1px;
+}
+.score-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: #6b6b6b; }
+.category-badge {
+    padding: 8px 22px;
+    border-radius: 24px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.cat-Low { background: #d1fae5; color: #065f46; border: 2px solid #6ee7b7; }
+.cat-Medium { background: #fef3c7; color: #92400e; border: 2px solid #fcd34d; }
+.cat-High { background: #fee2e2; color: #991b1b; border: 2px solid #fca5a5; }
+
+/* Score gauge bar */
+.score-gauge { flex: 1; min-width: 200px; }
+.gauge-track {
+    height: 14px;
+    border-radius: 7px;
+    background: linear-gradient(90deg, #52b788 0%, #f4a261 50%, #e76f51 100%);
+    position: relative;
+    margin: 8px 0;
+    overflow: visible;
+}
+.gauge-pointer {
+    position: absolute;
+    top: -4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid #1b4332;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    transform: translateX(-50%);
+    transition: left 0.8s ease;
+}
+.gauge-labels { display: flex; justify-content: space-between; font-size: 0.72rem; color: #6b6b6b; }
+
+/* Threshold legend */
+.threshold-legend {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    font-size: 0.8rem;
+}
+.thr-item { display: flex; align-items: center; gap: 6px; }
+.thr-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* Performance metrics */
+.perf-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+}
+.perf-card {
+    background: #f7f6f3;
+    border: 1px solid #e6e4de;
+    border-radius: 8px;
+    padding: 14px 16px;
+    text-align: center;
+}
+.perf-card .perf-val {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: #1b4332;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+.perf-card .perf-name { font-size: 0.78rem; color: #6b6b6b; font-weight: 600; }
+.perf-card .perf-desc { font-size: 0.72rem; color: #9b9b9b; margin-top: 3px; }
+
+/* Satellite image */
+.satellite-frame {
+    border: 2px solid #e6e4de;
+    border-radius: 10px;
+    overflow: hidden;
+    display: inline-block;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+    position: relative;
+    max-width: 100%;
+}
+.satellite-frame img { display: block; width: 100%; max-width: 560px; height: auto; }
+.satellite-badge {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.72);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+.img-caption { font-size: 0.78rem; color: #6b6b6b; margin-top: 8px; font-style: italic; }
+
+/* SHAP table */
+.shap-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.shap-table th {
+    background: #1b4332;
+    color: white;
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 700;
+}
+.shap-table tr:nth-child(odd) td { background: #f7f6f3; }
+.shap-table td { padding: 7px 10px; border-bottom: 1px solid #e6e4de; vertical-align: top; }
+.shap-val-pos { color: #dc2626; font-weight: 700; font-family: monospace; }
+.shap-val-neg { color: #059669; font-weight: 700; font-family: monospace; }
+.shap-dir-pos { background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
+.shap-dir-neg { background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
+
+/* Mini SHAP visual bar */
+.shap-mini-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 5px;
+}
+.shap-mini-bar-track {
+    flex: 1;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.shap-mini-bar-fill { height: 100%; border-radius: 4px; }
+.shap-mini-bar-fill.pos { background: #ef4444; }
+.shap-mini-bar-fill.neg { background: #10b981; }
+
+/* Grad-CAM */
+.gradcam-frame {
+    border: 2px solid #e6e4de;
+    border-radius: 10px;
+    overflow: hidden;
+    display: inline-block;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+    position: relative;
+    max-width: 100%;
+}
+.gradcam-frame img { display: block; width: 100%; max-width: 560px; height: auto; }
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 0.78rem;
+    color: #6b6b6b;
+}
+.heatmap-bar {
+    width: 120px;
+    height: 10px;
+    border-radius: 5px;
+    background: linear-gradient(90deg, #313695, #4575b4, #74add1, #abd9e9,
+                                       #e0f3f8, #ffffbf, #fee090, #fdae61,
+                                       #f46d43, #d73027, #a50026);
+}
+
+/* Disclaimer */
+.disclaimer-box {
+    background: #fff8ea;
+    border: 1px solid #f0dfa8;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 0.8rem;
+    color: #6b5a1f;
+    line-height: 1.6;
+    margin-top: 2rem;
+}
+.disclaimer-box strong { display: block; margin-bottom: 4px; }
+
+/* Report footer */
+.rpt-footer {
+    text-align: center;
+    color: #aaa;
+    font-size: 0.75rem;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e6e4de;
+}
+
+/* Unavailable placeholder */
+.unavail-box {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 24px 20px;
+    text-align: center;
+    color: #64748b;
+}
+.unavail-box .ico { font-size: 2rem; margin-bottom: 8px; }
+.unavail-box p { margin: 4px 0 0; font-size: 0.82rem; }
+
+/* Data sources grid */
+.sources-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 10px;
+}
+.source-item {
+    background: #f7f6f3;
+    border: 1px solid #e6e4de;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+}
+.source-item strong { display: block; color: #1b4332; margin-bottom: 3px; }
+
+/* Loading/error state */
+.loading-state, .error-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #6b6b6b;
+}
+.loading-spinner {
+    display: inline-block;
+    width: 38px; height: 38px;
+    border: 4px solid #e2e8f0;
+    border-top-color: #2d6a4f;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 14px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Print styles ─────────────────────────────────────────────────────── */
+@media print {
+    .navbar, .footer, .report-actions, .report-btn-group { display: none !important; }
+    body { background: white; }
+    .report-page { max-width: 100%; }
+    .report-document { box-shadow: none; border: none; padding: 0; }
+    .rpt-section { page-break-inside: avoid; }
+    .satellite-frame img, .gradcam-frame img { max-width: 480px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-page">
+
+    <!-- Action Bar -->
+    <div class="report-actions">
+        <div>
+            <h2 id="actionBarTitle">📄 Generating District Report…</h2>
+            <div class="meta" id="actionBarMeta">Loading data…</div>
+        </div>
+        <div class="report-btn-group">
+            <a id="btnDownloadPDF" href="#" class="btn-primary" style="pointer-events:none; opacity:0.5;">
+                ⬇ Download PDF
+            </a>
+            <button class="btn-secondary" onclick="window.print()">🖨 Print Report</button>
+            <a id="btnBackToDistrict" href="#" class="btn-secondary">← Back to District</a>
+        </div>
+    </div>
+
+    <!-- Report Document -->
+    <div class="report-document" id="reportDocument">
+        <!-- Loading state -->
+        <div id="loadingState" class="loading-state">
+            <div class="loading-spinner"></div>
+            <div style="font-size:1rem; font-weight:600; color:#1b4332;">Building your report…</div>
+            <div style="font-size:0.85rem; margin-top:6px;">Fetching prediction data, SHAP values, and media…</div>
+        </div>
+
+        <!-- Error state (hidden by default) -->
+        <div id="errorState" class="error-state" style="display:none;">
+            <div style="font-size:2.5rem; margin-bottom:10px;">⚠️</div>
+            <div id="errorMessage" style="font-size:1rem; font-weight:600; color:#dc2626;"></div>
+            <div style="margin-top:10px; font-size:0.85rem;">Make sure a prediction exists for this district.</div>
+        </div>
+
+        <!-- Report content (hidden until data loads) -->
+        <div id="reportContent" style="display:none;">
+
+            <!-- ── Report Header ─────────────────────────────────────────── -->
+            <div class="rpt-header">
+                <h1>GeoPoverty AI — District Analysis Report</h1>
+                <p class="rpt-sub">Explainable AI-Based Area-Level Socioeconomic Deprivation Estimation</p>
+            </div>
+
+            <!-- ── Section 1: District Information ──────────────────────── -->
+            <div class="rpt-section">
+                <h2>1. District Information</h2>
+                <table class="info-table" id="infoTable"></table>
+            </div>
+
+            <!-- ── Section 2: Predicted Deprivation Score ───────────────── -->
+            <div class="rpt-section">
+                <h2>2. Predicted Deprivation Score</h2>
+                <div class="score-block">
+                    <div>
+                        <div class="score-label">Predicted Deprivation Index</div>
+                        <div class="score-number" id="scoreNumber">—</div>
+                        <div class="score-label" style="margin-top:4px;">Scale: 0.0 (Least Deprived) → 1.0 (Most Deprived)</div>
+                    </div>
+                    <div>
+                        <span id="categoryBadge" class="category-badge">—</span>
+                    </div>
+                    <div class="score-gauge">
+                        <div style="font-size:0.78rem; font-weight:700; color:#2b2b2b; margin-bottom:4px;">Score Position</div>
+                        <div class="gauge-track" id="gaugeTrack">
+                            <div class="gauge-pointer" id="gaugePointer" style="left:0%"></div>
+                        </div>
+                        <div class="gauge-labels"><span>0.0</span><span>0.35</span><span>0.60</span><span>1.0</span></div>
+                    </div>
+                </div>
+                <div class="threshold-legend" style="margin-top:14px;">
+                    <div class="thr-item"><div class="thr-dot" style="background:#52b788;"></div><span><b>Low:</b> Score &lt; 0.35</span></div>
+                    <div class="thr-item"><div class="thr-dot" style="background:#f4a261;"></div><span><b>Medium:</b> 0.35 ≤ Score &lt; 0.60</span></div>
+                    <div class="thr-item"><div class="thr-dot" style="background:#e76f51;"></div><span><b>High:</b> Score ≥ 0.60</span></div>
+                    <div style="font-size:0.78rem; color:#6b6b6b; margin-left:auto;">
+                        Thresholds derived from NFHS-5 empirical tertile distribution
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Section 3: Model Performance ─────────────────────────── -->
+            <div class="rpt-section">
+                <h2>3. Model Performance Metrics</h2>
+                <p style="font-size:0.84rem; color:#6b6b6b; margin:0 0 14px;">
+                    Metrics computed on the held-out test split during model training/evaluation.
+                    They reflect the model's generalisation to unseen districts and are sourced
+                    directly from the database.
+                </p>
+                <div class="perf-grid" id="perfGrid"></div>
+                <div id="perfExtra" style="font-size:0.82rem; color:#6b6b6b;"></div>
+            </div>
+
+            <!-- ── Section 4: Satellite Image ────────────────────────────── -->
+            <div class="rpt-section">
+                <h2>4. Sentinel-2 Satellite Imagery</h2>
+                <p style="font-size:0.84rem; color:#6b6b6b; margin:0 0 14px;">
+                    Cloud-free RGB composite (Bands B4/B3/B2) acquired from ESA Sentinel-2 MSI
+                    at 10 m resolution. VGG-16 spatial features were extracted from this patch
+                    and fused with the geospatial indicators listed in Section 5.
+                </p>
+                <div id="satelliteContainer"></div>
+            </div>
+
+            <!-- ── Section 5: Geospatial Indicators ──────────────────────── -->
+            <div class="rpt-section">
+                <h2>5. Geospatial Indicator Values</h2>
+                <p style="font-size:0.84rem; color:#6b6b6b; margin:0 0 14px;">
+                    Input features used by the model, derived from VIIRS night-time lights,
+                    GHSL built-up/population grids, and OpenStreetMap infrastructure data.
+                </p>
+                <table class="shap-table" id="featTable">
+                    <thead><tr><th>Indicator</th><th>Value</th><th>Data Source</th></tr></thead>
+                    <tbody id="featTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- ── Section 6: SHAP Explanation ───────────────────────────── -->
+            <div class="rpt-section">
+                <h2>6. SHAP Model Explanation</h2>
+                <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 16px; font-size:0.85rem; color:#166534; margin-bottom:14px; line-height:1.6;">
+                    <strong>ℹ️ Interpretation Note:</strong>
+                    SHAP values describe the <em>statistical contribution</em> of each feature
+                    to this district's predicted score, relative to the model's expected output
+                    across all training districts. They do <strong>not</strong> establish causal
+                    relationships. A positive value pushes the score <em>upward</em> (more
+                    deprived); a negative value pushes it <em>downward</em>.
+                </div>
+                <p id="shapBaseNote" style="font-size:0.84rem; color:#6b6b6b; margin-bottom:14px;"></p>
+                <div id="shapContainer"></div>
+            </div>
+
+            <!-- ── Section 7: Grad-CAM ────────────────────────────────────── -->
+            <div class="rpt-section">
+                <h2>7. Grad-CAM Visual Attention Map</h2>
+                <p style="font-size:0.84rem; color:#6b6b6b; margin:0 0 14px;">
+                    Grad-CAM highlights which spatial regions of the Sentinel-2 patch most
+                    strongly activated the VGG-16 visual feature extractor. Warmer (red/yellow)
+                    regions had the highest influence on the extracted visual features. This
+                    does <strong>not</strong> directly indicate poverty — it shows which visual
+                    patterns drove the CNN's representation.
+                </p>
+                <div id="gradcamContainer"></div>
+                <div class="heatmap-legend" id="heatmapLegend" style="display:none;">
+                    <span>Cool (low activation)</span>
+                    <div class="heatmap-bar"></div>
+                    <span>Hot (high activation)</span>
+                </div>
+            </div>
+
+            <!-- ── Data Sources ───────────────────────────────────────────── -->
+            <div class="rpt-section">
+                <h2>Data Sources</h2>
+                <div class="sources-grid" id="sourcesGrid"></div>
+            </div>
+
+            <!-- ── Disclaimer ─────────────────────────────────────────────── -->
+            <div class="disclaimer-box" id="disclaimerBox"></div>
+
+            <!-- ── Report Footer ──────────────────────────────────────────── -->
+            <div class="rpt-footer" id="rptFooter"></div>
+
+        </div><!-- /#reportContent -->
+    </div><!-- /.report-document -->
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function el(id) { return document.getElementById(id); }
+
+function td(content, bold) {
+    const c = document.createElement('td');
+    c.innerHTML = content;
+    if (bold) c.style.fontWeight = '700';
+    return c;
+}
+
+function makeInfoRow(label, value) {
+    const tr = document.createElement('tr');
+    tr.appendChild(td(label, true));
+    tr.appendChild(td(value || '—'));
+    return tr;
+}
+
+// ── Main loader ──────────────────────────────────────────────────────────────
+const urlParams = new URLSearchParams(window.location.search);
+const areaId = parseInt(urlParams.get('area_id'));
+
+if (!areaId) {
+    showError('No district selected. Please go back and choose a district.');
+} else {
+    loadReport(areaId);
+}
+
+async function loadReport(areaId) {
+    try {
+        const res = await fetch(`/api/reports/district-data/${areaId}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+            showError(data.error || 'Failed to load report data.');
+            return;
+        }
+
+        renderReport(data);
+    } catch (e) {
+        showError('Network error: ' + e.message);
+    }
+}
+
+function showError(msg) {
+    el('loadingState').style.display = 'none';
+    el('errorState').style.display = 'block';
+    el('errorMessage').textContent = msg;
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function renderReport(d) {
+    // Update action bar
+    el('actionBarTitle').textContent = `📄 District Report — ${d.area_name}, ${d.state_name}`;
+    el('actionBarMeta').textContent = `Generated: ${d.analysis_date} · Model: ${d.model_name} · Mode: ${(d.data_mode || 'real').toUpperCase()}`;
+
+    // PDF download link
+    const pdfBtn = el('btnDownloadPDF');
+    pdfBtn.href = `/api/reports/district/${d.area_id}`;
+    pdfBtn.style.pointerEvents = '';
+    pdfBtn.style.opacity = '';
+
+    // Back link
+    el('btnBackToDistrict').href = `/district/${d.area_id}`;
+
+    // ── Section 1: District Info ─────────────────────────────────────────
+    const tbl = el('infoTable');
+    tbl.appendChild(makeInfoRow('District', d.area_name));
+    tbl.appendChild(makeInfoRow('State', d.state_name));
+    tbl.appendChild(makeInfoRow('Analysis Date', d.analysis_date));
+    tbl.appendChild(makeInfoRow('Prediction Model', d.model_name));
+    tbl.appendChild(makeInfoRow('Satellite Image Source', (d.data_sources || {}).satellite || 'ESA Sentinel-2 MSI'));
+    tbl.appendChild(makeInfoRow('Ground Truth Source', (d.data_sources || {}).ground_truth || 'NFHS-5, 2019–21'));
+    tbl.appendChild(makeInfoRow('Deep Feature Extractor', (d.data_sources || {}).deep_features || 'VGG-16'));
+    tbl.appendChild(makeInfoRow('Prediction Timestamp', d.prediction_timestamp || 'N/A'));
+    tbl.appendChild(makeInfoRow('Data Mode', (d.data_mode || 'real').toUpperCase()));
+
+    // ── Section 2: Score ─────────────────────────────────────────────────
+    const score = d.predicted_score;
+    const cat   = d.predicted_category;
+    el('scoreNumber').textContent = score.toFixed(4);
+    const badge = el('categoryBadge');
+    badge.textContent = cat;
+    badge.className = `category-badge cat-${cat}`;
+    // Gauge pointer
+    const pct = Math.min(Math.max(score, 0), 1) * 100;
+    el('gaugePointer').style.left = pct + '%';
+
+    // ── Section 3: Model Performance ─────────────────────────────────────
+    const mp = d.model_performance || {};
+    const perfGrid = el('perfGrid');
+    if (mp.mae !== null && mp.mae !== undefined) {
+        perfGrid.appendChild(makeMetricCard('MAE', mp.mae.toFixed(4), 'Mean Absolute Error', 'Average absolute prediction error (0–1 scale)'));
+    }
+    if (mp.rmse !== null && mp.rmse !== undefined) {
+        perfGrid.appendChild(makeMetricCard('RMSE', mp.rmse.toFixed(4), 'Root Mean Squared Error', 'Penalises larger errors more than MAE'));
+    }
+    if (mp.r2 !== null && mp.r2 !== undefined) {
+        perfGrid.appendChild(makeMetricCard('R²', mp.r2.toFixed(4), 'Coefficient of Determination', 'Fraction of score variance explained by model'));
+    }
+    if (Object.keys(mp).length === 0 || (mp.mae === null && mp.rmse === null && mp.r2 === null)) {
+        perfGrid.innerHTML = '<p style="color:#6b6b6b; font-size:0.85rem;"><em>Performance metrics not yet recorded. Run model evaluation to populate.</em></p>';
+    }
+    const trainedOn = mp.trained_on;
+    if (trainedOn) {
+        el('perfExtra').textContent = `Model: ${mp.model_name || d.model_name} · Evaluated on dataset: ${trainedOn}`;
+    }
+
+    // ── Section 4: Satellite Image ────────────────────────────────────────
+    const satDiv = el('satelliteContainer');
+    if (d.has_satellite) {
+        satDiv.innerHTML = `
+            <div class="satellite-frame">
+                <img src="${d.satellite_url}" alt="Sentinel-2 RGB composite for ${d.area_name}">
+                <div class="satellite-badge">🛰️ ESA Sentinel-2 RGB · Bands B4/B3/B2</div>
+            </div>
+            <p class="img-caption">
+                Figure 1: Cloud-free Sentinel-2 RGB composite patch for ${d.area_name}, ${d.state_name}.
+                Bands: B4 (Red), B3 (Green), B2 (Blue). Resolution: 10 m. Source: Google Earth Engine / ESA Copernicus.
+                <a href="${d.satellite_url}" target="_blank" style="color:#2563eb; font-weight:600; margin-left:6px;">🔍 View full image</a>
+            </p>
+        `;
+    } else {
+        satDiv.innerHTML = `
+            <div class="unavail-box">
+                <div class="ico">🛰️</div>
+                <strong>No Sentinel-2 Patch Cached</strong>
+                <p>The imagery patch for this district has not been downloaded yet.<br>
+                Run <code>python geospatial/download_satellite_patches.py</code> to acquire it.</p>
+            </div>
+        `;
+    }
+
+    // ── Section 5: Geospatial Indicators ─────────────────────────────────
+    const featBody = el('featTableBody');
+    const feats = d.features || {};
+    const SOURCES = {
+        'nightlight_mean': 'NOAA/NASA VIIRS DNB',
+        'ndvi_mean': 'ESA Sentinel-2 MSI',
+        'builtup_pct': 'EU GHSL',
+        'population_density': 'EU GHSL',
+        'road_density_km_per_sqkm': 'OpenStreetMap (OSM)',
+        'school_distance_km': 'OpenStreetMap (OSM)',
+        'hospital_distance_km': 'OpenStreetMap (OSM)',
+    };
+    let hasFeats = false;
+    for (const [key, info] of Object.entries(feats)) {
+        hasFeats = true;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><strong>${info.label.split(' (')[0]}</strong></td>
+                        <td><strong>${info.value}</strong></td>
+                        <td>${SOURCES[key] || '—'}</td>`;
+        featBody.appendChild(tr);
+    }
+    if (!hasFeats) {
+        featBody.innerHTML = '<tr><td colspan="3" style="color:#6b6b6b; font-style:italic;">No feature data available for this district.</td></tr>';
+    }
+
+    // ── Section 6: SHAP ───────────────────────────────────────────────────
+    const shapDiv = el('shapContainer');
+    const contribs = d.shap_contributions || [];
+
+    if (d.shap_base_value !== null && d.shap_base_value !== undefined) {
+        el('shapBaseNote').textContent =
+            `Model baseline (expected deprivation score across all training districts): ${d.shap_base_value.toFixed(4)}`;
+    }
+
+    if (contribs.length > 0) {
+        const maxAbs = Math.max(...contribs.map(c => Math.abs(c.shap_value)), 0.0001);
+        let html = `<table class="shap-table">
+            <thead><tr><th>#</th><th>Feature</th><th>SHAP Value</th><th>Direction</th><th>Interpretation</th></tr></thead>
+            <tbody>`;
+        contribs.forEach((c, i) => {
+            const pct = (Math.abs(c.shap_value) / maxAbs) * 100;
+            const isPos = c.shap_value >= 0;
+            const valCls = isPos ? 'shap-val-pos' : 'shap-val-neg';
+            const dirCls = isPos ? 'shap-dir-pos' : 'shap-dir-neg';
+            const dirTxt = isPos ? '↑ Increases score' : '↓ Decreases score';
+            const barCls = isPos ? 'pos' : 'neg';
+            const sign   = c.shap_value >= 0 ? '+' : '';
+            html += `<tr>
+                <td>${i + 1}</td>
+                <td>
+                    <strong>${c.label}</strong>
+                    <div class="shap-mini-bar-wrap">
+                        <div class="shap-mini-bar-track">
+                            <div class="shap-mini-bar-fill ${barCls}" style="width:${pct}%"></div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="${valCls}">${sign}${c.shap_value.toFixed(6)}</span></td>
+                <td><span class="${dirCls}">${dirTxt}</span></td>
+                <td style="font-size:0.8rem; color:#555;">${c.note || '—'}</td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        shapDiv.innerHTML = html;
+    } else {
+        shapDiv.innerHTML = `<div class="unavail-box"><div class="ico">📊</div>
+            <strong>SHAP explanation not available</strong>
+            <p>Run the explainability pipeline to generate SHAP values for this district.</p></div>`;
+    }
+
+    // ── Section 7: Grad-CAM ───────────────────────────────────────────────
+    const gcDiv = el('gradcamContainer');
+    if (d.has_gradcam) {
+        gcDiv.innerHTML = `
+            <div class="gradcam-frame">
+                <img src="${d.gradcam_url}" alt="Grad-CAM heatmap for ${d.area_name}">
+                <div class="satellite-badge">🔥 VGG-16 Grad-CAM Heatmap</div>
+            </div>
+            <p class="img-caption">
+                Figure 2: Grad-CAM visual attention overlay for ${d.area_name}.
+                Red/yellow regions had the highest activation in the VGG-16 feature layer.
+                Generated from the final convolutional block using the predicted deprivation score signal.
+            </p>
+        `;
+        el('heatmapLegend').style.display = 'flex';
+    } else {
+        gcDiv.innerHTML = `<div class="unavail-box"><div class="ico">🗺️</div>
+            <strong>Grad-CAM Heatmap Not Available</strong>
+            <p>Run the explainability module (<code>explainability/gradcam.py</code>) to generate the heatmap.</p></div>`;
+    }
+
+    // ── Data Sources ──────────────────────────────────────────────────────
+    const srcGrid = el('sourcesGrid');
+    const srcMap = {
+        'Satellite Imagery': d.data_sources?.satellite,
+        'Nighttime Lights': d.data_sources?.nighttime_light,
+        'Built-Up & Population': d.data_sources?.built_up,
+        'Road/POI Network': d.data_sources?.road_osm,
+        'Ground Truth (Labels)': d.data_sources?.ground_truth,
+        'Deep Visual Features': d.data_sources?.deep_features,
+    };
+    for (const [name, val] of Object.entries(srcMap)) {
+        if (val) {
+            const div = document.createElement('div');
+            div.className = 'source-item';
+            div.innerHTML = `<strong>${name}</strong>${val}`;
+            srcGrid.appendChild(div);
+        }
+    }
+
+    // ── Disclaimer ────────────────────────────────────────────────────────
+    el('disclaimerBox').innerHTML = `<strong>⚠ Scientific Disclaimer</strong>${d.disclaimer || ''}`;
+
+    // ── Footer ────────────────────────────────────────────────────────────
+    el('rptFooter').textContent =
+        `Generated by GeoPoverty AI  ·  ${d.analysis_date}  ·  MCA Final Year Project Prototype`;
+
+    // ── Show content ──────────────────────────────────────────────────────
+    el('loadingState').style.display = 'none';
+    el('reportContent').style.display = 'block';
+}
+
+function makeMetricCard(acronym, value, name, desc) {
+    const div = document.createElement('div');
+    div.className = 'perf-card';
+    div.innerHTML = `<div class="perf-val">${value}</div>
+                     <div class="perf-name">${acronym} — ${name}</div>
+                     <div class="perf-desc">${desc}</div>`;
+    return div;
+}
+</script>
+{% endblock %}

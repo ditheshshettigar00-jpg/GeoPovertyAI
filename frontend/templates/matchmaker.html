@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+{% block title %}AI Matchmaker - GeoPoverty AI{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ─── Matchmaker Page CSS ────────────────────────────────────────────────── */
+.matchmaker-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    font-family: 'Inter', sans-serif;
+    color: #1e293b;
+}
+
+/* Header Area */
+.mm-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+.mm-header h1 {
+    font-size: 2.4rem;
+    color: #0f172a;
+    margin-bottom: 0.5rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+}
+.mm-header p {
+    color: #64748b;
+    font-size: 1.1rem;
+    max-width: 750px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+/* District Selector */
+.mm-selector-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    border: 1px solid #e2e8f0;
+}
+.mm-selector-card select {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #334155;
+    background-color: #f8fafc;
+    min-width: 350px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.mm-selector-card select:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+/* Loading Overlay */
+.loading-box {
+    text-align: center;
+    padding: 4rem 0;
+    display: none;
+}
+.spinner {
+    width: 48px; height: 48px;
+    border: 4px solid #e2e8f0;
+    border-top-color: #8b5cf6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 1rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Results Container */
+.mm-results { display: none; }
+
+/* Target District Banner */
+.target-banner {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-radius: 16px;
+    padding: 2rem;
+    color: white;
+    margin-bottom: 3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+.target-info h2 { margin: 0 0 0.5rem 0; font-size: 2rem; }
+.target-info p { margin: 0; color: #cbd5e1; font-size: 1.1rem; }
+.target-score {
+    text-align: right;
+    background: rgba(255,255,255,0.1);
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+.target-score span { display: block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #cbd5e1; }
+.target-score strong { font-size: 2.5rem; line-height: 1; }
+
+/* Match Grid */
+.matches-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+.match-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+.match-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+    border-color: #cbd5e1;
+}
+
+/* Rank Badge */
+.rank-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 0.8rem;
+    font-weight: 800;
+    padding: 0.3rem 0.6rem;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+}
+.match-card.rank-1 { border-top: 4px solid #8b5cf6; }
+.match-card.rank-1 .rank-badge { background: #f3e8ff; color: #7e22ce; border-color: #d8b4fe; }
+
+/* Match Card Header */
+.mc-header { margin-bottom: 1.5rem; padding-right: 3rem; }
+.mc-header h3 { margin: 0; font-size: 1.3rem; color: #0f172a; }
+.mc-header p { margin: 0.2rem 0 0 0; font-size: 0.9rem; color: #64748b; }
+
+/* Similarity Bar */
+.sim-bar-wrap { margin-bottom: 1.5rem; }
+.sim-bar-label { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 0.4rem; }
+.sim-bar-track { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+.sim-bar-fill { height: 100%; background: linear-gradient(90deg, #a855f7 0%, #8b5cf6 100%); border-radius: 4px; transition: width 1s ease-out; }
+
+/* Match Card Stats */
+.mc-stats {
+    display: flex;
+    justify-content: space-between;
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+.mc-stat { text-align: center; }
+.mc-stat .lbl { font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 700; }
+.mc-stat .val { font-size: 1.2rem; font-weight: 800; color: #0f172a; }
+.mc-stat .cat-Low { color: #166534; }
+.mc-stat .cat-Medium { color: #92400e; }
+.mc-stat .cat-High { color: #991b1b; }
+
+/* Action Button */
+.btn-view {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background: white;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    padding: 0.75rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.btn-view:hover { background: #f8fafc; color: #0f172a; border-color: #94a3b8; }
+.match-card.rank-1 .btn-view:hover { background: #f3e8ff; color: #7e22ce; border-color: #d8b4fe; }
+
+/* Error State */
+.error-box { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; padding: 1rem; border-radius: 8px; text-align: center; display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="matchmaker-page">
+
+    <div class="mm-header">
+        <h1>AI District Matchmaker 🤖</h1>
+        <p>Select a district to instantly find its 5 closest "mathematical twins" across India. The AI uses advanced embeddings from satellite imagery and geospatial indicators to find structural similarities, enabling cross-district policy transfer.</p>
+    </div>
+
+    <!-- District Selection -->
+    <div class="mm-selector-card">
+        <label for="areaSelect" style="font-weight:700; color:#475569;">Select Target District:</label>
+        <select id="areaSelect">
+            <option value="">Loading districts...</option>
+        </select>
+    </div>
+
+    <div id="errorBox" class="error-box"></div>
+    
+    <div id="loader" class="loading-box">
+        <div class="spinner"></div>
+        <div style="font-weight:600; color:#475569;">Computing mathematical similarities across all districts...</div>
+    </div>
+
+    <!-- Results Area -->
+    <div id="resultsArea" class="mm-results">
+        
+        <!-- Target Banner -->
+        <div class="target-banner">
+            <div class="target-info">
+                <h2 id="targetName">--</h2>
+                <p id="targetState">Target District</p>
+            </div>
+            <div class="target-score">
+                <span>Predicted Deprivation</span>
+                <strong id="targetScore">--</strong>
+                <div id="targetCat" style="font-size:0.9rem; margin-top:5px; font-weight:700;">--</div>
+            </div>
+        </div>
+
+        <h3 style="margin-bottom: 1.5rem; color:#1e293b; font-size:1.5rem; display:flex; align-items:center; gap:0.5rem;">
+            🔍 Top 5 Most Similar Districts
+        </h3>
+
+        <!-- Match Grid -->
+        <div class="matches-grid" id="matchesGrid">
+            <!-- Cards injected via JS -->
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let allAreas = [];
+
+async function init() {
+    try {
+        const res = await fetch('/api/areas');
+        allAreas = await res.json();
+        const select = document.getElementById('areaSelect');
+        select.innerHTML = '<option value="">-- Select a District --</option>';
+        allAreas.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.area_id;
+            opt.textContent = `${a.area_name}, ${a.state_name}`;
+            select.appendChild(opt);
+        });
+
+        select.addEventListener('change', async (e) => {
+            if (!e.target.value) {
+                document.getElementById('resultsArea').style.display = 'none';
+                return;
+            }
+            await fetchMatches(e.target.value);
+        });
+    } catch(e) {
+        console.error("Failed to load areas.", e);
+    }
+}
+
+async function fetchMatches(areaId) {
+    document.getElementById('resultsArea').style.display = 'none';
+    document.getElementById('errorBox').style.display = 'none';
+    document.getElementById('loader').style.display = 'block';
+
+    try {
+        // Fetch target district prediction (for the banner)
+        const targetObj = allAreas.find(a => a.area_id == areaId);
+        document.getElementById('targetName').textContent = targetObj ? targetObj.area_name : "Selected District";
+        document.getElementById('targetState').textContent = targetObj ? targetObj.state_name : "India";
+        
+        // Let's get the target's score
+        const predRes = await fetch(`/api/predict/${areaId}`);
+        if (predRes.ok) {
+            const predData = await predRes.json();
+            document.getElementById('targetScore').textContent = predData.predicted_score.toFixed(3);
+            document.getElementById('targetCat').textContent = predData.predicted_category;
+        } else {
+            document.getElementById('targetScore').textContent = "N/A";
+        }
+
+        // Fetch similarities
+        const res = await fetch(`/api/similar-districts/${areaId}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || "Failed to find similar districts.");
+        }
+
+        renderMatches(data);
+        
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('resultsArea').style.display = 'block';
+
+        // Trigger animations
+        setTimeout(() => {
+            document.querySelectorAll('.sim-bar-fill').forEach(bar => {
+                bar.style.width = bar.dataset.targetWidth;
+            });
+        }, 100);
+
+    } catch(e) {
+        document.getElementById('loader').style.display = 'none';
+        const err = document.getElementById('errorBox');
+        err.textContent = e.message;
+        err.style.display = 'block';
+    }
+}
+
+function renderMatches(matches) {
+    const grid = document.getElementById('matchesGrid');
+    grid.innerHTML = '';
+
+    matches.forEach((m, index) => {
+        const rank = index + 1;
+        const simColor = m.similarity > 90 ? '#22c55e' : (m.similarity > 80 ? '#3b82f6' : '#8b5cf6');
+        
+        const card = document.createElement('div');
+        card.className = `match-card rank-${rank}`;
+        
+        const score = m.predicted_score !== null ? m.predicted_score.toFixed(3) : 'N/A';
+        const cat = m.predicted_category;
+        
+        card.innerHTML = `
+            <div class="rank-badge">#${rank} Match</div>
+            
+            <div class="mc-header">
+                <h3>${m.area_name}</h3>
+                <p>${m.state_name}</p>
+            </div>
+
+            <div class="sim-bar-wrap">
+                <div class="sim-bar-label">
+                    <span>AI Structural Similarity</span>
+                    <span style="color: ${simColor};">${m.similarity}%</span>
+                </div>
+                <div class="sim-bar-track">
+                    <div class="sim-bar-fill" data-target-width="${m.similarity}%" style="width: 0%; background: ${simColor};"></div>
+                </div>
+            </div>
+
+            <div class="mc-stats">
+                <div class="mc-stat">
+                    <div class="lbl">Predicted Score</div>
+                    <div class="val">${score}</div>
+                </div>
+                <div class="mc-stat">
+                    <div class="lbl">Deprivation</div>
+                    <div class="val cat-${cat}">${cat}</div>
+                </div>
+            </div>
+
+            <a href="/report/${m.area_id}" class="btn-view" target="_blank">📄 Generate Full Report</a>
+        `;
+        
+        grid.appendChild(card);
+    });
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+{% endblock %}

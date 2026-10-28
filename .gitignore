@@ -1,0 +1,44 @@
+# ============================================
+# GeoPovertyAI — .gitignore
+# ============================================
+
+# --- Virtual Environment (DO NOT upload) ---
+venv/
+.venv/
+env/
+
+# --- Python bytecode & cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# --- Pytest ---
+.pytest_cache/
+
+# --- Application cache ---
+cache/
+
+# --- IDE / Editor files ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- OS files ---
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# --- Jupyter Notebook checkpoints ---
+.ipynb_checkpoints/
+
+# --- Distribution / packaging ---
+*.egg-info/
+dist/
+build/
+
+# --- Environment variables ---
+.env
+.env.local

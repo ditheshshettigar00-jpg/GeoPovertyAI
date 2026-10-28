@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}District Analysis - GeoPoverty AI{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .card h3 { margin-top: 0; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .score-large { font-size: 3rem; font-weight: bold; color: #2c3e50; }
+    .category-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; color: white; font-weight: bold; margin-bottom: 10px; }
+    .cat-Low { background-color: #52b788; }
+    .cat-Medium { background-color: #f4a261; }
+    .cat-High { background-color: #e76f51; }
+    .feature-list { list-style: none; padding: 0; }
+    .feature-list li { padding: 10px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+    .img-fluid { max-width: 100%; height: auto; border-radius: 4px; border: 1px solid #ddd; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+    <div>
+        <h1 id="district-name">Loading...</h1>
+        <h4 id="state-name" style="color: #666; margin-top: -10px;"></h4>
+    </div>
+    <div id="reportBtnContainer" style="display:none;">
+        <a id="btn-report"
+           href="#"
+           style="display:inline-flex; align-items:center; gap:8px;
+                  padding: 11px 24px;
+                  background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+                  color: white; border: none; border-radius: 24px;
+                  font-size: 0.95rem; font-weight: 700; cursor: pointer;
+                  box-shadow: 0 4px 14px rgba(27,67,50,0.3);
+                  text-decoration: none;
+                  transition: transform 0.2s, box-shadow 0.2s;"
+           onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(27,67,50,0.45)'"
+           onmouseout="this.style.transform='';this.style.boxShadow='0 4px 14px rgba(27,67,50,0.3)'">
+            📄 Generate District Report
+        </a>
+    </div>
+</div>
+
+<div class="dashboard">
+    <!-- Top Left: Prediction Summary -->
+    <div class="card">
+        <h3>Deprivation Estimate</h3>
+        <div id="prediction-content">Loading...</div>
+    </div>
+
+    <!-- Top Right: Geospatial Indicators -->
+    <div class="card">
+        <h3>Geospatial Indicators</h3>
+        <ul class="feature-list" id="features-list">
+            <li>Loading...</li>
+        </ul>
+    </div>
+
+    <!-- Bottom Left: SHAP Explanation -->
+    <div class="card">
+        <h3>Explainability: SHAP</h3>
+        <p style="font-size: 0.9rem; color: #666;">Why did the model make this prediction? Values represent the contribution of each feature to the final score.</p>
+        <canvas id="shapChart"></canvas>
+    </div>
+
+    <!-- Bottom Right: Sentinel-2 Satellite Imagery -->
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 12px;">
+            <h3 style="margin:0; border:none; padding:0;">🛰️ Sentinel-2 Satellite Imagery</h3>
+            <span id="sat-badge" style="font-size:0.75rem; background:#e6f4ea; color:#137333; padding:3px 10px; border-radius:12px; font-weight:700;">10m Optical Patch</span>
+        </div>
+        <p style="font-size: 0.88rem; color: #666; margin-bottom:12px;">
+            Cloud-free ESA Sentinel-2 MSI RGB composite patch capturing settlement layout, terrain roughness, and infrastructure.
+        </p>
+        <div id="satellite-content" style="text-align:center;">
+            Loading satellite imagery...
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const areaId = {{ area_id }};
+let shapChartInstance = null;
+
+async function loadDistrictData() {
+    try {
+        // Fetch prediction
+        const resPred = await fetch(`/api/predict/${areaId}`);
+        const pred = await resPred.json();
+        
+        if (pred.error) {
+            document.getElementById('district-name').textContent = "District Not Found";
+            return;
+        }
+
+        document.getElementById('district-name').textContent = pred.area_name;
+        document.getElementById('state-name').textContent = pred.state_name;
+        
+        document.getElementById('prediction-content').innerHTML = `
+            <div class="category-badge cat-${pred.predicted_category}">${pred.predicted_category} Deprivation</div><br>
+            <span class="score-large">${pred.predicted_score.toFixed(3)}</span><br>
+            <p style="margin-top:15px; color:#555;">
+                <strong>Model Used:</strong> ${pred.model_name}<br>
+                <small>Predicted on: ${new Date(pred.prediction_timestamp).toLocaleString()}</small>
+            </p>
+        `;
+
+        // Fetch features
+        const resFeat = await fetch(`/api/area-features/${areaId}`);
+        const feat = await resFeat.json();
+        if (!feat.error) {
+            const list = document.getElementById('features-list');
+            list.innerHTML = '';
+            for (const [key, value] of Object.entries(feat)) {
+                if(key !== 'area_id' && key !== 'data_mode') {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span>${formatFeatureName(key)}</span> <strong>${parseFloat(value).toFixed(2)}</strong>`;
+                    list.appendChild(li);
+                }
+            }
+        }
+
+        // Fetch Explanation (SHAP + Grad-CAM)
+        const resExp = await fetch(`/api/explain/${areaId}`);
+        const exp = await resExp.json();
+        
+        if (!exp.error && exp.shap_explanation) {
+            renderShap(exp.shap_explanation);
+        } else {
+            document.getElementById('shapChart').outerHTML = "<p>SHAP explanation not available.</p>";
+        }
+
+        // Render Satellite Imagery
+        const satContent = document.getElementById('satellite-content');
+        if (pred.satellite_available) {
+            satContent.innerHTML = `
+                <div style="position:relative; display:inline-block; border-radius:8px; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,0.12);">
+                    <img src="${pred.satellite_url}" class="img-fluid" style="max-height:280px; width:auto; display:block; border-radius:8px;" alt="Sentinel-2 Satellite Image for ${pred.area_name}">
+                    <div style="position:absolute; bottom:8px; left:8px; background:rgba(0,0,0,0.7); color:white; padding:3px 8px; border-radius:4px; font-size:0.75rem; font-weight:600;">
+                        ESA Sentinel-2 RGB
+                    </div>
+                </div>
+                <div style="margin-top:10px;">
+                    <a href="${pred.satellite_url}" target="_blank" style="font-size:0.82rem; color:#2563eb; text-decoration:none; font-weight:600;">🔍 View Full Resolution Image</a>
+                </div>
+            `;
+            if (exp.gradcam_available) {
+                satContent.innerHTML += `
+                    <div style="margin-top:14px; padding-top:12px; border-top:1px dashed #e2e8f0;">
+                        <h4 style="margin:0 0 6px 0; font-size:0.9rem;">Grad-CAM Attention Overlay</h4>
+                        <img src="${exp.gradcam_url}" class="img-fluid" style="max-height:220px; border-radius:6px;" alt="Grad-CAM heatmap">
+                    </div>
+                `;
+            }
+        } else {
+            satContent.innerHTML = `
+                <div style="background:#f8fafc; border:1px dashed #cbd5e1; padding:28px 16px; border-radius:8px; color:#64748b;">
+                    <div style="font-size:2.2rem; margin-bottom:8px;">🛰️</div>
+                    <div style="font-weight:700; color:#334155; font-size:0.95rem; margin-bottom:4px;">Optical Image Not Yet Cached</div>
+                    <p style="font-size:0.82rem; margin:0 0 10px;">The Sentinel-2 patch for this district has not been downloaded from Earth Engine yet.</p>
+                    <code style="font-size:0.75rem; background:#e2e8f0; padding:3px 6px; border-radius:4px;">python geospatial/download_satellite_patches.py</code>
+                </div>
+            `;
+        }
+        
+        // Show the report button now that we have a valid prediction
+        const reportLink = document.getElementById('btn-report');
+        reportLink.href = `/report/${areaId}`;
+        document.getElementById('reportBtnContainer').style.display = 'block';
+
+    } catch (e) {
+        console.error("Error loading district data", e);
+    }
+}
+
+function renderShap(shapData) {
+    const ctx = document.getElementById('shapChart').getContext('2d');
+    const labels = Object.keys(shapData).map(k => formatFeatureName(k));
+    const data = Object.values(shapData);
+    
+    const backgroundColors = data.map(v => v >= 0 ? 'rgba(231, 111, 81, 0.8)' : 'rgba(82, 183, 136, 0.8)');
+    
+    shapChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'SHAP Value (Impact on prediction)',
+                data: data,
+                backgroundColor: backgroundColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            scales: {
+                x: {
+                    title: { display: true, text: 'SHAP value' }
+                }
+            }
+        }
+    });
+}
+
+window.onload = loadDistrictData;
+</script>
+{% endblock %}

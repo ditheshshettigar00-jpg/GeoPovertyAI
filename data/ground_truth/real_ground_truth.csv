@@ -1,0 +1,706 @@
+area_id,area_name,state_name,deprivation_score,data_source,data_year
+1,Nicobar,Andaman Nicobar Islands,0.2487,NFHS-5,2021
+2,North  & Middle Andaman,Andaman Nicobar Islands,0.344,NFHS-5,2021
+3,South Andaman,Andaman Nicobar Islands,0.1921,NFHS-5,2021
+4,Anantapur,Andhra Pradesh,0.2996,NFHS-5,2021
+5,Chittoor,Andhra Pradesh,0.255,NFHS-5,2021
+6,East Godavari,Andhra Pradesh,0.2773,NFHS-5,2021
+7,Guntur,Andhra Pradesh,0.2277,NFHS-5,2021
+8,Krishna,Andhra Pradesh,0.2689,NFHS-5,2021
+9,Kurnool,Andhra Pradesh,0.3915,NFHS-5,2021
+10,Prakasam,Andhra Pradesh,0.2404,NFHS-5,2021
+11,Sri Potti Sriramulu Nellore,Andhra Pradesh,0.271,NFHS-5,2021
+12,Srikakulam,Andhra Pradesh,0.2845,NFHS-5,2021
+13,Visakhapatnam,Andhra Pradesh,0.3088,NFHS-5,2021
+14,Vizianagaram,Andhra Pradesh,0.4207,NFHS-5,2021
+15,West Godavari,Andhra Pradesh,0.2862,NFHS-5,2021
+16,Y.S.R.,Andhra Pradesh,0.2486,NFHS-5,2021
+17,Anjaw,Arunachal Pradesh,0.3124,NFHS-5,2021
+18,Changlang,Arunachal Pradesh,0.3872,NFHS-5,2021
+19,Dibang Valley,Arunachal Pradesh,0.394,NFHS-5,2021
+20,East Kameng,Arunachal Pradesh,0.3894,NFHS-5,2021
+21,East Siang,Arunachal Pradesh,0.2661,NFHS-5,2021
+22,Kra Daadi,Arunachal Pradesh,0.1644,NFHS-5,2021
+23,Kurung Kumey,Arunachal Pradesh,0.2775,NFHS-5,2021
+24,Lohit,Arunachal Pradesh,0.2614,NFHS-5,2021
+25,Longding,Arunachal Pradesh,0.2924,NFHS-5,2021
+26,Lower Dibang Valley,Arunachal Pradesh,0.2748,NFHS-5,2021
+27,Lower Subansiri,Arunachal Pradesh,0.2868,NFHS-5,2021
+28,Namsai,Arunachal Pradesh,0.4248,NFHS-5,2021
+29,Papum Pare,Arunachal Pradesh,0.2467,NFHS-5,2021
+30,Siang,Arunachal Pradesh,0.2426,NFHS-5,2021
+31,Tawang,Arunachal Pradesh,0.2641,NFHS-5,2021
+32,Tirap,Arunachal Pradesh,0.304,NFHS-5,2021
+33,Upper Siang,Arunachal Pradesh,0.2743,NFHS-5,2021
+34,Upper Subansiri,Arunachal Pradesh,0.438,NFHS-5,2021
+35,West Kameng,Arunachal Pradesh,0.1745,NFHS-5,2021
+36,West Siang,Arunachal Pradesh,0.2902,NFHS-5,2021
+37,Baksa,Assam,0.5089,NFHS-5,2021
+38,Barpeta,Assam,0.5037,NFHS-5,2021
+39,Biswanath,Assam,0.5148,NFHS-5,2021
+40,Bongaigaon,Assam,0.4871,NFHS-5,2021
+41,Cachar,Assam,0.5336,NFHS-5,2021
+42,Charaideo,Assam,0.5343,NFHS-5,2021
+43,Chirang,Assam,0.4522,NFHS-5,2021
+44,Darrang,Assam,0.5726,NFHS-5,2021
+45,Dhemaji,Assam,0.5089,NFHS-5,2021
+46,Dhubri,Assam,0.5567,NFHS-5,2021
+47,Dibrugarh,Assam,0.4276,NFHS-5,2021
+48,Dima Hasao,Assam,0.3741,NFHS-5,2021
+49,Goalpara,Assam,0.5103,NFHS-5,2021
+50,Golaghat,Assam,0.4587,NFHS-5,2021
+51,Hailakandi,Assam,0.5539,NFHS-5,2021
+52,Hojai,Assam,0.4478,NFHS-5,2021
+53,Jorhat,Assam,0.4515,NFHS-5,2021
+54,Kamrup,Assam,0.3978,NFHS-5,2021
+55,Kamrup Metropolitan,Assam,0.3388,NFHS-5,2021
+56,Karbi Anglong,Assam,0.4243,NFHS-5,2021
+57,Karimganj,Assam,0.4838,NFHS-5,2021
+58,Kokrajhar,Assam,0.4447,NFHS-5,2021
+59,Lakhimpur,Assam,0.4654,NFHS-5,2021
+60,Majuli,Assam,0.543,NFHS-5,2021
+61,Morigaon,Assam,0.5613,NFHS-5,2021
+62,Nagaon,Assam,0.4904,NFHS-5,2021
+63,Nalbari,Assam,0.4217,NFHS-5,2021
+64,Sivasagar,Assam,0.3764,NFHS-5,2021
+65,Sonitpur,Assam,0.4945,NFHS-5,2021
+66,South Salmara Mancachar,Assam,0.6176,NFHS-5,2021
+67,Tinsukia,Assam,0.4803,NFHS-5,2021
+68,Udalguri,Assam,0.503,NFHS-5,2021
+69,West Karbi Anglong,Assam,0.5055,NFHS-5,2021
+70,Araria,Bihar,0.6908,NFHS-5,2021
+71,Arwal,Bihar,0.5999,NFHS-5,2021
+72,Aurangabad,Bihar,0.5316,NFHS-5,2021
+73,Banka,Bihar,0.6177,NFHS-5,2021
+74,Begusarai,Bihar,0.4764,NFHS-5,2021
+75,Bhagalpur,Bihar,0.517,NFHS-5,2021
+76,Bhojpur,Bihar,0.5562,NFHS-5,2021
+77,Buxer,Bihar,0.5066,NFHS-5,2021
+78,Darbhanga,Bihar,0.5428,NFHS-5,2021
+79,Gaya,Bihar,0.5831,NFHS-5,2021
+80,Gopalganj,Bihar,0.4567,NFHS-5,2021
+81,Jamui,Bihar,0.5994,NFHS-5,2021
+82,Jehanabad,Bihar,0.5559,NFHS-5,2021
+83,Kaimur (Bhabua),Bihar,0.5629,NFHS-5,2021
+84,Katihar,Bihar,0.6545,NFHS-5,2021
+85,Khagaria,Bihar,0.4842,NFHS-5,2021
+86,Kishanganj,Bihar,0.582,NFHS-5,2021
+87,Lakhisarai,Bihar,0.546,NFHS-5,2021
+88,Madhepura,Bihar,0.6621,NFHS-5,2021
+89,Madhubani,Bihar,0.5599,NFHS-5,2021
+90,Munger,Bihar,0.4415,NFHS-5,2021
+91,Muzaffarpur,Bihar,0.5118,NFHS-5,2021
+92,Nalanda,Bihar,0.5368,NFHS-5,2021
+93,Nawada,Bihar,0.5871,NFHS-5,2021
+94,Pashchim Champaran,Bihar,0.5699,NFHS-5,2021
+95,Patna,Bihar,0.4163,NFHS-5,2021
+96,Purba Champaran,Bihar,0.5602,NFHS-5,2021
+97,Purnia,Bihar,0.6644,NFHS-5,2021
+98,Rohtas,Bihar,0.4521,NFHS-5,2021
+99,Saharsa,Bihar,0.6236,NFHS-5,2021
+100,Samastipur,Bihar,0.5575,NFHS-5,2021
+101,Saran,Bihar,0.5897,NFHS-5,2021
+102,Sheikhpura,Bihar,0.5862,NFHS-5,2021
+103,Sheohar,Bihar,0.4925,NFHS-5,2021
+104,Sitamarhi,Bihar,0.605,NFHS-5,2021
+105,Siwan,Bihar,0.4874,NFHS-5,2021
+106,Supaul,Bihar,0.5816,NFHS-5,2021
+107,Vaishali,Bihar,0.5137,NFHS-5,2021
+108,Balod,Chhattisgarh,0.385,NFHS-5,2021
+109,Baloda Bazar,Chhattisgarh,0.4634,NFHS-5,2021
+110,Balrampur,Chhattisgarh,0.5395,NFHS-5,2021
+111,Bastar,Chhattisgarh,0.5856,NFHS-5,2021
+112,Bemetara,Chhattisgarh,0.4222,NFHS-5,2021
+113,Bijapur,Chhattisgarh,0.7747,NFHS-5,2021
+114,Bilaspur,Chhattisgarh,0.3537,NFHS-5,2021
+115,Dantewada,Chhattisgarh,0.5726,NFHS-5,2021
+116,Dhamtari,Chhattisgarh,0.367,NFHS-5,2021
+117,Durg,Chhattisgarh,0.2856,NFHS-5,2021
+118,Gariyaband,Chhattisgarh,0.4358,NFHS-5,2021
+119,Janjgir - Champa,Chhattisgarh,0.4396,NFHS-5,2021
+120,Jashpur,Chhattisgarh,0.4884,NFHS-5,2021
+121,Kabeerdham,Chhattisgarh,0.3999,NFHS-5,2021
+122,Kodagaon,Chhattisgarh,0.5311,NFHS-5,2021
+123,Korba,Chhattisgarh,0.4513,NFHS-5,2021
+124,Koriya,Chhattisgarh,0.4488,NFHS-5,2021
+125,Mahasamund,Chhattisgarh,0.4287,NFHS-5,2021
+126,Mungeli,Chhattisgarh,0.3969,NFHS-5,2021
+127,Narayanpur,Chhattisgarh,0.646,NFHS-5,2021
+128,Raigarh,Chhattisgarh,0.4845,NFHS-5,2021
+129,Raipur,Chhattisgarh,0.327,NFHS-5,2021
+130,Rajnandgaon,Chhattisgarh,0.393,NFHS-5,2021
+131,Sukma,Chhattisgarh,0.6625,NFHS-5,2021
+132,Surajpur,Chhattisgarh,0.4211,NFHS-5,2021
+133,Surguja,Chhattisgarh,0.4165,NFHS-5,2021
+134,Uttar Bastar Kanker,Chhattisgarh,0.3977,NFHS-5,2021
+135,Dadra & Nagar Haveli,Dadra Nagar Haveli Daman Diu,0.4111,NFHS-5,2021
+136,Daman,Dadra Nagar Haveli Daman Diu,0.3005,NFHS-5,2021
+137,Diu,Dadra Nagar Haveli Daman Diu,0.2381,NFHS-5,2021
+138,North Goa,Goa,0.1516,NFHS-5,2021
+139,South Goa,Goa,0.1625,NFHS-5,2021
+140,Ahmedabad,Gujarat,0.2818,NFHS-5,2021
+141,Amreli,Gujarat,0.3353,NFHS-5,2021
+142,Anand,Gujarat,0.3765,NFHS-5,2021
+143,Aravali,Gujarat,0.5611,NFHS-5,2021
+144,Banaskantha,Gujarat,0.5289,NFHS-5,2021
+145,Bharuch,Gujarat,0.4227,NFHS-5,2021
+146,Bhavnagar,Gujarat,0.3534,NFHS-5,2021
+147,Botad,Gujarat,0.3559,NFHS-5,2021
+148,Chhota Udaipur,Gujarat,0.6371,NFHS-5,2021
+149,Dahod,Gujarat,0.7397,NFHS-5,2021
+150,Devbhumi Dwarka,Gujarat,0.3258,NFHS-5,2021
+151,Gandhinagar,Gujarat,0.3496,NFHS-5,2021
+152,Gir Somnath,Gujarat,0.4125,NFHS-5,2021
+153,Jamnagar,Gujarat,0.2385,NFHS-5,2021
+154,Junagadh,Gujarat,0.3408,NFHS-5,2021
+155,Kachchh,Gujarat,0.3274,NFHS-5,2021
+156,Kheda,Gujarat,0.4942,NFHS-5,2021
+157,Mahesana,Gujarat,0.3872,NFHS-5,2021
+158,Mahisagar,Gujarat,0.5763,NFHS-5,2021
+159,Morbi,Gujarat,0.2883,NFHS-5,2021
+160,Narmada,Gujarat,0.6232,NFHS-5,2021
+161,Navsari,Gujarat,0.3656,NFHS-5,2021
+162,Panchmahal,Gujarat,0.5504,NFHS-5,2021
+163,Patan,Gujarat,0.4398,NFHS-5,2021
+164,Porbandar,Gujarat,0.196,NFHS-5,2021
+165,Rajkot,Gujarat,0.3035,NFHS-5,2021
+166,Sabarkantha,Gujarat,0.4637,NFHS-5,2021
+167,Surat,Gujarat,0.3139,NFHS-5,2021
+168,Surendranagar,Gujarat,0.4133,NFHS-5,2021
+169,Tapi,Gujarat,0.4976,NFHS-5,2021
+170,The Dangs,Gujarat,0.5347,NFHS-5,2021
+171,Vadodara,Gujarat,0.374,NFHS-5,2021
+172,Valsad,Gujarat,0.3672,NFHS-5,2021
+173,Ambala,Haryana,0.2038,NFHS-5,2021
+174,Bhiwani,Haryana,0.3652,NFHS-5,2021
+175,Charkhi Dadri,Haryana,0.3615,NFHS-5,2021
+176,Faridabad,Haryana,0.2337,NFHS-5,2021
+177,Fatehabad,Haryana,0.3286,NFHS-5,2021
+178,Gurgaon,Haryana,0.26,NFHS-5,2021
+179,Hisar,Haryana,0.3391,NFHS-5,2021
+180,Jhajjar,Haryana,0.2459,NFHS-5,2021
+181,Jind,Haryana,0.3244,NFHS-5,2021
+182,Kaithal,Haryana,0.3142,NFHS-5,2021
+183,Karnal,Haryana,0.2949,NFHS-5,2021
+184,Kurukshetra,Haryana,0.2569,NFHS-5,2021
+185,Mahendragarh,Haryana,0.3717,NFHS-5,2021
+186,Mewat,Haryana,0.5072,NFHS-5,2021
+187,Palwal,Haryana,0.3881,NFHS-5,2021
+188,Panchkula,Haryana,0.2368,NFHS-5,2021
+189,Panipat,Haryana,0.3021,NFHS-5,2021
+190,Rewari,Haryana,0.3096,NFHS-5,2021
+191,Rohtak,Haryana,0.2957,NFHS-5,2021
+192,Sirsa,Haryana,0.3547,NFHS-5,2021
+193,Sonipat,Haryana,0.2489,NFHS-5,2021
+194,Yamunanagar,Haryana,0.2634,NFHS-5,2021
+195,Bilaspur,Himachal Pradesh,0.4048,NFHS-5,2021
+196,Chamba,Himachal Pradesh,0.383,NFHS-5,2021
+197,Hamirpur,Himachal Pradesh,0.311,NFHS-5,2021
+198,Kangra,Himachal Pradesh,0.3742,NFHS-5,2021
+199,Kinnaur,Himachal Pradesh,0.2968,NFHS-5,2021
+200,Kullu,Himachal Pradesh,0.3265,NFHS-5,2021
+201,Lahul and Spiti,Himachal Pradesh,0.4065,NFHS-5,2021
+202,Mandi,Himachal Pradesh,0.3368,NFHS-5,2021
+203,Shimla,Himachal Pradesh,0.2225,NFHS-5,2021
+204,Sirmaur,Himachal Pradesh,0.32,NFHS-5,2021
+205,Solan,Himachal Pradesh,0.3016,NFHS-5,2021
+206,Una,Himachal Pradesh,0.3447,NFHS-5,2021
+207,Anantnag,Jammu Kashmir,0.3168,NFHS-5,2021
+208,Badgam,Jammu Kashmir,0.3384,NFHS-5,2021
+209,Bandipore,Jammu Kashmir,0.3482,NFHS-5,2021
+210,Baramula,Jammu Kashmir,0.3109,NFHS-5,2021
+211,Doda,Jammu Kashmir,0.424,NFHS-5,2021
+212,Ganderbal,Jammu Kashmir,0.2786,NFHS-5,2021
+213,Jammu,Jammu Kashmir,0.2688,NFHS-5,2021
+214,Kathua,Jammu Kashmir,0.2746,NFHS-5,2021
+215,Kishtwar,Jammu Kashmir,0.531,NFHS-5,2021
+216,Kulgam,Jammu Kashmir,0.4088,NFHS-5,2021
+217,Kupwara,Jammu Kashmir,0.3769,NFHS-5,2021
+218,Pulwama,Jammu Kashmir,0.2672,NFHS-5,2021
+219,Punch,Jammu Kashmir,0.3702,NFHS-5,2021
+220,Rajouri,Jammu Kashmir,0.417,NFHS-5,2021
+221,Ramban,Jammu Kashmir,0.4678,NFHS-5,2021
+222,Reasi,Jammu Kashmir,0.3887,NFHS-5,2021
+223,Samba,Jammu Kashmir,0.2883,NFHS-5,2021
+224,Shupiyan,Jammu Kashmir,0.2743,NFHS-5,2021
+225,Srinagar,Jammu Kashmir,0.2173,NFHS-5,2021
+226,Udhampur,Jammu Kashmir,0.3913,NFHS-5,2021
+227,Bokaro,Jharkhand,0.4675,NFHS-5,2021
+228,Chatra,Jharkhand,0.5976,NFHS-5,2021
+229,Deoghar,Jharkhand,0.6211,NFHS-5,2021
+230,Dhanbad,Jharkhand,0.4208,NFHS-5,2021
+231,Dumka,Jharkhand,0.6417,NFHS-5,2021
+232,Garhwa,Jharkhand,0.6564,NFHS-5,2021
+233,Giridih,Jharkhand,0.4907,NFHS-5,2021
+234,Godda,Jharkhand,0.5854,NFHS-5,2021
+235,Gumla,Jharkhand,0.6142,NFHS-5,2021
+236,Hazaribagh,Jharkhand,0.4835,NFHS-5,2021
+237,Jamtara,Jharkhand,0.6378,NFHS-5,2021
+238,Khunti,Jharkhand,0.5962,NFHS-5,2021
+239,Kodarma,Jharkhand,0.5061,NFHS-5,2021
+240,Latehar,Jharkhand,0.632,NFHS-5,2021
+241,Lohardaga,Jharkhand,0.4756,NFHS-5,2021
+242,Pakur,Jharkhand,0.7342,NFHS-5,2021
+243,Palamu,Jharkhand,0.5874,NFHS-5,2021
+244,Pashchimi Singhbhum,Jharkhand,0.8133,NFHS-5,2021
+245,Purbi Singhbhum,Jharkhand,0.4255,NFHS-5,2021
+246,Ramgarh,Jharkhand,0.471,NFHS-5,2021
+247,Ranchi,Jharkhand,0.3366,NFHS-5,2021
+248,Sahibganj,Jharkhand,0.6898,NFHS-5,2021
+249,Saraikela-Kharsawan,Jharkhand,0.555,NFHS-5,2021
+250,Simdega,Jharkhand,0.6296,NFHS-5,2021
+251,Bagalkot,Karnataka,0.4715,NFHS-5,2021
+252,Bangalore,Karnataka,0.169,NFHS-5,2021
+253,Bangalore Rural,Karnataka,0.2233,NFHS-5,2021
+254,Belgaum,Karnataka,0.331,NFHS-5,2021
+255,Bellary,Karnataka,0.3665,NFHS-5,2021
+256,Bidar,Karnataka,0.4101,NFHS-5,2021
+257,Bijapur,Karnataka,0.4917,NFHS-5,2021
+258,Chamarajanagar,Karnataka,0.2619,NFHS-5,2021
+259,Chikkaballapura,Karnataka,0.2201,NFHS-5,2021
+260,Chikmagalur,Karnataka,0.1969,NFHS-5,2021
+261,Chitradurga,Karnataka,0.3192,NFHS-5,2021
+262,Dakshina Kannada,Karnataka,0.1592,NFHS-5,2021
+263,Davanagere,Karnataka,0.2999,NFHS-5,2021
+264,Dharwad,Karnataka,0.3371,NFHS-5,2021
+265,Gadag,Karnataka,0.4563,NFHS-5,2021
+266,Gulbarga,Karnataka,0.4682,NFHS-5,2021
+267,Hassan,Karnataka,0.1965,NFHS-5,2021
+268,Haveri,Karnataka,0.3409,NFHS-5,2021
+269,Kodagu,Karnataka,0.2085,NFHS-5,2021
+270,Kolar,Karnataka,0.2037,NFHS-5,2021
+271,Koppal,Karnataka,0.4892,NFHS-5,2021
+272,Mandya,Karnataka,0.1964,NFHS-5,2021
+273,Mysore,Karnataka,0.1971,NFHS-5,2021
+274,Raichur,Karnataka,0.4391,NFHS-5,2021
+275,Ramanagara,Karnataka,0.1368,NFHS-5,2021
+276,Shimoga,Karnataka,0.2105,NFHS-5,2021
+277,Tumkur,Karnataka,0.2752,NFHS-5,2021
+278,Udupi,Karnataka,0.2122,NFHS-5,2021
+279,Uttara Kannada,Karnataka,0.2375,NFHS-5,2021
+280,Yadgir,Karnataka,0.5902,NFHS-5,2021
+281,Alappuzha,Kerala,0.1202,NFHS-5,2021
+282,Ernakulam,Kerala,0.1066,NFHS-5,2021
+283,Idukki,Kerala,0.2032,NFHS-5,2021
+284,Kannur,Kerala,0.1568,NFHS-5,2021
+285,Kasaragod,Kerala,0.1669,NFHS-5,2021
+286,Kollam,Kerala,0.1147,NFHS-5,2021
+287,Kottayam,Kerala,0.1697,NFHS-5,2021
+288,Kozhikode,Kerala,0.1325,NFHS-5,2021
+289,Malappuram,Kerala,0.2101,NFHS-5,2021
+290,Palakkad,Kerala,0.2383,NFHS-5,2021
+291,Pathanamthitta,Kerala,0.1872,NFHS-5,2021
+292,Thiruvananthapuram,Kerala,0.1465,NFHS-5,2021
+293,Thrissur,Kerala,0.1649,NFHS-5,2021
+294,Wayanad,Kerala,0.2291,NFHS-5,2021
+295,Kargil,Ladakh,0.5546,NFHS-5,2021
+296,Leh(Ladakh),Ladakh,0.4246,NFHS-5,2021
+297,Agar Malwa,Madhya Pradesh,0.4405,NFHS-5,2021
+298,Alirajpur,Madhya Pradesh,0.4395,NFHS-5,2021
+299,Anuppur,Madhya Pradesh,0.418,NFHS-5,2021
+300,Ashoknagar,Madhya Pradesh,0.4751,NFHS-5,2021
+301,Balaghat,Madhya Pradesh,0.4537,NFHS-5,2021
+302,Barwani,Madhya Pradesh,0.4928,NFHS-5,2021
+303,Betul,Madhya Pradesh,0.4447,NFHS-5,2021
+304,Bhind,Madhya Pradesh,0.439,NFHS-5,2021
+305,Bhopal,Madhya Pradesh,0.222,NFHS-5,2021
+306,Burhanpur,Madhya Pradesh,0.3688,NFHS-5,2021
+307,Chhatarpur,Madhya Pradesh,0.557,NFHS-5,2021
+308,Chhindwara,Madhya Pradesh,0.308,NFHS-5,2021
+309,Damoh,Madhya Pradesh,0.5409,NFHS-5,2021
+310,Datia,Madhya Pradesh,0.4561,NFHS-5,2021
+311,Dewas,Madhya Pradesh,0.3875,NFHS-5,2021
+312,Dhar,Madhya Pradesh,0.3989,NFHS-5,2021
+313,Dindori,Madhya Pradesh,0.5923,NFHS-5,2021
+314,Guna,Madhya Pradesh,0.447,NFHS-5,2021
+315,Gwalior,Madhya Pradesh,0.3508,NFHS-5,2021
+316,Harda,Madhya Pradesh,0.4175,NFHS-5,2021
+317,Hoshangabad,Madhya Pradesh,0.407,NFHS-5,2021
+318,Indore,Madhya Pradesh,0.2062,NFHS-5,2021
+319,Jabalpur,Madhya Pradesh,0.3725,NFHS-5,2021
+320,Jhabua,Madhya Pradesh,0.5711,NFHS-5,2021
+321,Katni,Madhya Pradesh,0.5633,NFHS-5,2021
+322,Khandwa (East Nimar),Madhya Pradesh,0.4163,NFHS-5,2021
+323,Khargone (West Nimar),Madhya Pradesh,0.3316,NFHS-5,2021
+324,Mandla,Madhya Pradesh,0.5036,NFHS-5,2021
+325,Mandsaur,Madhya Pradesh,0.3981,NFHS-5,2021
+326,Morena,Madhya Pradesh,0.5027,NFHS-5,2021
+327,Narsimhapur,Madhya Pradesh,0.3702,NFHS-5,2021
+328,Neemuch,Madhya Pradesh,0.3678,NFHS-5,2021
+329,Panna,Madhya Pradesh,0.6025,NFHS-5,2021
+330,Raisen,Madhya Pradesh,0.4031,NFHS-5,2021
+331,Rajgarh,Madhya Pradesh,0.4817,NFHS-5,2021
+332,Ratlam,Madhya Pradesh,0.3752,NFHS-5,2021
+333,Rewa,Madhya Pradesh,0.5658,NFHS-5,2021
+334,Sagar,Madhya Pradesh,0.4573,NFHS-5,2021
+335,Satna,Madhya Pradesh,0.5421,NFHS-5,2021
+336,Sehore,Madhya Pradesh,0.334,NFHS-5,2021
+337,Seoni,Madhya Pradesh,0.4419,NFHS-5,2021
+338,Shahdol,Madhya Pradesh,0.521,NFHS-5,2021
+339,Shajapur,Madhya Pradesh,0.3489,NFHS-5,2021
+340,Sheopur,Madhya Pradesh,0.5929,NFHS-5,2021
+341,Shivpuri,Madhya Pradesh,0.4923,NFHS-5,2021
+342,Sidhi,Madhya Pradesh,0.5651,NFHS-5,2021
+343,Singrauli,Madhya Pradesh,0.5308,NFHS-5,2021
+344,Tikamgarh,Madhya Pradesh,0.4202,NFHS-5,2021
+345,Ujjain,Madhya Pradesh,0.3583,NFHS-5,2021
+346,Umaria,Madhya Pradesh,0.5305,NFHS-5,2021
+347,Vidisha,Madhya Pradesh,0.4139,NFHS-5,2021
+348,Ahmadnagar,Maharashtra,0.3098,NFHS-5,2021
+349,Akola,Maharashtra,0.3289,NFHS-5,2021
+350,Amravati,Maharashtra,0.3004,NFHS-5,2021
+351,Aurangabad,Maharashtra,0.3371,NFHS-5,2021
+352,Bhandara,Maharashtra,0.3257,NFHS-5,2021
+353,Bid,Maharashtra,0.435,NFHS-5,2021
+354,Buldana,Maharashtra,0.4165,NFHS-5,2021
+355,Chandrapur,Maharashtra,0.3081,NFHS-5,2021
+356,Dhule,Maharashtra,0.4382,NFHS-5,2021
+357,Gadchiroli,Maharashtra,0.4443,NFHS-5,2021
+358,Gondiya,Maharashtra,0.3693,NFHS-5,2021
+359,Hingoli,Maharashtra,0.3966,NFHS-5,2021
+360,Jalgaon,Maharashtra,0.4039,NFHS-5,2021
+361,Jalna,Maharashtra,0.4399,NFHS-5,2021
+362,Kolhapur,Maharashtra,0.267,NFHS-5,2021
+363,Latur,Maharashtra,0.3596,NFHS-5,2021
+364,Mumbai,Maharashtra,0.2581,NFHS-5,2021
+365,Mumbai Suburban,Maharashtra,0.3036,NFHS-5,2021
+366,Nagpur,Maharashtra,0.2018,NFHS-5,2021
+367,Nanded,Maharashtra,0.3945,NFHS-5,2021
+368,Nandurbar,Maharashtra,0.5471,NFHS-5,2021
+369,Nashik,Maharashtra,0.4065,NFHS-5,2021
+370,Osmanabad,Maharashtra,0.3557,NFHS-5,2021
+371,Palghar,Maharashtra,0.3295,NFHS-5,2021
+372,Parbhani,Maharashtra,0.4462,NFHS-5,2021
+373,Pune,Maharashtra,0.2518,NFHS-5,2021
+374,Raigarh,Maharashtra,0.3158,NFHS-5,2021
+375,Ratnagiri,Maharashtra,0.2875,NFHS-5,2021
+376,Sangli,Maharashtra,0.2567,NFHS-5,2021
+377,Satara,Maharashtra,0.2299,NFHS-5,2021
+378,Sindhudurg,Maharashtra,0.253,NFHS-5,2021
+379,Solapur,Maharashtra,0.3659,NFHS-5,2021
+380,Thane,Maharashtra,0.3245,NFHS-5,2021
+381,Wardha,Maharashtra,0.2741,NFHS-5,2021
+382,Washim,Maharashtra,0.4094,NFHS-5,2021
+383,Yavatmal,Maharashtra,0.3833,NFHS-5,2021
+384,Bishnupur,Manipur,0.2681,NFHS-5,2021
+385,Chandel,Manipur,0.2664,NFHS-5,2021
+386,Churachandpur,Manipur,0.2668,NFHS-5,2021
+387,Imphal East,Manipur,0.2441,NFHS-5,2021
+388,Imphal West,Manipur,0.1853,NFHS-5,2021
+389,Senapati,Manipur,0.252,NFHS-5,2021
+390,Tamenglong,Manipur,0.3449,NFHS-5,2021
+391,Thoubal,Manipur,0.274,NFHS-5,2021
+392,Ukhrul,Manipur,0.3291,NFHS-5,2021
+393,East Garo Hills,Meghalaya,0.4202,NFHS-5,2021
+394,East Jantia Hills,Meghalaya,0.5294,NFHS-5,2021
+395,East Khasi Hills,Meghalaya,0.4074,NFHS-5,2021
+396,North Garo Hills,Meghalaya,0.4288,NFHS-5,2021
+397,Ribhoi,Meghalaya,0.5086,NFHS-5,2021
+398,South Garo Hills,Meghalaya,0.3865,NFHS-5,2021
+399,South West Garo Hills,Meghalaya,0.4549,NFHS-5,2021
+400,South West Khasi Hills,Meghalaya,0.5723,NFHS-5,2021
+401,West Garo Hills,Meghalaya,0.4003,NFHS-5,2021
+402,West Jaintia Hills,Meghalaya,0.6534,NFHS-5,2021
+403,West Khasi Hills,Meghalaya,0.6163,NFHS-5,2021
+404,Aizawl,Mizoram,0.1161,NFHS-5,2021
+405,Champhai,Mizoram,0.1358,NFHS-5,2021
+406,Kolasib,Mizoram,0.172,NFHS-5,2021
+407,Lawngtlai,Mizoram,0.3599,NFHS-5,2021
+408,Lunglei,Mizoram,0.1755,NFHS-5,2021
+409,Mamit,Mizoram,0.1984,NFHS-5,2021
+410,Saiha,Mizoram,0.2646,NFHS-5,2021
+411,Serchhip,Mizoram,0.171,NFHS-5,2021
+412,Central,NCT Delhi,0.2295,NFHS-5,2021
+413,East,NCT Delhi,0.2297,NFHS-5,2021
+414,New Delhi,NCT Delhi,0.2541,NFHS-5,2021
+415,North,NCT Delhi,0.2167,NFHS-5,2021
+416,North East,NCT Delhi,0.1853,NFHS-5,2021
+417,North West,NCT Delhi,0.221,NFHS-5,2021
+418,Shahdara,NCT Delhi,0.2177,NFHS-5,2021
+419,South,NCT Delhi,0.1688,NFHS-5,2021
+420,South East,NCT Delhi,0.2041,NFHS-5,2021
+421,South West,NCT Delhi,0.1995,NFHS-5,2021
+422,West,NCT Delhi,0.2714,NFHS-5,2021
+423,Dimapur,Nagaland,0.2028,NFHS-5,2021
+424,Kiphire,Nagaland,0.3857,NFHS-5,2021
+425,Kohima,Nagaland,0.1858,NFHS-5,2021
+426,Longleng,Nagaland,0.3746,NFHS-5,2021
+427,Mokokchung,Nagaland,0.2436,NFHS-5,2021
+428,Mon,Nagaland,0.3843,NFHS-5,2021
+429,Peren,Nagaland,0.3203,NFHS-5,2021
+430,Phek,Nagaland,0.2982,NFHS-5,2021
+431,Tuensang,Nagaland,0.3557,NFHS-5,2021
+432,Wokha,Nagaland,0.2586,NFHS-5,2021
+433,Zunheboto,Nagaland,0.3842,NFHS-5,2021
+434,Anugul,Odisha,0.5002,NFHS-5,2021
+435,Balangir,Odisha,0.4519,NFHS-5,2021
+436,Baleshwar,Odisha,0.4236,NFHS-5,2021
+437,Bargarh,Odisha,0.4963,NFHS-5,2021
+438,Baudh,Odisha,0.5076,NFHS-5,2021
+439,Bhadrak,Odisha,0.4953,NFHS-5,2021
+440,Cuttack,Odisha,0.4002,NFHS-5,2021
+441,Debagarh,Odisha,0.5031,NFHS-5,2021
+442,Dhenkanal,Odisha,0.5117,NFHS-5,2021
+443,Gajapati,Odisha,0.5682,NFHS-5,2021
+444,Ganjam,Odisha,0.3115,NFHS-5,2021
+445,Jagatsinghapur,Odisha,0.3902,NFHS-5,2021
+446,Jajapur,Odisha,0.4994,NFHS-5,2021
+447,Jharsuguda,Odisha,0.4171,NFHS-5,2021
+448,Kalahandi,Odisha,0.4826,NFHS-5,2021
+449,Kandhamal,Odisha,0.497,NFHS-5,2021
+450,Kendrapara,Odisha,0.458,NFHS-5,2021
+451,Kendujhar,Odisha,0.5972,NFHS-5,2021
+452,Khordha,Odisha,0.3106,NFHS-5,2021
+453,Koraput,Odisha,0.5813,NFHS-5,2021
+454,Malkangiri,Odisha,0.6414,NFHS-5,2021
+455,Mayurbhanj,Odisha,0.6186,NFHS-5,2021
+456,Nabarangapur,Odisha,0.6203,NFHS-5,2021
+457,Nayagarh,Odisha,0.3795,NFHS-5,2021
+458,Nuapada,Odisha,0.5707,NFHS-5,2021
+459,Puri,Odisha,0.3645,NFHS-5,2021
+460,Rayagada,Odisha,0.5801,NFHS-5,2021
+461,Sambalpur,Odisha,0.487,NFHS-5,2021
+462,Subarnapur,Odisha,0.4107,NFHS-5,2021
+463,Sundargarh,Odisha,0.4692,NFHS-5,2021
+464,Karaikal,Puducherry,0.2399,NFHS-5,2021
+465,Mahe,Puducherry,0.2292,NFHS-5,2021
+466,Puducherry,Puducherry,0.1765,NFHS-5,2021
+467,Yanam,Puducherry,0.1701,NFHS-5,2021
+468,Amritsar,Punjab,0.1978,NFHS-5,2021
+469,Barnala,Punjab,0.2744,NFHS-5,2021
+470,Bathinda,Punjab,0.2355,NFHS-5,2021
+471,Faridkot,Punjab,0.2726,NFHS-5,2021
+472,Fatehgarh Sahib,Punjab,0.2919,NFHS-5,2021
+473,Fazilka,Punjab,0.3742,NFHS-5,2021
+474,Firozpur,Punjab,0.3031,NFHS-5,2021
+475,Gurdaspur,Punjab,0.24,NFHS-5,2021
+476,Hoshiarpur,Punjab,0.2043,NFHS-5,2021
+477,Jalandhar,Punjab,0.2301,NFHS-5,2021
+478,Kapurthala,Punjab,0.2189,NFHS-5,2021
+479,Ludhiana,Punjab,0.2448,NFHS-5,2021
+480,Mansa,Punjab,0.3629,NFHS-5,2021
+481,Moga,Punjab,0.2346,NFHS-5,2021
+482,Muktsar,Punjab,0.3195,NFHS-5,2021
+483,Pathankot,Punjab,0.2426,NFHS-5,2021
+484,Patiala,Punjab,0.236,NFHS-5,2021
+485,Rupnagar,Punjab,0.2592,NFHS-5,2021
+486,Sahibzada Ajit Singh Nagar,Punjab,0.2296,NFHS-5,2021
+487,Sangrur,Punjab,0.2285,NFHS-5,2021
+488,Shahid Bhagat Singh Nagar,Punjab,0.1843,NFHS-5,2021
+489,Tarn Taran,Punjab,0.29,NFHS-5,2021
+490,Ajmer,Rajasthan,0.3014,NFHS-5,2021
+491,Alwar,Rajasthan,0.4369,NFHS-5,2021
+492,Banswara,Rajasthan,0.6124,NFHS-5,2021
+493,Baran,Rajasthan,0.5119,NFHS-5,2021
+494,Barmer,Rajasthan,0.4317,NFHS-5,2021
+495,Bharatpur,Rajasthan,0.5127,NFHS-5,2021
+496,Bhilwara,Rajasthan,0.4015,NFHS-5,2021
+497,Bikaner,Rajasthan,0.3401,NFHS-5,2021
+498,Bundi,Rajasthan,0.4694,NFHS-5,2021
+499,Chittaurgarh,Rajasthan,0.4123,NFHS-5,2021
+500,Churu,Rajasthan,0.3624,NFHS-5,2021
+501,Dausa,Rajasthan,0.5091,NFHS-5,2021
+502,Dhaulpur,Rajasthan,0.5481,NFHS-5,2021
+503,Dungarpur,Rajasthan,0.4996,NFHS-5,2021
+504,Ganganagar,Rajasthan,0.3453,NFHS-5,2021
+505,Hanumangarh,Rajasthan,0.3533,NFHS-5,2021
+506,Jaipur,Rajasthan,0.2972,NFHS-5,2021
+507,Jaisalmer,Rajasthan,0.3636,NFHS-5,2021
+508,Jalor,Rajasthan,0.4583,NFHS-5,2021
+509,Jhalawar,Rajasthan,0.437,NFHS-5,2021
+510,Jhunjhunun,Rajasthan,0.2981,NFHS-5,2021
+511,Jodhpur,Rajasthan,0.3296,NFHS-5,2021
+512,Karauli,Rajasthan,0.537,NFHS-5,2021
+513,Kota,Rajasthan,0.2859,NFHS-5,2021
+514,Nagaur,Rajasthan,0.3387,NFHS-5,2021
+515,Pali,Rajasthan,0.363,NFHS-5,2021
+516,Pratapgarh,Rajasthan,0.5029,NFHS-5,2021
+517,Rajsamand,Rajasthan,0.4059,NFHS-5,2021
+518,Sawai Madhopur,Rajasthan,0.4309,NFHS-5,2021
+519,Sikar,Rajasthan,0.2739,NFHS-5,2021
+520,Sirohi,Rajasthan,0.4849,NFHS-5,2021
+521,Tonk,Rajasthan,0.4557,NFHS-5,2021
+522,Udaipur,Rajasthan,0.4715,NFHS-5,2021
+523,East District,Sikkim,0.1644,NFHS-5,2021
+524,North  District,Sikkim,0.2608,NFHS-5,2021
+525,South District,Sikkim,0.2111,NFHS-5,2021
+526,West District,Sikkim,0.2259,NFHS-5,2021
+527,Ariyalur,Tamil Nadu,0.4279,NFHS-5,2021
+528,Chennai,Tamil Nadu,0.1526,NFHS-5,2021
+529,Coimbatore,Tamil Nadu,0.2016,NFHS-5,2021
+530,Cuddalore,Tamil Nadu,0.3081,NFHS-5,2021
+531,Dharmapuri,Tamil Nadu,0.2552,NFHS-5,2021
+532,Dindigul,Tamil Nadu,0.2983,NFHS-5,2021
+533,Erode,Tamil Nadu,0.2317,NFHS-5,2021
+534,Kancheepuram,Tamil Nadu,0.2357,NFHS-5,2021
+535,Kanniyakumari,Tamil Nadu,0.1629,NFHS-5,2021
+536,Karur,Tamil Nadu,0.3843,NFHS-5,2021
+537,Krishnagiri,Tamil Nadu,0.2439,NFHS-5,2021
+538,Madurai,Tamil Nadu,0.2471,NFHS-5,2021
+539,Nagapattinam,Tamil Nadu,0.3835,NFHS-5,2021
+540,Namakkal,Tamil Nadu,0.2419,NFHS-5,2021
+541,Perambalur,Tamil Nadu,0.3775,NFHS-5,2021
+542,Pudukkottai,Tamil Nadu,0.4615,NFHS-5,2021
+543,Ramanathapuram,Tamil Nadu,0.2564,NFHS-5,2021
+544,Salem,Tamil Nadu,0.2606,NFHS-5,2021
+545,Sivaganga,Tamil Nadu,0.2838,NFHS-5,2021
+546,Thanjavur,Tamil Nadu,0.2709,NFHS-5,2021
+547,The Nilgiris,Tamil Nadu,0.2266,NFHS-5,2021
+548,Theni,Tamil Nadu,0.1941,NFHS-5,2021
+549,Thiruvallur,Tamil Nadu,0.2113,NFHS-5,2021
+550,Thiruvarur,Tamil Nadu,0.3183,NFHS-5,2021
+551,Thoothukkudi,Tamil Nadu,0.2122,NFHS-5,2021
+552,Tiruchirappalli,Tamil Nadu,0.3435,NFHS-5,2021
+553,Tirunelveli,Tamil Nadu,0.2463,NFHS-5,2021
+554,Tiruppur,Tamil Nadu,0.2183,NFHS-5,2021
+555,Tiruvannamalai,Tamil Nadu,0.3577,NFHS-5,2021
+556,Vellore,Tamil Nadu,0.2642,NFHS-5,2021
+557,Viluppuram,Tamil Nadu,0.367,NFHS-5,2021
+558,Virudhunagar,Tamil Nadu,0.3114,NFHS-5,2021
+559,Adilabad,Telangana,0.4386,NFHS-5,2021
+560,Bhadradri Kothagudem,Telangana,0.2977,NFHS-5,2021
+561,Hyderabad,Telangana,0.2139,NFHS-5,2021
+562,Jagitial,Telangana,0.2576,NFHS-5,2021
+563,Jangoan,Telangana,0.2613,NFHS-5,2021
+564,Jayashankar Bhupalapally,Telangana,0.3335,NFHS-5,2021
+565,Jogulamba Gadwal,Telangana,0.3859,NFHS-5,2021
+566,Kamareddy,Telangana,0.3284,NFHS-5,2021
+567,Karimnagar,Telangana,0.262,NFHS-5,2021
+568,Khammam,Telangana,0.2102,NFHS-5,2021
+569,Komaram Bheem Asifabad,Telangana,0.4129,NFHS-5,2021
+570,Mahabubabad,Telangana,0.3254,NFHS-5,2021
+571,Mahabubnagar,Telangana,0.3337,NFHS-5,2021
+572,Mancherial,Telangana,0.2388,NFHS-5,2021
+573,Medak,Telangana,0.3068,NFHS-5,2021
+574,Medchal-Malkajgiri,Telangana,0.2324,NFHS-5,2021
+575,Nagarkurnool,Telangana,0.2955,NFHS-5,2021
+576,Nalgonda,Telangana,0.2568,NFHS-5,2021
+577,Nirmal,Telangana,0.3169,NFHS-5,2021
+578,Nizamabad,Telangana,0.2745,NFHS-5,2021
+579,Peddapalli,Telangana,0.2595,NFHS-5,2021
+580,Rajanna Sircilla,Telangana,0.2153,NFHS-5,2021
+581,Ranga Reddy,Telangana,0.2625,NFHS-5,2021
+582,Sangareddy,Telangana,0.3019,NFHS-5,2021
+583,Siddipet,Telangana,0.2316,NFHS-5,2021
+584,Suryapet,Telangana,0.2531,NFHS-5,2021
+585,Vikarabad,Telangana,0.3489,NFHS-5,2021
+586,Wanaparthy,Telangana,0.3231,NFHS-5,2021
+587,Warangal Rural,Telangana,0.3102,NFHS-5,2021
+588,Warangal Urban,Telangana,0.245,NFHS-5,2021
+589,Yadadri Bhuvanagiri,Telangana,0.2691,NFHS-5,2021
+590,Dhalai,Tripura,0.5276,NFHS-5,2021
+591,Gomati,Tripura,0.3462,NFHS-5,2021
+592,Khowai,Tripura,0.4918,NFHS-5,2021
+593,North Tripura,Tripura,0.4179,NFHS-5,2021
+594,Sepahijala,Tripura,0.4417,NFHS-5,2021
+595,South Tripura,Tripura,0.4521,NFHS-5,2021
+596,Unakoti,Tripura,0.4987,NFHS-5,2021
+597,West Tripura,Tripura,0.3384,NFHS-5,2021
+598,Agra,Uttar Pradesh,0.3679,NFHS-5,2021
+599,Aligarh,Uttar Pradesh,0.42,NFHS-5,2021
+600,Ambedkar Nagar,Uttar Pradesh,0.4594,NFHS-5,2021
+601,Amethi,Uttar Pradesh,0.4948,NFHS-5,2021
+602,Auraiya,Uttar Pradesh,0.4287,NFHS-5,2021
+603,Azamgarh,Uttar Pradesh,0.4207,NFHS-5,2021
+604,Baghpat,Uttar Pradesh,0.3015,NFHS-5,2021
+605,Bahraich,Uttar Pradesh,0.6836,NFHS-5,2021
+606,Ballia,Uttar Pradesh,0.502,NFHS-5,2021
+607,Balrampur,Uttar Pradesh,0.5993,NFHS-5,2021
+608,Banda,Uttar Pradesh,0.5977,NFHS-5,2021
+609,Bara Banki,Uttar Pradesh,0.6035,NFHS-5,2021
+610,Bareilly,Uttar Pradesh,0.4585,NFHS-5,2021
+611,Basti,Uttar Pradesh,0.3884,NFHS-5,2021
+612,Bijnor,Uttar Pradesh,0.3807,NFHS-5,2021
+613,Budaun,Uttar Pradesh,0.6048,NFHS-5,2021
+614,Bulandshahr,Uttar Pradesh,0.3855,NFHS-5,2021
+615,Chandauli,Uttar Pradesh,0.4683,NFHS-5,2021
+616,Chitrakoot,Uttar Pradesh,0.5487,NFHS-5,2021
+617,Deoria,Uttar Pradesh,0.336,NFHS-5,2021
+618,Etah,Uttar Pradesh,0.5665,NFHS-5,2021
+619,Etawah,Uttar Pradesh,0.4173,NFHS-5,2021
+620,Faizabad,Uttar Pradesh,0.4587,NFHS-5,2021
+621,Farrukhabad,Uttar Pradesh,0.5011,NFHS-5,2021
+622,Fatehpur,Uttar Pradesh,0.6668,NFHS-5,2021
+623,Firozabad,Uttar Pradesh,0.4619,NFHS-5,2021
+624,Gautam Buddha Nagar,Uttar Pradesh,0.2966,NFHS-5,2021
+625,Ghaziabad,Uttar Pradesh,0.2263,NFHS-5,2021
+626,Ghazipur,Uttar Pradesh,0.4743,NFHS-5,2021
+627,Gonda,Uttar Pradesh,0.5478,NFHS-5,2021
+628,Gorakhpur,Uttar Pradesh,0.3563,NFHS-5,2021
+629,Hamirpur,Uttar Pradesh,0.4785,NFHS-5,2021
+630,Hapur,Uttar Pradesh,0.2804,NFHS-5,2021
+631,Hardoi,Uttar Pradesh,0.7099,NFHS-5,2021
+632,Jalaun,Uttar Pradesh,0.4233,NFHS-5,2021
+633,Jaunpur,Uttar Pradesh,0.3785,NFHS-5,2021
+634,Jhansi,Uttar Pradesh,0.395,NFHS-5,2021
+635,Jyotiba Phule Nagar,Uttar Pradesh,0.4071,NFHS-5,2021
+636,Kannauj,Uttar Pradesh,0.5594,NFHS-5,2021
+637,Kanpur Dehat,Uttar Pradesh,0.5756,NFHS-5,2021
+638,Kanpur Nagar,Uttar Pradesh,0.3787,NFHS-5,2021
+639,Kanshiram Nagar,Uttar Pradesh,0.5658,NFHS-5,2021
+640,Kaushambi,Uttar Pradesh,0.601,NFHS-5,2021
+641,Kheri,Uttar Pradesh,0.5793,NFHS-5,2021
+642,Kushinagar,Uttar Pradesh,0.3773,NFHS-5,2021
+643,Lalitpur,Uttar Pradesh,0.5126,NFHS-5,2021
+644,Lucknow,Uttar Pradesh,0.3064,NFHS-5,2021
+645,Mahamaya Nagar,Uttar Pradesh,0.4439,NFHS-5,2021
+646,Mahoba,Uttar Pradesh,0.4,NFHS-5,2021
+647,Mahrajganj,Uttar Pradesh,0.4809,NFHS-5,2021
+648,Mainpuri,Uttar Pradesh,0.5064,NFHS-5,2021
+649,Mathura,Uttar Pradesh,0.4077,NFHS-5,2021
+650,Mau,Uttar Pradesh,0.3332,NFHS-5,2021
+651,Meerut,Uttar Pradesh,0.2838,NFHS-5,2021
+652,Mirzapur,Uttar Pradesh,0.4466,NFHS-5,2021
+653,Moradabad,Uttar Pradesh,0.3425,NFHS-5,2021
+654,Muzaffarnagar,Uttar Pradesh,0.3068,NFHS-5,2021
+655,Pilibhit,Uttar Pradesh,0.4651,NFHS-5,2021
+656,Pratapgarh,Uttar Pradesh,0.5011,NFHS-5,2021
+657,Prayagraj,Uttar Pradesh,0.4503,NFHS-5,2021
+658,Rae Bareli,Uttar Pradesh,0.5571,NFHS-5,2021
+659,Rampur,Uttar Pradesh,0.4185,NFHS-5,2021
+660,Saharanpur,Uttar Pradesh,0.2843,NFHS-5,2021
+661,Sambhal,Uttar Pradesh,0.5177,NFHS-5,2021
+662,Sant Kabir Nagar,Uttar Pradesh,0.4234,NFHS-5,2021
+663,Sant Ravidas Nagar (Bhadohi),Uttar Pradesh,0.4395,NFHS-5,2021
+664,Shahjahanpur,Uttar Pradesh,0.5653,NFHS-5,2021
+665,Shamli,Uttar Pradesh,0.2897,NFHS-5,2021
+666,Shrawasti,Uttar Pradesh,0.6568,NFHS-5,2021
+667,Siddharthnagar,Uttar Pradesh,0.5219,NFHS-5,2021
+668,Sitapur,Uttar Pradesh,0.7327,NFHS-5,2021
+669,Sonbhadra,Uttar Pradesh,0.5245,NFHS-5,2021
+670,Sultanpur,Uttar Pradesh,0.4545,NFHS-5,2021
+671,Unnao,Uttar Pradesh,0.5876,NFHS-5,2021
+672,Varanasi,Uttar Pradesh,0.2869,NFHS-5,2021
+673,Almora,Uttarakhand,0.2721,NFHS-5,2021
+674,Bageshwar,Uttarakhand,0.2532,NFHS-5,2021
+675,Chamoli,Uttarakhand,0.3314,NFHS-5,2021
+676,Champawat,Uttarakhand,0.2769,NFHS-5,2021
+677,Dehradun,Uttarakhand,0.1877,NFHS-5,2021
+678,Hardwar,Uttarakhand,0.3201,NFHS-5,2021
+679,Nainital,Uttarakhand,0.2091,NFHS-5,2021
+680,Pauri Garhwal,Uttarakhand,0.2997,NFHS-5,2021
+681,Pithoragarh,Uttarakhand,0.2436,NFHS-5,2021
+682,Rudraprayag,Uttarakhand,0.2981,NFHS-5,2021
+683,Tehri Garhwal,Uttarakhand,0.3236,NFHS-5,2021
+684,Udham Singh Nagar,Uttarakhand,0.3123,NFHS-5,2021
+685,Uttarkashi,Uttarakhand,0.4236,NFHS-5,2021
+686,Bankura,West Bengal,0.5956,NFHS-5,2021
+687,Birbhum,West Bengal,0.5584,NFHS-5,2021
+688,Dakshin Dinajpur,West Bengal,0.4868,NFHS-5,2021
+689,Darjeeling,West Bengal,0.3289,NFHS-5,2021
+690,Haora,West Bengal,0.3544,NFHS-5,2021
+691,Hugli,West Bengal,0.3957,NFHS-5,2021
+692,Jalpaiguri,West Bengal,0.4272,NFHS-5,2021
+693,Koch Bihar,West Bengal,0.4602,NFHS-5,2021
+694,Kolkata,West Bengal,0.31,NFHS-5,2021
+695,Maldah,West Bengal,0.5377,NFHS-5,2021
+696,Murshidabad,West Bengal,0.5296,NFHS-5,2021
+697,Nadia,West Bengal,0.4194,NFHS-5,2021
+698,North Twenty Four Parganas,West Bengal,0.3573,NFHS-5,2021
+699,Paschim Barddhaman,West Bengal,0.4361,NFHS-5,2021
+700,Paschim Medinipur,West Bengal,0.5723,NFHS-5,2021
+701,Purba Barddhaman,West Bengal,0.5123,NFHS-5,2021
+702,Purba Medinipur,West Bengal,0.4674,NFHS-5,2021
+703,Puruliya,West Bengal,0.6974,NFHS-5,2021
+704,South Twenty Four Parganas,West Bengal,0.4468,NFHS-5,2021
+705,Uttar Dinajpur,West Bengal,0.5606,NFHS-5,2021

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Data Quality Dashboard - GeoPoverty AI{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .quality-dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .card h3 { margin-top: 0; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .stat { font-size: 2rem; font-weight: bold; color: #3498db; }
+    .good { color: #2ecc71; }
+    .warning { color: #f1c40f; }
+    .danger { color: #e74c3c; }
+    .stat-desc { color: #7f8c8d; font-size: 0.9rem; margin-top: -5px; }
+    .progress-bar-container { background-color: #ecf0f1; border-radius: 10px; width: 100%; height: 20px; margin-top: 10px; overflow: hidden; }
+    .progress-bar { height: 100%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <h1>Data Quality Dashboard</h1>
+    <p>Monitor the status of dataset ingestion, missing values, and coverage for the machine learning pipeline.</p>
+</div>
+
+<div class="quality-dashboard" id="dashboard-content">
+    <div class="card">
+        <p>Loading data quality metrics...</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function renderProgressBar(label, count, total) {
+    const pct = total > 0 ? (count / total) * 100 : 0;
+    let colorClass = 'good';
+    if(pct < 90) colorClass = 'warning';
+    if(pct < 70) colorClass = 'danger';
+    
+    let color = '#2ecc71';
+    if (colorClass === 'warning') color = '#f1c40f';
+    if (colorClass === 'danger') color = '#e74c3c';
+    
+    return `
+        <div style="margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between;">
+                <strong>${label}</strong>
+                <span>${count} / ${total} (${pct.toFixed(1)}%)</span>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: ${pct}%; background-color: ${color};"></div>
+            </div>
+        </div>
+    `;
+}
+
+async function loadDataQuality() {
+    try {
+        const res = await fetch('/api/data-quality');
+        const data = await res.json();
+        const total = data.total_districts;
+        
+        document.getElementById('dashboard-content').innerHTML = `
+            <div class="card">
+                <h3>Overall Coverage</h3>
+                <div class="stat">${total}</div>
+                <div class="stat-desc">Total Districts Tracked</div>
+                <div style="margin-top: 20px;">
+                    ${renderProgressBar('Ground Truth (NFHS-5)', data.ground_truth.total_records, total)}
+                    ${renderProgressBar('Satellite Imagery (Sentinel-2)', data.satellite_data.total_records, total)}
+                    ${renderProgressBar('Geospatial Features (VIIRS, GHSL)', data.geospatial_features.total_records, total)}
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>Feature Missing Values</h3>
+                <p class="stat-desc">Number of records with missing (NULL) values for critical features. Should ideally be 0.</p>
+                <div style="margin-top: 20px;">
+                    <div style="margin-bottom: 15px;">
+                        <strong>Nightlight (VIIRS)</strong>
+                        <span class="${data.geospatial_features.missing_nightlight > 0 ? 'danger' : 'good'}" style="float: right; font-weight: bold;">
+                            ${data.geospatial_features.missing_nightlight} missing
+                        </span>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <strong>NDVI (Sentinel-2)</strong>
+                        <span class="${data.geospatial_features.missing_ndvi > 0 ? 'danger' : 'good'}" style="float: right; font-weight: bold;">
+                            ${data.geospatial_features.missing_ndvi} missing
+                        </span>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <strong>Built-up Area (GHSL)</strong>
+                        <span class="${data.geospatial_features.missing_builtup > 0 ? 'danger' : 'good'}" style="float: right; font-weight: bold;">
+                            ${data.geospatial_features.missing_builtup} missing
+                        </span>
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (e) {
+        document.getElementById('dashboard-content').innerHTML = `
+            <div class="card">
+                <p style="color: red;">Error loading data quality metrics.</p>
+            </div>
+        `;
+    }
+}
+
+window.onload = loadDataQuality;
+</script>
+{% endblock %}

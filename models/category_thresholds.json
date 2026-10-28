@@ -1,0 +1,6 @@
+{
+  "low_medium_boundary": 0.3579,
+  "medium_high_boundary": 0.48229999999999995,
+  "derived_from": "training set deprivation_score tertiles",
+  "note": "Low: score <= low_medium_boundary; Medium: between boundaries; High: score > medium_high_boundary. Categories are a display simplification of the continuous score, not a separately trained target."
+}

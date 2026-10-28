@@ -1,0 +1,650 @@
+{% extends "base.html" %}
+{% block title %}Policy Intervention Simulator - GeoPoverty AI{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ─── Simulator Page CSS ─────────────────────────────────────────────────── */
+.simulator-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    font-family: 'Inter', sans-serif;
+    color: #1e293b;
+}
+
+/* Header Area */
+.sim-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+.sim-header h1 {
+    font-size: 2.4rem;
+    color: #0f172a;
+    margin-bottom: 0.5rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+}
+.sim-header p {
+    color: #64748b;
+    font-size: 1.1rem;
+    max-width: 700px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+/* District Selector */
+.district-selector-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    border: 1px solid #e2e8f0;
+}
+.district-selector-card select {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #334155;
+    background-color: #f8fafc;
+    min-width: 350px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.district-selector-card select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* Main Layout Grid */
+.sim-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    display: none; /* Hidden until district selected */
+}
+@media (max-width: 900px) {
+    .sim-grid { grid-template-columns: 1fr; }
+}
+
+/* Base Cards */
+.panel {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    position: relative;
+    overflow: hidden;
+}
+.panel h2 {
+    font-size: 1.3rem;
+    color: #0f172a;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Score Display */
+.score-comparison {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+.score-box {
+    text-align: center;
+    padding: 1.5rem;
+    border-radius: 12px;
+    width: 45%;
+    transition: all 0.3s ease;
+}
+.score-box.original {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+}
+.score-box.simulated {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border: 1px solid #bfdbfe;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.15);
+}
+.score-label {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+.score-value {
+    font-size: 3rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+.simulated .score-value { color: #1d4ed8; }
+.diff-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+.diff-positive { background: #fee2e2; color: #991b1b; } /* Positive diff = worse poverty */
+.diff-negative { background: #dcfce7; color: #166534; } /* Negative diff = better */
+.diff-neutral { background: #f1f5f9; color: #64748b; }
+
+/* Interventions Grid */
+.interventions-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+.intervention-card {
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+.intervention-card:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+.intervention-card.active {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+.intervention-icon {
+    font-size: 2rem;
+    background: #f1f5f9;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+.active .intervention-icon {
+    background: #bfdbfe;
+}
+.intervention-content h3 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.05rem;
+    color: #1e293b;
+}
+.intervention-content p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+/* Feature Changes List */
+.feature-changes {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e2e8f0;
+}
+.feature-changes h3 {
+    font-size: 0.95rem;
+    color: #475569;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.feature-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px dashed #e2e8f0;
+}
+.feature-item:last-child { border-bottom: none; }
+.feat-name { font-weight: 600; color: #334155; }
+.feat-vals { display: flex; align-items: center; gap: 0.5rem; }
+.feat-old { color: #94a3b8; text-decoration: line-through; }
+.feat-arrow { color: #cbd5e1; }
+.feat-new { color: #059669; font-weight: 700; }
+
+/* Loading Overlay */
+.loading-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255,255,255,0.8);
+    backdrop-filter: blur(2px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    display: none;
+    border-radius: 16px;
+}
+.spinner {
+    width: 40px; height: 40px;
+    border: 4px solid #e2e8f0;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Advanced Toggle */
+.advanced-toggle {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+.advanced-toggle button {
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+}
+.advanced-section {
+    display: none;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+}
+.slider-group {
+    margin-bottom: 1rem;
+}
+.slider-group label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.5rem;
+}
+.slider-group input[type="range"] {
+    width: 100%;
+    cursor: pointer;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="simulator-page">
+
+    <div class="sim-header">
+        <h1>Policy Intervention Simulator</h1>
+        <p>Simulate the impact of targeted infrastructure and social policies on the area's predicted socioeconomic deprivation score. See how AI perceives development.</p>
+    </div>
+
+    <!-- District Selection -->
+    <div class="district-selector-card">
+        <label for="areaSelect" style="font-weight:700; color:#475569;">Target District:</label>
+        <select id="areaSelect">
+            <option value="">Loading districts...</option>
+        </select>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="sim-grid" id="simGrid">
+        
+        <!-- Left Panel: Interventions -->
+        <div class="panel">
+            <h2>🎯 Select Interventions</h2>
+            <p style="font-size:0.9rem; color:#64748b; margin-bottom:1.5rem;">Toggle policies below to simulate changes to the district's geospatial indicators.</p>
+            
+            <div class="interventions-grid">
+                
+                <div class="intervention-card" data-policy="electrification" onclick="togglePolicy(this)">
+                    <div class="intervention-icon">⚡</div>
+                    <div class="intervention-content">
+                        <h3>Rural Electrification Drive</h3>
+                        <p>Increases nighttime light emissions, signaling better grid access and economic activity.</p>
+                    </div>
+                </div>
+
+                <div class="intervention-card" data-policy="healthcare" onclick="togglePolicy(this)">
+                    <div class="intervention-icon">🏥</div>
+                    <div class="intervention-content">
+                        <h3>Healthcare Accessibility</h3>
+                        <p>Builds new primary health centers, significantly reducing the average distance to hospitals.</p>
+                    </div>
+                </div>
+
+                <div class="intervention-card" data-policy="education" onclick="togglePolicy(this)">
+                    <div class="intervention-icon">🏫</div>
+                    <div class="intervention-content">
+                        <h3>Education Infrastructure</h3>
+                        <p>Constructs new local schools, halving the average distance students must travel.</p>
+                    </div>
+                </div>
+
+                <div class="intervention-card" data-policy="roads" onclick="togglePolicy(this)">
+                    <div class="intervention-icon">🛣️</div>
+                    <div class="intervention-content">
+                        <h3>Road Network Expansion</h3>
+                        <p>Upgrades unpaved paths to all-weather roads, increasing overall road density.</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Advanced Manual Sliders (Hidden by default) -->
+            <div class="advanced-toggle">
+                <button onclick="document.getElementById('advSection').style.display = document.getElementById('advSection').style.display === 'block' ? 'none' : 'block'">
+                    ⚙️ Show Advanced Manual Sliders
+                </button>
+            </div>
+            
+            <div class="advanced-section" id="advSection">
+                <p style="font-size:0.8rem; color:#64748b; margin-bottom:1rem;">Manually fine-tune specific features to test custom scenarios. (Overrides policy cards)</p>
+                <div id="manualSliders"></div>
+            </div>
+
+        </div>
+
+        <!-- Right Panel: Impact Analysis -->
+        <div class="panel">
+            <div class="loading-overlay" id="simLoading">
+                <div class="spinner"></div>
+                <div style="margin-top:1rem; font-weight:600; color:#334155;">Simulating Impact...</div>
+            </div>
+
+            <h2>📊 Impact Analysis</h2>
+            
+            <div class="score-comparison">
+                <div class="score-box original">
+                    <div class="score-label">Current Baseline</div>
+                    <div class="score-value" id="origScore">--</div>
+                    <div id="origCat" style="font-weight:700;">--</div>
+                </div>
+                
+                <div style="font-size:2rem; color:#cbd5e1;">➔</div>
+                
+                <div class="score-box simulated">
+                    <div class="score-label">Simulated Outcome</div>
+                    <div class="score-value" id="simScore">--</div>
+                    <div id="simCat" style="font-weight:700;">--</div>
+                    <div style="margin-top:0.5rem;"><span id="simDiff" class="diff-badge diff-neutral">0.000</span></div>
+                </div>
+            </div>
+
+            <div class="feature-changes">
+                <h3>Underlying Indicator Shifts</h3>
+                <div class="feature-list" id="featureList">
+                    <div style="color:#94a3b8; font-size:0.85rem; font-style:italic;">Select a district and apply policies to see shifts.</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 1.5rem; background: #fffbeb; border: 1px solid #fef3c7; padding: 1rem; border-radius: 8px; font-size: 0.8rem; color: #92400e; line-height: 1.5;">
+                <strong>Note:</strong> The AI model evaluates these shifts holistically. Due to non-linear interactions in the random forest/XGBoost, combining multiple policies may yield compounded or diminished effects compared to summing their individual impacts.
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentAreaId = null;
+let baseFeatures = {};
+let modifiedFeatures = {};
+let baseScoreData = null;
+
+// The logic for how policies affect features
+const POLICIES = {
+    'electrification': (f) => { f.nightlight_mean = Math.min(f.nightlight_mean + 2.5, 30.0); }, // Boost NTL
+    'healthcare': (f) => { f.hospital_distance_km = Math.max(f.hospital_distance_km * 0.4, 0.5); }, // Halve distance
+    'education': (f) => { f.school_distance_km = Math.max(f.school_distance_km * 0.4, 0.2); }, // Halve distance
+    'roads': (f) => { f.road_density_km_per_sqkm = f.road_density_km_per_sqkm * 1.5; } // 50% increase in road density
+};
+
+// Friendly names for display
+const FEAT_NAMES = {
+    'nightlight_mean': 'Nighttime Lights (nW/cm²/sr)',
+    'ndvi_mean': 'Vegetation Index (NDVI)',
+    'builtup_pct': 'Built-up Area (%)',
+    'population_density': 'Population Density (/km²)',
+    'hospital_distance_km': 'Avg Distance to Hospital (km)',
+    'road_density_km_per_sqkm': 'Road Density (km/km²)',
+    'school_distance_km': 'Avg Distance to School (km)'
+};
+
+async function init() {
+    const res = await fetch('/api/areas');
+    const areas = await res.json();
+    const select = document.getElementById('areaSelect');
+    select.innerHTML = '<option value="">-- Select a District to begin --</option>';
+    areas.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.area_id;
+        opt.textContent = `${a.area_name}, ${a.state_name}`;
+        select.appendChild(opt);
+    });
+
+    select.addEventListener('change', async (e) => {
+        const areaId = e.target.value;
+        if (!areaId) {
+            document.getElementById('simGrid').style.display = 'none';
+            return;
+        }
+        await loadDistrictBaseline(areaId);
+    });
+}
+
+async function loadDistrictBaseline(areaId) {
+    currentAreaId = areaId;
+    document.getElementById('simGrid').style.display = 'grid';
+    document.getElementById('simLoading').style.display = 'flex';
+    
+    // Reset UI
+    document.querySelectorAll('.intervention-card').forEach(c => c.classList.remove('active'));
+    
+    try {
+        // Fetch base features
+        const fRes = await fetch(`/api/area-features/${areaId}`);
+        baseFeatures = await fRes.json();
+        
+        // Setup advanced sliders
+        setupAdvancedSliders(baseFeatures);
+
+        // Fetch initial prediction
+        modifiedFeatures = { ...baseFeatures };
+        await runSimulation();
+    } catch(e) {
+        alert("Error loading district data.");
+        console.error(e);
+    }
+}
+
+function setupAdvancedSliders(features) {
+    const container = document.getElementById('manualSliders');
+    container.innerHTML = '';
+    
+    const editable = Object.keys(features).filter(k => FEAT_NAMES[k]); // Only interpretable features
+    
+    editable.forEach(key => {
+        const div = document.createElement('div');
+        div.className = 'slider-group';
+        
+        // Determine realistic max ranges for sliders
+        let max = features[key] * 3;
+        if(key === 'builtup_pct') max = 100;
+        if(key === 'ndvi_mean') max = 1.0;
+        if(key === 'nightlight_mean' && max < 10) max = 15;
+        
+        div.innerHTML = `
+            <label>
+                <span>${FEAT_NAMES[key]}</span>
+                <span id="val_${key}">${features[key].toFixed(2)}</span>
+            </label>
+            <input type="range" id="slider_${key}" min="0" max="${max}" step="0.01" value="${features[key]}">
+        `;
+        container.appendChild(div);
+        
+        document.getElementById(`slider_${key}`).addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById(`val_${key}`).textContent = val.toFixed(2);
+            modifiedFeatures[key] = val;
+            
+            // Clear policy card highlights since user took manual control
+            document.querySelectorAll('.intervention-card').forEach(c => c.classList.remove('active'));
+            
+            debounceSimulation();
+        });
+    });
+}
+
+// Toggle policy cards
+function togglePolicy(card) {
+    card.classList.toggle('active');
+    
+    // Recompute modified features from baseline based on ALL active cards
+    modifiedFeatures = { ...baseFeatures };
+    
+    document.querySelectorAll('.intervention-card.active').forEach(c => {
+        const policy = c.dataset.policy;
+        if (POLICIES[policy]) {
+            POLICIES[policy](modifiedFeatures);
+        }
+    });
+    
+    // Update advanced sliders to match new modified features
+    Object.keys(FEAT_NAMES).forEach(k => {
+        const slider = document.getElementById(`slider_${k}`);
+        const valSpan = document.getElementById(`val_${k}`);
+        if(slider && modifiedFeatures[k] !== undefined) {
+            slider.value = modifiedFeatures[k];
+            valSpan.textContent = modifiedFeatures[k].toFixed(2);
+        }
+    });
+
+    runSimulation();
+}
+
+let simTimeout;
+function debounceSimulation() {
+    clearTimeout(simTimeout);
+    simTimeout = setTimeout(runSimulation, 400);
+}
+
+async function runSimulation() {
+    document.getElementById('simLoading').style.display = 'flex';
+    
+    try {
+        const payload = {
+            area_id: parseInt(currentAreaId),
+            modified_features: modifiedFeatures
+        };
+        
+        const res = await fetch('/api/scenario', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+            updateResultsUI(data);
+        } else {
+            console.error("Simulation error:", data.error);
+        }
+    } catch(e) {
+        console.error(e);
+    } finally {
+        document.getElementById('simLoading').style.display = 'none';
+    }
+}
+
+function updateResultsUI(data) {
+    // Original Score
+    document.getElementById('origScore').textContent = data.original_score.toFixed(3);
+    document.getElementById('origCat').textContent = data.original_category;
+    document.getElementById('origCat').style.color = getCategoryColor(data.original_category);
+    
+    // Simulated Score
+    document.getElementById('simScore').textContent = data.scenario_score.toFixed(3);
+    document.getElementById('simCat').textContent = data.scenario_category;
+    document.getElementById('simCat').style.color = getCategoryColor(data.scenario_category);
+    
+    // Diff
+    const diff = data.difference;
+    const diffEl = document.getElementById('simDiff');
+    const sign = diff > 0 ? '+' : '';
+    diffEl.textContent = `${sign}${diff.toFixed(3)}`;
+    
+    diffEl.className = 'diff-badge';
+    if (diff < -0.01) {
+        diffEl.classList.add('diff-negative');
+        diffEl.textContent += " (Improved)";
+    } else if (diff > 0.01) {
+        diffEl.classList.add('diff-positive');
+        diffEl.textContent += " (Worsened)";
+    } else {
+        diffEl.classList.add('diff-neutral');
+        diffEl.textContent += " (No Change)";
+    }
+
+    // Update feature shifts list
+    const list = document.getElementById('featureList');
+    list.innerHTML = '';
+    
+    let changesFound = false;
+    Object.keys(FEAT_NAMES).forEach(k => {
+        const oldV = baseFeatures[k];
+        const newV = modifiedFeatures[k];
+        if (oldV !== undefined && newV !== undefined && Math.abs(oldV - newV) > 0.001) {
+            changesFound = true;
+            list.innerHTML += `
+                <div class="feature-item">
+                    <div class="feat-name">${FEAT_NAMES[k]}</div>
+                    <div class="feat-vals">
+                        <span class="feat-old">${oldV.toFixed(2)}</span>
+                        <span class="feat-arrow">→</span>
+                        <span class="feat-new">${newV.toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    if (!changesFound) {
+        list.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; font-style:italic;">No changes applied yet. Baseline active.</div>';
+    }
+}
+
+function getCategoryColor(cat) {
+    if(cat === 'Low') return '#166534';
+    if(cat === 'Medium') return '#92400e';
+    if(cat === 'High') return '#991b1b';
+    return '#475569';
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+{% endblock %}

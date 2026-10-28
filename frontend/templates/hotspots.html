@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Hotspot Analysis - GeoPoverty AI{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    .hotspots-container { display: flex; gap: 20px; flex-wrap: wrap; }
+    #hotspots-map { flex: 2; min-width: 500px; height: 70vh; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; }
+    #hotspots-loader {
+        flex: 2; min-width: 500px; height: 70vh; border-radius: 8px;
+        background: #f8fafc; display: flex; justify-content: center; align-items: center;
+        flex-direction: column; border: 1px solid #e2e8f0;
+    }
+    #hotspots-loader .spinner {
+        width: 40px; height: 40px; border: 4px solid #cbd5e1;
+        border-top: 4px solid #3b82f6; border-radius: 50%;
+        animation: spin 1s linear infinite; margin-bottom: 1rem;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .clusters-list { flex: 1; min-width: 300px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-height: 70vh; overflow-y: auto; }
+    .cluster-card { border: 1px solid #eee; border-left: 4px solid #e76f51; padding: 15px; margin-bottom: 15px; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
+    .cluster-card:hover { background: #f9f9f9; }
+    .cluster-card h3 { margin-top: 0; color: #2c3e50; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <h1>Deprivation Hotspot Analysis</h1>
+    <p>Geospatial clustering (DBSCAN) identifies geographic clusters of districts with relatively high deprivation estimates. <strong>Note: Hotspot detection identifies spatial patterns and does not establish causality.</strong></p>
+</div>
+
+<div class="hotspots-container">
+    <div class="clusters-list" id="clusters-container">
+        <p>Loading clusters...</p>
+    </div>
+    <div id="hotspots-loader">
+        <div class="spinner"></div>
+        <div style="color: #64748b; font-weight: 600;">Loading map...</div>
+    </div>
+    <div id="hotspots-map"></div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/hotspots.js') }}"></script>
+{% endblock %}
+

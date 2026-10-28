@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard - GeoPoverty AI{% endblock %}
+{% block extra_head %}
+<style>
+    .admin-dashboard { display: grid; grid-template-columns: 1fr 3fr; gap: 20px; }
+    .sidebar { background: #2c3e50; color: white; padding: 20px; border-radius: 8px; min-height: 70vh; }
+    .sidebar ul { list-style: none; padding: 0; }
+    .sidebar li { margin-bottom: 15px; cursor: pointer; padding: 10px; border-radius: 4px; }
+    .sidebar li:hover { background: #34495e; }
+    .sidebar li.active { background: #3498db; }
+    .main-content { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+    .stat-card { background: #ecf0f1; padding: 15px; border-radius: 8px; text-align: center; }
+    .stat-card h3 { margin: 0; color: #7f8c8d; font-size: 1rem; }
+    .stat-card p { font-size: 2rem; font-weight: bold; color: #2c3e50; margin: 10px 0 0 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #2c3e50; color: white; }
+    .btn-action { padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; color: white; background: #3498db; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <h1>Administrator Dashboard</h1>
+    <p>Manage users, datasets, models, and view system audit logs.</p>
+</div>
+
+<div class="admin-dashboard">
+    <div class="sidebar">
+        <ul>
+            <li class="active" id="nav-overview">Overview</li>
+            <li id="nav-users">User Management</li>
+            <li id="nav-logs">Audit Logs</li>
+        </ul>
+    </div>
+    
+    <div class="main-content" id="content-area">
+        <!-- Content injected by JS -->
+        <p>Loading...</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function checkAdmin() {
+    const res = await fetch('/api/auth/profile');
+    if (!res.ok) { window.location.href = '/login'; return; }
+    const user = await res.json();
+    if (user.role !== 'ADMIN') {
+        document.body.innerHTML = "<h2 style='text-align:center;margin-top:50px;'>Forbidden: Administrators only.</h2>";
+    } else {
+        loadOverview();
+    }
+}
+
+async function loadOverview() {
+    setActiveNav('nav-overview');
+    const res = await fetch('/api/admin/dashboard-stats');
+    const stats = await res.json();
+    
+    document.getElementById('content-area').innerHTML = `
+        <h2>System Overview</h2>
+        <div class="stats-grid">
+            <div class="stat-card"><h3>Total Users</h3><p>${stats.total_users}</p></div>
+            <div class="stat-card"><h3>Researchers</h3><p>${stats.researchers}</p></div>
+            <div class="stat-card"><h3>Active Users</h3><p>${stats.active_users}</p></div>
+            <div class="stat-card"><h3>Total Districts</h3><p>${stats.total_districts}</p></div>
+            <div class="stat-card"><h3>Available Datasets</h3><p>${stats.available_datasets}</p></div>
+        </div>
+    `;
+}
+
+async function loadUsers() {
+    setActiveNav('nav-users');
+    const res = await fetch('/api/admin/users');
+    const users = await res.json();
+    
+    let html = `<h2>User Management</h2>
+        <table>
+            <thead>
+                <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+    `;
+    
+    users.forEach(u => {
+        html += `
+            <tr>
+                <td>${u.user_id}</td>
+                <td>${u.name}</td>
+                <td>${u.email}</td>
+                <td>
+                    <select onchange="updateRole(${u.user_id}, this.value)">
+                        <option value="PUBLIC" ${u.role === 'PUBLIC' ? 'selected' : ''}>PUBLIC</option>
+                        <option value="RESEARCHER" ${u.role === 'RESEARCHER' ? 'selected' : ''}>RESEARCHER</option>
+                        <option value="ADMIN" ${u.role === 'ADMIN' ? 'selected' : ''}>ADMIN</option>
+                    </select>
+                </td>
+                <td>${u.status}</td>
+                <td>-</td>
+            </tr>
+        `;
+    });
+    html += `</tbody></table>`;
+    document.getElementById('content-area').innerHTML = html;
+}
+
+async function updateRole(userId, newRole) {
+    const res = await fetch(`/api/admin/users/${userId}/role`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole })
+    });
+    if(!res.ok) alert("Failed to update role");
+}
+
+async function loadLogs() {
+    setActiveNav('nav-logs');
+    const res = await fetch('/api/admin/audit-logs');
+    const logs = await res.json();
+    
+    let html = `<h2>System Audit Logs</h2>
+        <table>
+            <thead>
+                <tr><th>ID</th><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr>
+            </thead>
+            <tbody>
+    `;
+    
+    logs.forEach(l => {
+        html += `
+            <tr>
+                <td>${l.id}</td>
+                <td>${new Date(l.timestamp).toLocaleString()}</td>
+                <td>${l.name ? l.name + ' ('+l.email+')' : 'Unknown'}</td>
+                <td><strong>${l.action}</strong></td>
+                <td>${l.details || ''}</td>
+            </tr>
+        `;
+    });
+    html += `</tbody></table>`;
+    document.getElementById('content-area').innerHTML = html;
+}
+
+function setActiveNav(id) {
+    document.querySelectorAll('.sidebar li').forEach(li => li.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+document.getElementById('nav-overview').addEventListener('click', loadOverview);
+document.getElementById('nav-users').addEventListener('click', loadUsers);
+document.getElementById('nav-logs').addEventListener('click', loadLogs);
+
+window.onload = checkAdmin;
+</script>
+{% endblock %}

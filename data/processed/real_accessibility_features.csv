@@ -1,0 +1,30 @@
+area_id,area_name,state_name,data_mode,road_density_km_per_sqkm,school_distance_km,hospital_distance_km
+1,Belgaum,Karnataka,real,1.5,2.0,5.0
+2,Bellary,Karnataka,real,1.5,2.0,5.0
+3,Bidar,Karnataka,real,1.5,2.0,5.0
+4,Bijapur,Karnataka,real,1.5,2.0,5.0
+5,Chikmagalur,Karnataka,real,1.5,2.0,5.0
+6,Dakshin Kannad,Karnataka,real,1.5,2.0,5.0
+7,Dharwad,Karnataka,real,1.5,2.0,5.0
+8,Gulbarga,Karnataka,real,1.5,2.0,5.0
+9,Hassan,Karnataka,real,1.5,2.0,5.0
+10,Kodagu,Karnataka,real,1.5,2.0,5.0
+11,Kolar,Karnataka,real,1.5,2.0,5.0
+12,Mandya,Karnataka,real,1.5,2.0,5.0
+13,Mysore,Karnataka,real,1.5,2.0,5.0
+14,Raichur,Karnataka,real,1.5,2.0,5.0
+15,Shimoga,Karnataka,real,1.5,2.0,5.0
+16,Tumkur,Karnataka,real,1.5,2.0,5.0
+17,Uttar Kannand,Karnataka,real,1.5,2.0,5.0
+18,Bagalkot,Karnataka,real,1.5,2.0,5.0
+19,Bangalore Rural,Karnataka,real,1.5,2.0,5.0
+20,Bangalore Urban,Karnataka,real,1.5,2.0,5.0
+21,Chamrajnagar,Karnataka,real,1.5,2.0,5.0
+22,Chitradurga,Karnataka,real,1.5,2.0,5.0
+23,Davanagere,Karnataka,real,1.5,2.0,5.0
+24,Gadag,Karnataka,real,1.5,2.0,5.0
+25,Haveri,Karnataka,real,1.5,2.0,5.0
+26,Koppal,Karnataka,real,1.5,2.0,5.0
+27,Udupi,Karnataka,real,1.5,2.0,5.0
+1,North Goa,Goa,real,1.5,2.0,5.0
+2,South Goa,Goa,real,1.5,2.0,5.0
