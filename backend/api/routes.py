@@ -57,12 +57,17 @@ def predict(area_id):
     sat_path = _find_satellite_image(area_id, area.get("data_mode", "real"))
     has_sat = bool(sat_path is not None)
 
+    pred_score = prediction["predicted_score"]
+    pred_low, pred_high = model_service.get_prediction_interval(pred_score)
+
     return jsonify({
         "area_id": area_id,
         "area_name": area["area_name"],
         "state_name": area["state_name"],
         "data_mode": area["data_mode"],
-        "predicted_score": prediction["predicted_score"],
+        "predicted_score": pred_score,
+        "predicted_low": pred_low,
+        "predicted_high": pred_high,
         "predicted_category": prediction["predicted_category"],
         "model_name": prediction["model_name"],
         "prediction_timestamp": prediction["prediction_timestamp"],

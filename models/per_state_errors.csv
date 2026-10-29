@@ -1,0 +1,28 @@
+state_name,district_count,mae,rmse
+Meghalaya,7,0.1938,0.219
+Goa,2,0.1773,0.1794
+Tripura,4,0.1336,0.144
+Jharkhand,22,0.1318,0.1501
+Kerala,14,0.1309,0.1424
+Mizoram,8,0.1289,0.1375
+Assam,21,0.1169,0.1368
+Andhra Pradesh,11,0.1157,0.1275
+Orissa,20,0.1121,0.132
+Bihar,35,0.112,0.1334
+Manipur,7,0.1055,0.1388
+Karnataka,27,0.104,0.1185
+Uttarakhand,13,0.0981,0.1195
+Tamil Nadu,27,0.0911,0.1047
+West Bengal,13,0.0892,0.0953
+Puducherry,4,0.0832,0.0893
+Uttar Pradesh,64,0.08,0.0986
+Maharashtra,34,0.0783,0.0963
+Madhya Pradesh,45,0.0771,0.0978
+Gujarat,25,0.0764,0.0938
+Himachal Pradesh,12,0.0761,0.0902
+Arunachal Pradesh,8,0.0734,0.1021
+Nagaland,8,0.0708,0.0818
+Chhattisgarh,14,0.0665,0.0819
+Rajasthan,32,0.0613,0.0728
+Punjab,16,0.0368,0.0468
+Haryana,19,0.0307,0.0377
