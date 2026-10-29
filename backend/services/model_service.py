@@ -21,7 +21,6 @@ import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from config import MODELS_DIR, DEMO_TRAINING_CSV, PROCESSED_DIR
-from training.transformers import IQRClipper, TrainingMedianImputer, MeanPredictor
 
 _model_bundle = None
 _feature_cols = None
@@ -83,25 +82,9 @@ def get_feature_vector(area_id: int) -> dict:
     return {c: float(row[c]) if c in row.index else 0.0 for c in _feature_cols}
 
 
-def get_prediction_interval(predicted_score: float):
-    """
-    Returns (predicted_low, predicted_high) using empirical residual quantiles (80% confidence interval)
-    computed from Leave-One-State-Out cross-validation.
-    """
-    load_artifacts()
-    unc = _model_bundle.get("uncertainty", {})
-    delta_low = unc.get("lower_delta", -0.1449)
-    delta_high = unc.get("upper_delta", 0.1377)
-    pred_low = max(0.0, round(float(predicted_score + delta_low), 4))
-    pred_high = min(1.0, round(float(predicted_score + delta_high), 4))
-    return pred_low, pred_high
-
-
 def predict_from_features(feature_dict: dict) -> float:
     load_artifacts()
-    # Align active features
-    aligned = {c: float(feature_dict.get(c, 0.0)) for c in _feature_cols}
-    X = pd.DataFrame([aligned])[_feature_cols]
+    X = pd.DataFrame([feature_dict])[_feature_cols]
     return float(_model_bundle["model"].predict(X)[0])
 
 
@@ -158,7 +141,6 @@ def predict_custom_features(feature_dict: dict) -> dict:
     X = pd.DataFrame([clean_dict])[_feature_cols]
     score = float(_model_bundle["model"].predict(X)[0])
     category = score_to_category(score)
-    pred_low, pred_high = get_prediction_interval(score)
 
     contributions = []
     base_val = 0.0
@@ -166,7 +148,7 @@ def predict_custom_features(feature_dict: dict) -> dict:
         import shap
         model_obj = _model_bundle["model"]
         if hasattr(model_obj, "named_steps"):
-            tree_model = model_obj.named_steps["model"]
+            tree_model = model_obj.named_steps.get("model", model_obj)
             X_trans = X.copy()
             if "clipper" in model_obj.named_steps:
                 X_trans = model_obj.named_steps["clipper"].transform(X_trans)
@@ -218,8 +200,6 @@ def predict_custom_features(feature_dict: dict) -> dict:
 
     return {
         "predicted_score": round(score, 4),
-        "predicted_low": pred_low,
-        "predicted_high": pred_high,
         "predicted_category": category,
         "base_value": round(base_val, 4),
         "thresholds": _thresholds,

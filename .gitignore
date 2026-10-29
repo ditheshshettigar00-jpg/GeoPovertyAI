@@ -43,8 +43,3 @@ build/
 .env
 .env.local
 
-# --- Database & temporary processing ---
-database/*.db
-data/processed/temp/
-
-
