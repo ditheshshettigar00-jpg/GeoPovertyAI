@@ -1,47 +1,23 @@
-# GeoPoverty AI: Data Integrity Audit Report
+# Data audit: final_training_table.csv
 
-**Target Dataset:** `D:\geo poverty project\v2+\GeoPovertyAI_Complete\GeoPovertyAI\data\processed\final_training_table.csv`  
-**Total Records:** 512  
-**Total Columns:** 14  
-**Unique States:** 27  
-**Unique District Names:** 508
+FAIL: 0 | WARN: 5 | PASS: 10
 
-## 1. Duplicate Row Analysis
-
-- Duplicate `area_id`: **0**
-- Duplicate (`area_name`, `state_name`): **0**
-
-## 2. Missing Value (NaN) Rates
-
-No missing values (NaN) found across all columns.
-
-
-## 3. Numeric Value Ranges & Physical Plausibility
-
-| Column | Min | Max | Mean | Std |
-| --- | --- | --- | --- | --- |
-| area_id | 1.0 | 512.0 | 256.5 | 147.9459 |
-| latitude | 8.306 | 32.6557 | 23.1036 | 5.5663 |
-| longitude | 69.8004 | 96.3563 | 80.9174 | 6.1498 |
-| nightlight_mean | 0.3693 | 52.1492 | 1.6358 | 3.1243 |
-| ndvi_mean | 0.0799 | 0.7947 | 0.4625 | 0.1102 |
-| s2_image_count | 0.0 | 596.0 | 178.4727 | 109.3341 |
-| builtup_pct | 0.0086 | 40.57 | 2.0627 | 2.7506 |
-| population_density | 2.5425 | 44366.3645 | 867.4517 | 2758.4453 |
-| deprivation_score | 0.1066 | 0.8133 | 0.3956 | 0.1344 |
-| data_year | 2021.0 | 2021.0 | 2021.0 | 0.0 |
-
-
-## 4. Constant or Low Variance Column Check
-
-**[CRITICAL: Constant columns found (1)]:** ['data_year']
-
-
-## 5. Accessibility Columns Multicollinearity Analysis
-
-Accessibility columns not present in table.
-
-## 6. Visual (VGG-16) Feature Columns Audit
-
-- Detected visual feature count: **0** (Expected: 512 for full VGG-16 pooled representations; table has 0).
-
+| Status | Check | Detail |
+|---|---|---|
+| WARN | range: road_density_km_per_sqkm | column not present |
+| WARN | range: school_distance_km | column not present |
+| WARN | range: hospital_distance_km | column not present |
+| WARN | thin states | Goa (2), Dadra Nagar Haveli Daman Diu (1), Sikkim (1) have fewer than 3 districts; leave-one-state-out scores for them are very noisy |
+| WARN | Sentinel-2 coverage | 28 districts have zero usable images (NDVI is missing or filled for them) |
+| PASS | range: builtup_pct | all values within [0, 100] % of land |
+| PASS | range: ndvi_mean | all values within [-1, 1] index |
+| PASS | range: nightlight_mean | all values within [0, None] nW/cm2/sr |
+| PASS | range: population_density | all values within [0, 50000] people per km2 |
+| PASS | range: deprivation_score | all values within [0, 1] score |
+| PASS | range: latitude | all values within [6, 37.5] deg |
+| PASS | range: longitude | all values within [68, 98] deg |
+| PASS | units: population_density | median 463 people per km2 |
+| PASS | missing values | no missing values (note: if imputation happened earlier, say where) |
+| PASS | duplicate districts | 0 duplicate (state, district) rows |
+| INFO | Table | 529 districts, 30 states, 17 columns |
+| INFO | visual features | none present |

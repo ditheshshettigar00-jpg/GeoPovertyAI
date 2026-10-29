@@ -44,6 +44,13 @@ GHSL_BUILTUP = "JRC/GHSL/P2023A/GHS_BUILT_S"
 # GHSL population grid
 GHSL_POP = "JRC/GHSL/P2023A/GHS_POP"
 
+# Band names inside the two GHSL collections (verified at runtime by
+# geospatial/ghsl_features.py, which raises a clear error if they differ).
+#   built_surface    = built-up surface in square metres per 100 m cell (0..10000)
+#   population_count = people per 100 m cell
+GHSL_BUILTUP_BAND = "built_surface"
+GHSL_POP_BAND = "population_count"
+
 
 def initialize_ee():
     """

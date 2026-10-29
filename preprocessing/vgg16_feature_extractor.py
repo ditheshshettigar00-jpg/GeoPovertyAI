@@ -35,6 +35,7 @@ import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from preprocessing.image_preprocessing import preprocess_image_file
+from preprocessing.name_keys import clean_key
 from config import PROCESSED_DIR
 
 FEATURE_DIM = 512  # output dimensionality of the pooling='avg' VGG16 feature extractor
@@ -65,10 +66,20 @@ def extract_feature_vector(model, image_path: str) -> np.ndarray:
     return features[0]
 
 
-def extract_area_id_from_filename(path: str):
-    """Expects filenames like district_003_rgb.tif or district_003_DEMO.png"""
-    match = re.search(r"district_(\d+)", os.path.basename(path))
-    return int(match.group(1)) if match else None
+def parse_image_identifiers(path: str):
+    """
+    Parses identifier information from filename:
+    1. New standard: <state_key>_<district_key>_rgb.png -> returns (None, state_key, district_key)
+    2. Legacy/demo: district_<area_id>_... -> returns (area_id, None, None)
+    """
+    base = os.path.splitext(os.path.basename(path))[0]
+    m_id = re.match(r"^district_(\d+)", base, re.IGNORECASE)
+    if m_id:
+        return int(m_id.group(1)), None, None
+    parts = base.split("_")
+    if len(parts) >= 2:
+        return None, clean_key(parts[0]), clean_key(parts[1])
+    return None, None, None
 
 
 def extract_features_for_directory(image_dir: str, out_csv: str) -> pd.DataFrame:
@@ -86,21 +97,29 @@ def extract_features_for_directory(image_dir: str, out_csv: str) -> pd.DataFrame
 
     rows = []
     for path in image_paths:
-        area_id = extract_area_id_from_filename(path)
-        if area_id is None:
-            print(f"  SKIPPED {path}: could not parse area_id from filename "
-                  f"(expected pattern 'district_<id>_...')")
+        area_id, sk, dk = parse_image_identifiers(path)
+        if area_id is None and (not sk or not dk):
+            print(f"  SKIPPED {path}: could not parse area_id or state_district keys "
+                  f"(expected 'district_<id>_...' or '<state>_<district>_...')")
             continue
 
-        print(f"Extracting VGG-16 features for area_id={area_id} ({os.path.basename(path)}) ...")
+        label = f"area_id={area_id}" if area_id is not None else f"{sk}_{dk}"
+        print(f"Extracting VGG-16 features for {label} ({os.path.basename(path)}) ...")
         feat = extract_feature_vector(model, path)
 
-        row = {"area_id": area_id, "image_path": path}
+        row = {"image_path": path}
+        if area_id is not None:
+            row["area_id"] = area_id
+        if sk and dk:
+            row["state_key"] = sk
+            row["district_key"] = dk
         for i, val in enumerate(feat, start=1):
             row[f"vgg_feat_{i}"] = float(val)
         rows.append(row)
 
-    df = pd.DataFrame(rows).sort_values("area_id").reset_index(drop=True)
+    df = pd.DataFrame(rows)
+    if "area_id" in df.columns:
+        df = df.sort_values("area_id").reset_index(drop=True)
     os.makedirs(os.path.dirname(out_csv), exist_ok=True)
     df.to_csv(out_csv, index=False)
     print(f"\nSaved {len(df)} feature vectors ({FEATURE_DIM}-d each) to: {out_csv}")

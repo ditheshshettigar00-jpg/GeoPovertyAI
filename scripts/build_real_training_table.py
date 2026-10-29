@@ -1,154 +1,270 @@
 """
 build_real_training_table.py
 ----------------------------
-Merges real GEE satellite features (real_geospatial_features.csv)
-with real NFHS-5 survey ground truth (real_ground_truth.csv)
-to create the final real training table:
-    data/processed/final_training_table.csv
+Builds data/processed/final_training_table.csv from REAL sources only:
 
-Matching Algorithm:
-- Pass 1: Strict exact matching on cleaned district and state name.
-- Pass 2: In-state fuzzy string matching using difflib with threshold >= 0.85.
-  CROSS-STATE MATCHING IS STRICTLY FORBIDDEN to prevent geographic mismatching.
+    geospatial features   (Sentinel-2 NDVI, VIIRS, GHSL)   <- required
+    accessibility features (OSM)                            <- required unless --allow-missing-accessibility
+    visual features        (VGG-16 embeddings)              <- optional
+    NFHS-5 ground truth                                     <- required
 
-Outputs:
-- data/processed/final_training_table.csv (matched districts with true NaN, no global imputation)
-- data/processed/unmatched_districts.csv (audit list of unmatched districts on both sides)
+PHASE 1 CHANGES
+  * District matching is one-to-one and stays inside the state. The old
+    "match the district name in any state" pass is gone. It was masking real
+    state-name differences (Orissa/Odisha, Telangana inside Andhra Pradesh,
+    Delhi, ...), which are now handled by an explicit alias table
+    (data/ground_truth/district_name_aliases.csv) and one explicit fallback
+    (Andhra Pradesh -> Telangana).
+  * Fuzzy matching is conservative: score >= 0.90, unique, and never across
+    words such as Urban/Rural/North/South/East/West. Everything else goes to a
+    review file instead of being guessed.
+  * Nothing is imputed here. Missing values stay NaN and are handled inside
+    cross-validation folds (Phase 2) so no information leaks between states.
+  * Placeholder detection: an accessibility column with a single repeated value
+    stops the build.
+  * Reports: data/processed/district_match_report.csv (every decision) and
+    data/processed/unmatched_districts.csv (both sides, with suggestions).
 """
 
-import os
-import re
+import argparse
 import difflib
-import pandas as pd
-import numpy as np
-
+import os
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import BASE_DIR, PROCESSED_DIR, GROUND_TRUTH_DIR, FUZZY_MATCH_CUTOFF
 
-GEO_PATH = os.path.join(PROCESSED_DIR, "real_geospatial_features.csv")
-GT_PATH  = os.path.join(GROUND_TRUTH_DIR, "real_ground_truth.csv")
-OUT_PATH = os.path.join(PROCESSED_DIR, "final_training_table.csv")
-UNMATCHED_PATH = os.path.join(PROCESSED_DIR, "unmatched_districts.csv")
+import numpy as np
+import pandas as pd
 
-# Known official state name aliases between administrative boundary vintages (GAUL 2015 vs NFHS-5 2021)
-STATE_ALIASES = {
-    "orissa": "odisha",
-    "pondicherry": "puducherry",
-    "uttaranchal": "uttarakhand",
-}
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_DIR)
+from config import DISTRICT_ALIASES_CSV, FUZZY_MATCH_CUTOFF, GROUND_TRUTH_DIR, PROCESSED_DIR
+from preprocessing.name_keys import (
+    STATE_FALLBACKS, clean_key, distinguishing_tokens, state_key,
+)
 
-def clean_name(s):
-    if not isinstance(s, str):
-        return ""
-    s = s.lower().strip()
-    s = re.sub(r"[^a-z0-9]", "", s)
-    return s
+GEO_REQUIRED = ["area_name", "state_name", "latitude", "longitude",
+                "nightlight_mean", "ndvi_mean", "builtup_pct", "population_density"]
+ACC_COLS = ["road_density_km_per_sqkm", "school_distance_km", "hospital_distance_km"]
+SUGGEST_CUTOFF = 0.75
 
-def canonical_state(s):
-    cleaned = clean_name(s)
-    return STATE_ALIASES.get(cleaned, cleaned)
+
+def load_aliases(path):
+    if not os.path.exists(path):
+        print(f"  NOTE: alias file not found at {path}; continuing without aliases.")
+        return {}
+    df = pd.read_csv(path)
+    out = {}
+    for _, r in df.iterrows():
+        out[(state_key(r["gaul_state"]), clean_key(r["gaul_district"]))] = (
+            state_key(r["nfhs_state"]), clean_key(r["nfhs_district"]))
+    return out
+
+
+def _ratio(a, b):
+    return difflib.SequenceMatcher(None, a, b).ratio()
+
+
+def match_districts(geo, gt, aliases, cutoff=FUZZY_MATCH_CUTOFF):
+    """Returns (report DataFrame with one row per boundary district, set of used gt indexes)."""
+    gt = gt.copy()
+    gt["sk"] = gt["state_name"].map(state_key)
+    gt["dk"] = gt["area_name"].map(clean_key)
+    gt_lookup = {(r.sk, r.dk): i for i, r in gt.iterrows()}
+    used = set()
+    decisions = {}
+
+    def take(gi_geo, gi_gt, method, score):
+        decisions[gi_geo] = {"gt_index": gi_gt, "method": method, "score": score}
+        used.add(gi_gt)
+
+    geo = geo.copy()
+    geo["sk"] = geo["state_name"].map(state_key)
+    geo["dk"] = geo["area_name"].map(clean_key)
+
+    # Pass 1: explicit alias table
+    for i, r in geo.iterrows():
+        tgt = aliases.get((r["sk"], r["dk"]))
+        if tgt and tgt in gt_lookup and gt_lookup[tgt] not in used:
+            take(i, gt_lookup[tgt], "alias", 1.0)
+
+    # Pass 2: exact district within the (alias-mapped) state
+    for i, r in geo.iterrows():
+        if i in decisions:
+            continue
+        gi = gt_lookup.get((r["sk"], r["dk"]))
+        if gi is not None and gi not in used:
+            take(i, gi, "exact", 1.0)
+
+    # Pass 3: the one explicit state fallback (Telangana districts listed under Andhra Pradesh)
+    for i, r in geo.iterrows():
+        if i in decisions:
+            continue
+        for fb in STATE_FALLBACKS.get(r["sk"], []):
+            gi = gt_lookup.get((fb, r["dk"]))
+            if gi is not None and gi not in used:
+                take(i, gi, "state_fallback", 1.0)
+                break
+
+    # Pass 4: conservative fuzzy matching inside the state
+    suggestions = {}
+    for i, r in geo.iterrows():
+        if i in decisions:
+            continue
+        states = [r["sk"]] + STATE_FALLBACKS.get(r["sk"], [])
+        cands = gt[gt["sk"].isin(states) & ~gt.index.isin(used)]
+        scored = sorted(((_ratio(r["dk"], c.dk), idx) for idx, c in cands.iterrows()), reverse=True)
+        if not scored:
+            continue
+        best, bidx = scored[0]
+        second = scored[1][0] if len(scored) > 1 else 0.0
+        suggestions[i] = (gt.loc[bidx, "area_name"], gt.loc[bidx, "state_name"], round(best, 3))
+        same_words = distinguishing_tokens(r["area_name"]) == distinguishing_tokens(gt.loc[bidx, "area_name"])
+        if best >= cutoff and (best - second) >= 0.03 and same_words:
+            take(i, bidx, "fuzzy", best)
+
+    rows = []
+    for i, r in geo.iterrows():
+        d = decisions.get(i)
+        sug = suggestions.get(i, (None, None, None))
+        rows.append({
+            "geo_index": i, "gaul_state": r["state_name"], "gaul_district": r["area_name"],
+            "method": d["method"] if d else "UNMATCHED",
+            "score": round(d["score"], 3) if d else None,
+            "nfhs_state": gt.loc[d["gt_index"], "state_name"] if d else None,
+            "nfhs_district": gt.loc[d["gt_index"], "area_name"] if d else None,
+            "gt_index": d["gt_index"] if d else None,
+            "suggestion_district": None if d else sug[0],
+            "suggestion_state": None if d else sug[1],
+            "suggestion_score": None if d else sug[2],
+        })
+    return pd.DataFrame(rows), used, gt
+
+
+def assert_no_placeholders(df, cols, name):
+    for c in cols:
+        if c not in df.columns:
+            raise ValueError(f"{name} is missing required column '{c}'.")
+        vals = df[c].dropna()
+        if len(vals) > 3 and vals.nunique() <= 1:
+            raise ValueError(
+                f"{name} column '{c}' has a single repeated value ({vals.iloc[0]}) across "
+                f"{len(vals)} districts. That is a placeholder, not a measurement. "
+                "Re-run the extraction or exclude this feature.")
+
 
 def main():
-    if not os.path.exists(GEO_PATH):
-        raise FileNotFoundError(f"Missing required geospatial features file: {GEO_PATH}")
-    if not os.path.exists(GT_PATH):
-        raise FileNotFoundError(f"Missing required ground truth file: {GT_PATH}")
+    p = argparse.ArgumentParser(description="Build the real training table (real data only, no imputation)")
+    p.add_argument("--geo", default=os.path.join(PROCESSED_DIR, "real_geospatial_features.csv"))
+    p.add_argument("--accessibility", default=os.path.join(PROCESSED_DIR, "real_accessibility_features.csv"))
+    p.add_argument("--visual", default=os.path.join(PROCESSED_DIR, "vgg16_features.csv"))
+    p.add_argument("--ground-truth", default=os.path.join(GROUND_TRUTH_DIR, "real_ground_truth.csv"))
+    p.add_argument("--aliases", default=DISTRICT_ALIASES_CSV)
+    p.add_argument("--out", default=os.path.join(PROCESSED_DIR, "final_training_table.csv"))
+    p.add_argument("--report-dir", default=PROCESSED_DIR)
+    p.add_argument("--fuzzy-cutoff", type=float, default=FUZZY_MATCH_CUTOFF)
+    p.add_argument("--allow-missing-accessibility", action="store_true",
+                   help="Build without accessibility columns (they are then absent, never filled)")
+    args = p.parse_args()
 
-    geo_df = pd.read_csv(GEO_PATH)
-    gt_df = pd.read_csv(GT_PATH)
+    for path, label in [(args.geo, "geospatial features"), (args.ground_truth, "ground truth")]:
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Missing {label}: {path}")
 
-    print(f"Loaded {len(geo_df)} satellite feature records from {GEO_PATH}.")
-    print(f"Loaded {len(gt_df)} NFHS-5 ground truth records from {GT_PATH}.")
+    geo = pd.read_csv(args.geo)
+    miss = [c for c in GEO_REQUIRED if c not in geo.columns]
+    if miss:
+        raise ValueError(f"Geospatial file is missing columns: {miss}")
+    n0 = len(geo)
+    geo = geo.drop_duplicates(subset=["state_name", "area_name"]).reset_index(drop=True)
+    print(f"Geospatial rows: {n0} ({n0 - len(geo)} duplicates dropped) -> {len(geo)}")
+    gt = pd.read_csv(args.ground_truth)
+    print(f"Ground-truth rows: {len(gt)}")
 
-    # Deduplicate geo records if any state ran multiple times
-    geo_df = geo_df.drop_duplicates(subset=["area_name", "state_name"]).copy()
+    report, used, gt_keyed = match_districts(geo, gt, load_aliases(args.aliases), args.fuzzy_cutoff)
+    print("\nMatching summary:")
+    print(report["method"].value_counts().to_string())
 
-    geo_df["clean_dist"] = geo_df["area_name"].apply(clean_name)
-    geo_df["clean_state"] = geo_df["state_name"].apply(canonical_state)
+    os.makedirs(args.report_dir, exist_ok=True)
+    report.drop(columns=["gt_index"]).to_csv(os.path.join(args.report_dir, "district_match_report.csv"), index=False)
 
-    gt_df["clean_dist"] = gt_df["area_name"].apply(clean_name)
-    gt_df["clean_state"] = gt_df["state_name"].apply(canonical_state)
+    un_geo = report[report["method"] == "UNMATCHED"]
+    un_gt = gt_keyed[~gt_keyed.index.isin(used)]
+    unmatched = pd.concat([
+        pd.DataFrame({"side": "boundary", "state": un_geo["gaul_state"], "district": un_geo["gaul_district"],
+                      "best_suggestion": un_geo["suggestion_district"], "suggestion_score": un_geo["suggestion_score"]}),
+        pd.DataFrame({"side": "nfhs", "state": un_gt["state_name"], "district": un_gt["area_name"],
+                      "best_suggestion": None, "suggestion_score": None}),
+    ], ignore_index=True)
+    unmatched.to_csv(os.path.join(args.report_dir, "unmatched_districts.csv"), index=False)
+    print(f"Unmatched boundary districts: {len(un_geo)}; unmatched NFHS districts: {len(un_gt)} "
+          f"(see unmatched_districts.csv; add confirmed pairs to {os.path.basename(args.aliases)})")
 
-    # ---------------------------------------------------------
-    # Pass 1: Strict exact match on cleaned district and state
-    # ---------------------------------------------------------
-    pass1 = pd.merge(
-        geo_df,
-        gt_df[["clean_dist", "clean_state", "deprivation_score"]],
-        on=["clean_dist", "clean_state"],
-        how="inner"
-    )
-    print(f"Pass 1 (Exact in-state match): {len(pass1)} districts")
+    m = report[report["method"] != "UNMATCHED"].copy()
+    table = geo.loc[m["geo_index"].values].copy().reset_index(drop=True)
+    table["gaul_state_name"] = table["state_name"]
+    table["state_name"] = m["nfhs_state"].values
+    table["nfhs_district_name"] = m["nfhs_district"].values
+    table["deprivation_score"] = gt.loc[m["gt_index"].values, "deprivation_score"].values
+    table["match_method"] = m["method"].values
+    table["data_mode"] = "REAL"
+    table["data_source"] = "NFHS-5 + GEE"
+    table["data_year"] = 2021
 
-    # ---------------------------------------------------------
-    # Pass 2: In-state fuzzy matching (cutoff >= FUZZY_MATCH_CUTOFF)
-    # ---------------------------------------------------------
-    matched_geo_keys = set(zip(pass1["clean_dist"], pass1["clean_state"]))
-    rem_geo = geo_df[~geo_df.set_index(["clean_dist", "clean_state"]).index.isin(matched_geo_keys)].copy()
+    table["_sk"] = table["gaul_state_name"].map(clean_key)
+    table["_dk"] = table["area_name"].map(clean_key)
 
-    fuzzy_rows = []
-    matched_fuzzy_keys = set()
-    for _, grow in rem_geo.iterrows():
-        st_clean = grow["clean_state"]
-        # Candidates strictly within the SAME state
-        gt_state_cands = gt_df[gt_df["clean_state"] == st_clean]
-        if len(gt_state_cands) > 0:
-            cands = gt_state_cands["clean_dist"].tolist()
-            matches = difflib.get_close_matches(grow["clean_dist"], cands, n=1, cutoff=FUZZY_MATCH_CUTOFF)
-            if matches:
-                matched_cand = matches[0]
-                dep_score = gt_state_cands[gt_state_cands["clean_dist"] == matched_cand]["deprivation_score"].values[0]
-                grow_dict = grow.to_dict()
-                grow_dict["deprivation_score"] = dep_score
-                fuzzy_rows.append(grow_dict)
-                matched_fuzzy_keys.add((grow["clean_dist"], grow["clean_state"]))
-
-    if fuzzy_rows:
-        pass2 = pd.DataFrame(fuzzy_rows)
-        print(f"Pass 2 (In-state fuzzy match >= {FUZZY_MATCH_CUTOFF}): {len(pass2)} districts")
-        merged = pd.concat([pass1, pass2], ignore_index=True)
+    # ---- accessibility (required unless explicitly allowed to be absent) ----
+    if args.allow_missing_accessibility:
+        print("WARNING: building WITHOUT accessibility features (--allow-missing-accessibility passed).")
+    elif os.path.exists(args.accessibility):
+        acc = pd.read_csv(args.accessibility)
+        assert_no_placeholders(acc, ACC_COLS, "Accessibility file")
+        acc["_sk"] = acc["state_name"].map(clean_key)
+        acc["_dk"] = acc["area_name"].map(clean_key)
+        acc = acc.drop_duplicates(["_sk", "_dk"])[["_sk", "_dk"] + ACC_COLS]
+        table = table.merge(acc, on=["_sk", "_dk"], how="left")
+        print(f"Accessibility joined: {table[ACC_COLS[0]].notna().sum()} of {len(table)} districts have values")
     else:
-        merged = pass1.copy()
+        raise FileNotFoundError(
+            f"Missing accessibility file: {args.accessibility}\n"
+            "Run scripts/extract_all_india_accessibility.py, or pass --allow-missing-accessibility "
+            "to build a table without those features.")
 
-    # Clean up identifiers and structure
-    merged = merged.drop(columns=["clean_dist", "clean_state"], errors="ignore")
-    merged = merged.drop_duplicates(subset=["area_name", "state_name"]).reset_index(drop=True)
-    merged["area_id"] = range(1, len(merged) + 1)
-    merged["data_mode"] = "real"
-    merged["data_source"] = "NFHS-5 + GEE"
-    merged["data_year"] = 2021
+    # ---- visual features (optional; must be keyed by state + district) ----
+    if os.path.exists(args.visual):
+        vis = pd.read_csv(args.visual)
+        if {"state_key", "district_key"}.issubset(vis.columns):
+            vcols = [c for c in vis.columns if c.startswith("vgg_feat_")]
+            vis = vis.drop_duplicates(["state_key", "district_key"])[["state_key", "district_key"] + vcols]
+            table = table.merge(vis, left_on=["_sk", "_dk"], right_on=["state_key", "district_key"], how="left")
+            table = table.drop(columns=["state_key", "district_key"])
+            have = table[vcols[0]].notna().sum() if vcols else 0
+            print(f"Visual features joined: {have} of {len(table)} districts have a vector ({len(vcols)}-d)")
+            if have < 0.9 * len(table):
+                print("WARNING: visual coverage is below 90%. Do not use vgg_feat_* in the real model.")
+        else:
+            print("WARNING: visual file has no state_key/district_key columns (old area_id-only format, "
+                  "which collides across states). Visual features NOT included. Re-run "
+                  "geospatial/download_satellite_patches.py and preprocessing/vgg16_feature_extractor.py.")
+    else:
+        print("NOTE: no visual feature file found; building without vgg_feat_* columns.")
 
-    # ---------------------------------------------------------
-    # Audit Unmatched Districts on Both Sides
-    # ---------------------------------------------------------
-    all_matched_geo = set(zip(merged["area_name"].apply(clean_name), merged["state_name"].apply(canonical_state)))
-    
-    unmatched_geo = geo_df[~geo_df.set_index(["clean_dist", "clean_state"]).index.isin(all_matched_geo)][["area_name", "state_name"]].copy()
-    unmatched_geo["source"] = "GEE_satellite_unmatched"
+    table = table.drop(columns=["_sk", "_dk"]).reset_index(drop=True)
+    table["area_id"] = np.arange(1, len(table) + 1)
 
-    unmatched_gt = gt_df[~gt_df.set_index(["clean_dist", "clean_state"]).index.isin(all_matched_geo)][["area_name", "state_name"]].copy()
-    unmatched_gt["source"] = "NFHS5_ground_truth_unmatched"
+    lead = ["area_id", "area_name", "state_name", "gaul_state_name", "nfhs_district_name",
+            "latitude", "longitude", "data_mode", "match_method"]
+    table = table[lead + [c for c in table.columns if c not in lead]]
+    table.to_csv(args.out, index=False)
 
-    unmatched_all = pd.concat([unmatched_geo, unmatched_gt], ignore_index=True)
-    unmatched_all.to_csv(UNMATCHED_PATH, index=False)
-    print(f"Logged {len(unmatched_geo)} unmatched satellite districts and {len(unmatched_gt)} unmatched survey districts to {UNMATCHED_PATH}")
+    print(f"\nSaved {len(table)} districts, {table['state_name'].nunique()} states -> {args.out}")
+    print("\nMissing values per column (left as NaN on purpose):")
+    na = table.isna().sum()
+    print(na[na > 0].to_string() if (na > 0).any() else "  none")
+    if (table["builtup_pct"] > 100).any():
+        print(f"WARNING: {(table['builtup_pct'] > 100).sum()} rows have builtup_pct > 100 "
+              "(old-unit extraction). Re-run the GEE extraction.")
+    print("\nNext: python scripts/audit_data.py")
 
-    # Physical bounds validation (leave NaNs intact, do NOT impute globally)
-    numeric_features = ["nightlight_mean", "ndvi_mean", "builtup_pct", "population_density", "deprivation_score"]
-    for col in numeric_features:
-        if col in merged.columns:
-            merged[col] = pd.to_numeric(merged[col], errors="coerce")
-
-    # Verify builtup_pct is within 0..100
-    merged["builtup_pct"] = merged["builtup_pct"].clip(lower=0.0, upper=100.0)
-
-    merged.to_csv(OUT_PATH, index=False)
-    print(f"\nSUCCESS! Real training table saved to: {OUT_PATH}")
-    print(f"Total matched districts in training table: {len(merged)}")
-    print(f"Unique states: {merged['state_name'].nunique()}")
-    print("\nDeprivation Score Summary:")
-    print(merged["deprivation_score"].describe().round(4))
 
 if __name__ == "__main__":
     main()

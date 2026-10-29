@@ -303,3 +303,65 @@ def test_report_generation_protection(client):
         area_id = areas[0]["area_id"]
         r = client.get(f"/api/reports/district/{area_id}")
         assert r.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Phase 1 Data Integrity & District Matching Tests
+# ---------------------------------------------------------------------------
+
+def test_final_table_data_ranges_and_integrity():
+    from config import PROCESSED_DIR
+    path = os.path.join(PROCESSED_DIR, "final_training_table.csv")
+    if not os.path.exists(path):
+        pytest.skip("final_training_table.csv not found")
+    df = pd.read_csv(path)
+    
+    # 1. No builtup_pct > 100
+    if "builtup_pct" in df.columns:
+        assert (df["builtup_pct"] <= 100.0).all(), "builtup_pct values exceed 100%"
+        assert (df["builtup_pct"] >= 0.0).all(), "builtup_pct values below 0%"
+
+    # 2. Population density valid range
+    if "population_density" in df.columns:
+        assert (df["population_density"] >= 0.0).all()
+
+    # 3. No constant columns across real districts
+    num_cols = ["nightlight_mean", "ndvi_mean", "builtup_pct", "population_density", "deprivation_score"]
+    for col in num_cols:
+        if col in df.columns:
+            assert df[col].nunique() > 1, f"Column {col} is a constant placeholder"
+
+
+def test_district_matching_stays_inside_state():
+    from preprocessing.name_keys import clean_key, state_key
+    from scripts.build_real_training_table import match_districts
+
+    geo = pd.DataFrame({
+        "area_name": ["Dharwad", "Belagavi"],
+        "state_name": ["Karnataka", "Karnataka"],
+        "latitude": [15.4, 15.8],
+        "longitude": [75.0, 74.5],
+        "nightlight_mean": [2.1, 3.2],
+        "ndvi_mean": [0.35, 0.42],
+        "builtup_pct": [12.0, 18.0],
+        "population_density": [300.0, 400.0]
+    })
+
+    # Ground truth with one exact match in Karnataka, and same name in DIFFERENT state
+    gt = pd.DataFrame({
+        "area_name": ["Dharwad", "Belagavi"],
+        "state_name": ["Karnataka", "Maharashtra"],  # Belagavi placed under Maharashtra
+        "deprivation_score": [0.45, 0.50]
+    })
+
+    report, used, _ = match_districts(geo, gt, aliases={})
+    
+    # Dharwad should match exact
+    dharwad_match = report[report["gaul_district"] == "Dharwad"].iloc[0]
+    assert dharwad_match["method"] == "exact"
+    assert dharwad_match["nfhs_state"] == "Karnataka"
+
+    # Belagavi in Karnataka must NOT match Belagavi in Maharashtra (stays inside state)
+    belagavi_match = report[report["gaul_district"] == "Belagavi"].iloc[0]
+    assert belagavi_match["method"] == "UNMATCHED"
+

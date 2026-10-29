@@ -6,8 +6,8 @@ mean value of each geospatial layer WITHIN that district's boundary:
 
   - nightlight_mean   (VIIRS monthly average radiance)
   - ndvi_mean          (from Sentinel-2, computed as (B8-B4)/(B8+B4))
-  - builtup_pct         (GHSL built-up surface fraction, as a percentage)
-  - population_density   (GHSL population grid, mean per-pixel count)
+  - builtup_pct         (GHSL built-up surface share, true percentage 0..100)
+  - population_density   (GHSL population grid, people per km2)
 
 This produces the same columns Module 1's demo dataset used for these
 features (minus accessibility, which is Module 4 via OSMnx) -- so the
@@ -17,7 +17,7 @@ later.
 Usage:
     python geospatial/extract_geospatial_features.py \\
         --districts data/raw/districts_Karnataka.json \\
-        --start_date 2023-01-01 --end_date 2023-12-31
+        --start_date 2019-11-01 --end_date 2021-04-30
 """
 
 import argparse
@@ -25,19 +25,17 @@ import json
 import os
 import sys
 
-import numpy as np
 import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from geospatial.ghsl_features import builtup_pct_for, population_density_for
 from geospatial.gee_config import (
-    GHSL_BUILTUP,
-    GHSL_POP,
     SENTINEL2_SR,
     VIIRS_BAND,
     VIIRS_MONTHLY,
     initialize_ee,
 )
-from config import PROCESSED_DIR, GEE_START_DATE, GEE_END_DATE
+from config import GEE_END_DATE, GEE_START_DATE, PROCESSED_DIR
 
 
 def mask_s2_clouds(image, ee):
@@ -94,12 +92,12 @@ def extract_features_for_district(ee, district, start_date, end_date):
 
     # --- Sentinel-2 composite + NDVI ---
     composite, n_images = get_sentinel2_composite(ee, geometry, start_date, end_date)
-    if composite is not None and n_images > 0:
+    if composite is not None:
         ndvi_img = compute_ndvi(ee, composite)
         row["ndvi_mean"] = reduce_mean(ee, ndvi_img, geometry, "NDVI", scale=100)
         row["s2_image_count"] = n_images
     else:
-        row["ndvi_mean"] = np.nan
+        row["ndvi_mean"] = None
         row["s2_image_count"] = 0
         print(f"  WARNING: no cloud-free Sentinel-2 images found for "
               f"{district['area_name']} in {start_date}..{end_date}")
@@ -113,39 +111,18 @@ def extract_features_for_district(ee, district, start_date, end_date):
     )
     row["nightlight_mean"] = reduce_mean(ee, viirs, geometry, VIIRS_BAND, scale=500)
 
-    # --- GHSL built-up (built surface m2 per 100m grid cell -> true 0..100 percentage) ---
+    # --- GHSL built-up share (true %, survey-period epoch) ---
     try:
-        builtup = ee.ImageCollection(GHSL_BUILTUP).sort("system:time_start", False).first()
-        builtup_band = builtup.bandNames().get(0)
-        builtup_val = builtup.select([builtup_band]).reduceRegion(
-            reducer=ee.Reducer.mean(), geometry=geometry, scale=100,
-            maxPixels=1e9, bestEffort=True,
-        ).getInfo()
-        raw_bu = list(builtup_val.values())[0] if builtup_val else None
-        if raw_bu is not None:
-            row["builtup_pct"] = float(np.clip((raw_bu / 10000.0) * 100.0, 0.0, 100.0))
-        else:
-            row["builtup_pct"] = np.nan
+        row["builtup_pct"] = builtup_pct_for(ee, geometry)
     except Exception as e:
-        row["builtup_pct"] = np.nan
+        row["builtup_pct"] = None
         print(f"  WARNING: built-up extraction failed for {district['area_name']}: {e}")
 
-    # --- GHSL population (total district population / area in km2 -> persons per km2) ---
+    # --- GHSL population density (people per km2) ---
     try:
-        pop = ee.ImageCollection(GHSL_POP).sort("system:time_start", False).first()
-        pop_band = pop.bandNames().get(0)
-        pop_val = pop.select([pop_band]).reduceRegion(
-            reducer=ee.Reducer.sum(), geometry=geometry, scale=100,
-            maxPixels=1e9, bestEffort=True,
-        ).getInfo()
-        tot_pop = list(pop_val.values())[0] if pop_val else None
-        area_km2 = geometry.area(maxError=1000).getInfo() / 1e6
-        if tot_pop is not None and area_km2 > 0:
-            row["population_density"] = float(tot_pop / area_km2)
-        else:
-            row["population_density"] = np.nan
+        row["population_density"] = population_density_for(ee, geometry)
     except Exception as e:
-        row["population_density"] = np.nan
+        row["population_density"] = None
         print(f"  WARNING: population extraction failed for {district['area_name']}: {e}")
 
     return row

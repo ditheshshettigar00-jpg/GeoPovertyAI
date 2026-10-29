@@ -40,19 +40,19 @@ DEMO_VGG_FEATURE_COUNT = 16
 # Random seed for reproducibility across all demo/training scripts
 RANDOM_SEED = 42
 
-# GEE imagery window aligned with NFHS-5 survey fieldwork (Nov 2019 to Apr 2021)
+# --------------------------------------------------------------------------
+# Real-data extraction settings (Phase 1)
+# NFHS-5 fieldwork ran 2019-2021, so satellite features must come from the same
+# period. VIIRS monthly and Sentinel-2 SR Harmonized both cover this window.
+# --------------------------------------------------------------------------
 GEE_START_DATE = "2019-11-01"
 GEE_END_DATE = "2021-04-30"
+GHSL_EPOCH_YEAR = 2020          # GHSL epoch closest to the survey period
+GHSL_CELL_AREA_M2 = 10_000.0    # one GHSL cell is 100 m x 100 m
 
-# String matching threshold within the same state (strict, in-state only)
-FUZZY_MATCH_CUTOFF = 0.85
-
-# Spatial hotspot detection parameters (Haversine distance in radians)
-HOTSPOT_EPS_KM = 150.0  # cluster search radius in km
-EARTH_RADIUS_KM = 6371.0
-HOTSPOT_EPS_RAD = HOTSPOT_EPS_KM / EARTH_RADIUS_KM
-HOTSPOT_MIN_SAMPLES = 3
-
+# District-name matching between GAUL boundaries and NFHS-5 ground truth
+DISTRICT_ALIASES_CSV = os.path.join(GROUND_TRUTH_DIR, "district_name_aliases.csv")
+FUZZY_MATCH_CUTOFF = 0.90
 
 # Ensure required directories exist
 for _dir in [RAW_DIR, PROCESSED_DIR, SATELLITE_DIR, GROUND_TRUTH_DIR, DEMO_DIR,

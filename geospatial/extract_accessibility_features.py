@@ -1,27 +1,36 @@
 """
 extract_accessibility_features.py
-------------------------------------
-Extracts real accessibility features per district using OpenStreetMap data
-via OSMnx:
+---------------------------------
+Real accessibility features per district from OpenStreetMap (OSMnx):
 
-  - road_density_km_per_sqkm : total road length within the district / district area
-  - school_distance_km        : distance from the district centroid to the nearest
-                                OSM-tagged school (facility to centroid)
-  - hospital_distance_km      : distance from the district centroid to the nearest
-                                OSM-tagged hospital/clinic (facility to centroid)
+  road_density_km_per_sqkm : length of MAJOR roads (motorway..tertiary) inside the
+                             district / district area. Major roads only, because
+                             downloading every residential lane for a whole Indian
+                             district is not feasible through Overpass, and OSM
+                             minor-road completeness varies a lot between states.
+                             State this definition in the report.
+  school_distance_km       : MEAN over ~100 sample points spread evenly inside the
+                             district of the distance to the nearest OSM school.
+  hospital_distance_km     : same for OSM hospitals and clinics.
 
-METHODOLOGY:
-1. Road Density: Queries OSM drive road network clipped strictly to the
-   district boundary polygon, computes total network length (km), and divides
-   by district area (sq km) projected to equal-area CRS (EPSG:6933).
-2. POI Distances: Queries OpenStreetMap nodes/ways for amenity='school' and
-   amenity in ['hospital', 'clinic']. Distances are calculated from the district
-   centroid to the nearest facility in projected metric space (EPSG:6933).
-   Grid sampling: When interior sample points are evaluated, the mean distance
-   across the points reflects district-wide spatial access.
-3. Strict No-Synthesis Rule: If OSM data is unavailable, query times out, or no
-   facility is found within the search envelope, the value is recorded as NaN.
-   No synthetic fallback constants (e.g. 1.5, 2.0, 5.0) are ever used.
+PHASE 1 CHANGES
+  * The old code measured distance from the single district centroid, which says
+    little for large districts. A grid of sample points inside the polygon
+    represents the whole district.
+  * A failed or empty download is written as NaN. There are no fallback
+    constants. (The CSV shipped in the repo contained 1.5 / 2.0 / 5.0 for every
+    district; scripts/build_real_training_table.py now refuses such files.)
+  * Road graphs keep disconnected components (retain_all=True); the default
+    keeps only the largest component and under-counts roads.
+
+LIMITATION: OSM tagging completeness differs across India. A district with few
+tagged schools looks "far from schools" even if it is not. Treat the features as
+OSM-based indicators, not ground truth, and say so in the report.
+
+Usage (one state file):
+    python geospatial/extract_accessibility_features.py --districts data/raw/districts_Karnataka.json
+All states (resumable):
+    python scripts/extract_all_india_accessibility.py
 """
 
 import argparse
@@ -35,7 +44,10 @@ import pandas as pd
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import PROCESSED_DIR
 
-SEARCH_RADIUS_KM = 50  # search buffer for sparse remote districts
+N_SAMPLE_POINTS = 100
+SEARCH_RADIUS_KM = 50   # if no POI is tagged inside the district, search this far around the centroid
+MAJOR_ROAD_FILTER = '["highway"~"motorway|trunk|primary|secondary|tertiary"]'
+METRIC_CRS = "EPSG:6933"  # world equal-area, metres
 
 
 def polygon_from_geojson(geojson_geom):
@@ -43,105 +55,103 @@ def polygon_from_geojson(geojson_geom):
     return shape(geojson_geom)
 
 
-def compute_road_density(polygon, network_type="drive"):
-    """
-    Downloads the OSM road network clipped to `polygon` and returns
-    (road_density_km_per_sqkm, total_road_length_km).
-    """
-    import osmnx as ox
-
-    graph = ox.graph_from_polygon(polygon, network_type=network_type, truncate_by_edge=True)
-    edges = ox.graph_to_gdfs(graph, nodes=False)
-
-    total_length_km = edges["length"].sum() / 1000.0  # OSMnx edge 'length' is in meters
-
-    # Project polygon to an equal-area CRS to get a correct area in sq km
-    import geopandas as gpd
-    gdf = gpd.GeoDataFrame(geometry=[polygon], crs="EPSG:4326")
-    gdf_proj = gdf.to_crs("EPSG:6933")  # world equal-area projection
-    area_sqkm = gdf_proj.geometry.area.iloc[0] / 1e6
-
-    density = total_length_km / area_sqkm if area_sqkm > 0 else None
-    return density, total_length_km
+def mean_nearest_distance_km(sample_xy_m, poi_xy_m):
+    """Mean over sample points of the distance (km) to the nearest POI. Inputs are Nx2 arrays in metres."""
+    from scipy.spatial import cKDTree
+    sample_xy_m = np.asarray(sample_xy_m, dtype=float)
+    poi_xy_m = np.asarray(poi_xy_m, dtype=float)
+    if len(poi_xy_m) == 0 or len(sample_xy_m) == 0:
+        return float("nan")
+    dist_m, _ = cKDTree(poi_xy_m).query(sample_xy_m, k=1)
+    return float(np.mean(dist_m) / 1000.0)
 
 
-def compute_nearest_poi_distance(polygon, centroid_lat, centroid_lon, tags):
-    """
-    Finds the nearest OSM POI matching `tags` (e.g. {'amenity': 'school'})
-    to the district centroid, searching first within the district polygon,
-    then expanding to a fixed-radius buffer if nothing is found inside.
-    Returns distance in km, or None if nothing found within the search radius.
-    """
-    import osmnx as ox
-    import geopandas as gpd
+def sample_points_in_polygon(polygon, n=N_SAMPLE_POINTS):
+    """Roughly n evenly spaced (lon, lat) points inside the polygon (regular grid over its bounding box)."""
     from shapely.geometry import Point
+    from shapely.prepared import prep
+
+    minx, miny, maxx, maxy = polygon.bounds
+    prepared = prep(polygon)
+    k = 8
+    while k <= 512:
+        xs = np.linspace(minx, maxx, k)
+        ys = np.linspace(miny, maxy, k)
+        pts = [(x, y) for x in xs for y in ys if prepared.contains(Point(x, y))]
+        if len(pts) >= n:
+            idx = np.linspace(0, len(pts) - 1, n).astype(int)
+            return [pts[i] for i in idx]
+        k *= 2
+    if not pts:  # very small / thin polygon: fall back to its representative point
+        rp = polygon.representative_point()
+        return [(rp.x, rp.y)]
+    return pts
+
+
+def _to_metres(lon_lat_array):
+    from pyproj import Transformer
+    tr = Transformer.from_crs("EPSG:4326", METRIC_CRS, always_xy=True)
+    a = np.asarray(lon_lat_array, dtype=float)
+    x, y = tr.transform(a[:, 0], a[:, 1])
+    return np.column_stack([x, y])
+
+
+def compute_road_density(polygon, road_filter=MAJOR_ROAD_FILTER):
+    """Returns km of major road per km2 of district area, or NaN if the download fails/returns nothing."""
+    import geopandas as gpd
+    import osmnx as ox
+
+    graph = ox.graph_from_polygon(polygon, custom_filter=road_filter,
+                                  truncate_by_edge=True, retain_all=True, simplify=True)
+    edges = ox.graph_to_gdfs(graph, nodes=False)
+    total_km = edges["length"].sum() / 1000.0
+    area_km2 = gpd.GeoSeries([polygon], crs="EPSG:4326").to_crs(METRIC_CRS).area.iloc[0] / 1e6
+    return float(total_km / area_km2) if area_km2 > 0 else float("nan")
+
+
+def poi_points_lonlat(polygon, centroid_lat, centroid_lon, tags):
+    """OSM POIs matching tags as (lon, lat) points; falls back to a radius search around the centroid."""
+    import osmnx as ox
 
     try:
         pois = ox.features_from_polygon(polygon, tags=tags)
     except Exception:
         pois = None
-
     if pois is None or len(pois) == 0:
-        # Fall back to a radius search around the centroid
         try:
-            pois = ox.features_from_point(
-                (centroid_lat, centroid_lon), tags=tags, dist=SEARCH_RADIUS_KM * 1000
-            )
+            pois = ox.features_from_point((centroid_lat, centroid_lon), tags=tags, dist=SEARCH_RADIUS_KM * 1000)
         except Exception:
-            return None
-
+            return np.empty((0, 2))
     if pois is None or len(pois) == 0:
-        return None
+        return np.empty((0, 2))
+    c = pois.geometry.to_crs(METRIC_CRS).centroid.to_crs("EPSG:4326")
+    return np.column_stack([c.x.values, c.y.values])
 
-    pois = pois.copy()
-    pois["geometry"] = pois["geometry"].centroid  # collapse polygons (e.g. school grounds) to points
 
-    centroid_point = gpd.GeoSeries([Point(centroid_lon, centroid_lat)], crs="EPSG:4326")
-    pois_gdf = gpd.GeoDataFrame(geometry=pois["geometry"], crs="EPSG:4326")
-
-    # Project to equal-area/metric CRS for correct distance calculation
-    centroid_proj = centroid_point.to_crs("EPSG:6933")
-    pois_proj = pois_gdf.to_crs("EPSG:6933")
-
-    distances_m = pois_proj.distance(centroid_proj.iloc[0])
-    nearest_km = distances_m.min() / 1000.0
-    return float(nearest_km)
+def mean_poi_distance_km(polygon, centroid_lat, centroid_lon, tags):
+    poi = poi_points_lonlat(polygon, centroid_lat, centroid_lon, tags)
+    if len(poi) == 0:
+        return float("nan")
+    samples = sample_points_in_polygon(polygon)
+    return mean_nearest_distance_km(_to_metres(samples), _to_metres(poi))
 
 
 def extract_accessibility_for_district(district):
     geom = polygon_from_geojson(district["geometry"])
     lat, lon = district["latitude"], district["longitude"]
+    row = {"area_id": district["area_id"], "area_name": district["area_name"],
+           "state_name": district["state_name"], "data_mode": "real"}
 
-    row = {
-        "area_id": district["area_id"],
-        "area_name": district["area_name"],
-        "state_name": district["state_name"],
-        "data_mode": "real",
-    }
-
-    try:
-        density, total_km = compute_road_density(geom)
-        row["road_density_km_per_sqkm"] = density
-    except Exception as e:
-        print(f"  WARNING: road density failed for {district['area_name']}: {e}")
-        row["road_density_km_per_sqkm"] = None
-
-    try:
-        row["school_distance_km"] = compute_nearest_poi_distance(
-            geom, lat, lon, tags={"amenity": "school"}
-        )
-    except Exception as e:
-        print(f"  WARNING: school distance failed for {district['area_name']}: {e}")
-        row["school_distance_km"] = None
-
-    try:
-        row["hospital_distance_km"] = compute_nearest_poi_distance(
-            geom, lat, lon, tags={"amenity": ["hospital", "clinic"]}
-        )
-    except Exception as e:
-        print(f"  WARNING: hospital distance failed for {district['area_name']}: {e}")
-        row["hospital_distance_km"] = None
-
+    for col, fn in [
+        ("road_density_km_per_sqkm", lambda: compute_road_density(geom)),
+        ("school_distance_km", lambda: mean_poi_distance_km(geom, lat, lon, {"amenity": "school"})),
+        ("hospital_distance_km", lambda: mean_poi_distance_km(geom, lat, lon, {"amenity": ["hospital", "clinic"]})),
+    ]:
+        try:
+            row[col] = fn()
+        except Exception as e:
+            print(f"  WARNING: {col} failed for {district['area_name']}: {e}")
+            row[col] = float("nan")   # missing stays missing; never a placeholder constant
     return row
 
 

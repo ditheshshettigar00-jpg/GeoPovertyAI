@@ -29,6 +29,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from geospatial.extract_geospatial_features import get_sentinel2_composite
 from geospatial.gee_config import initialize_ee
+from preprocessing.name_keys import clean_key
 from config import SATELLITE_DIR
 
 
@@ -45,7 +46,13 @@ def download_patch(ee, district, start_date, end_date, scale, out_dir):
 
     rgb = composite.select(["B4", "B3", "B2"]).multiply(255).clamp(0, 255).uint8()
 
-    out_path = os.path.join(out_dir, f"district_{district['area_id']:03d}_rgb.png")
+    sk = clean_key(district.get("state_name", ""))
+    dk = clean_key(district.get("area_name", ""))
+    if sk and dk:
+        fname = f"{sk}_{dk}_rgb.png"
+    else:
+        fname = f"district_{district.get('area_id', 0):03d}_rgb.png"
+    out_path = os.path.join(out_dir, fname)
     try:
         url = rgb.getThumbURL({
             "region": geometry,

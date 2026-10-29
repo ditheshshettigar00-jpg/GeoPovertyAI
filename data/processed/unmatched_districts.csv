@@ -1,238 +1,180 @@
-area_name,state_name,source
-Adilabad,Andhra Pradesh,GEE_satellite_unmatched
-Hyderabad,Andhra Pradesh,GEE_satellite_unmatched
-Karimnagar,Andhra Pradesh,GEE_satellite_unmatched
-Khammam,Andhra Pradesh,GEE_satellite_unmatched
-Medak,Andhra Pradesh,GEE_satellite_unmatched
-Nalgonda,Andhra Pradesh,GEE_satellite_unmatched
-Nizamabad,Andhra Pradesh,GEE_satellite_unmatched
-Daman,Daman and Diu,GEE_satellite_unmatched
-East,Sikkim,GEE_satellite_unmatched
-Sibsagar,Assam,GEE_satellite_unmatched
-Buxar,Bihar,GEE_satellite_unmatched
-Narsinghpur,Madhya Pradesh,GEE_satellite_unmatched
-Mumbai city,Maharashtra,GEE_satellite_unmatched
-Nilgiris,Tamil Nadu,GEE_satellite_unmatched
-Tirunelveli Kattabo,Tamil Nadu,GEE_satellite_unmatched
-Sant Ravi Das Nagar,Uttar Pradesh,GEE_satellite_unmatched
-Kanpur,Uttar Pradesh,GEE_satellite_unmatched
-Badaun,Uttar Pradesh,GEE_satellite_unmatched
-Barddhaman,West Bengal,GEE_satellite_unmatched
-Darjiling,West Bengal,GEE_satellite_unmatched
-Nicobar,Andaman Nicobar Islands,NFHS5_ground_truth_unmatched
-North  & Middle Andaman,Andaman Nicobar Islands,NFHS5_ground_truth_unmatched
-South Andaman,Andaman Nicobar Islands,NFHS5_ground_truth_unmatched
-Sri Potti Sriramulu Nellore,Andhra Pradesh,NFHS5_ground_truth_unmatched
-Visakhapatnam,Andhra Pradesh,NFHS5_ground_truth_unmatched
-Y.S.R.,Andhra Pradesh,NFHS5_ground_truth_unmatched
-Anjaw,Arunachal Pradesh,NFHS5_ground_truth_unmatched
-Dibang Valley,Arunachal Pradesh,NFHS5_ground_truth_unmatched
-East Kameng,Arunachal Pradesh,NFHS5_ground_truth_unmatched
-Kra Daadi,Arunachal Pradesh,NFHS5_ground_truth_unmatched
-Kurung Kumey,Arunachal Pradesh,NFHS5_ground_truth_unmatched
-Longding,Arunachal Pradesh,NFHS5_ground_truth_unmatched
-Namsai,Arunachal Pradesh,NFHS5_ground_truth_unmatched
-Siang,Arunachal Pradesh,NFHS5_ground_truth_unmatched
-Tawang,Arunachal Pradesh,NFHS5_ground_truth_unmatched
-Upper Siang,Arunachal Pradesh,NFHS5_ground_truth_unmatched
-Upper Subansiri,Arunachal Pradesh,NFHS5_ground_truth_unmatched
-West Kameng,Arunachal Pradesh,NFHS5_ground_truth_unmatched
-Baksa,Assam,NFHS5_ground_truth_unmatched
-Biswanath,Assam,NFHS5_ground_truth_unmatched
-Charaideo,Assam,NFHS5_ground_truth_unmatched
-Chirang,Assam,NFHS5_ground_truth_unmatched
-Dhubri,Assam,NFHS5_ground_truth_unmatched
-Dima Hasao,Assam,NFHS5_ground_truth_unmatched
-Hojai,Assam,NFHS5_ground_truth_unmatched
-Kamrup Metropolitan,Assam,NFHS5_ground_truth_unmatched
-Majuli,Assam,NFHS5_ground_truth_unmatched
-Morigaon,Assam,NFHS5_ground_truth_unmatched
-Sivasagar,Assam,NFHS5_ground_truth_unmatched
-South Salmara Mancachar,Assam,NFHS5_ground_truth_unmatched
-Udalguri,Assam,NFHS5_ground_truth_unmatched
-West Karbi Anglong,Assam,NFHS5_ground_truth_unmatched
-Arwal,Bihar,NFHS5_ground_truth_unmatched
-Buxer,Bihar,NFHS5_ground_truth_unmatched
-Kaimur (Bhabua),Bihar,NFHS5_ground_truth_unmatched
-Balod,Chhattisgarh,NFHS5_ground_truth_unmatched
-Baloda Bazar,Chhattisgarh,NFHS5_ground_truth_unmatched
-Balrampur,Chhattisgarh,NFHS5_ground_truth_unmatched
-Bemetara,Chhattisgarh,NFHS5_ground_truth_unmatched
-Bijapur,Chhattisgarh,NFHS5_ground_truth_unmatched
-Gariyaband,Chhattisgarh,NFHS5_ground_truth_unmatched
-Kabeerdham,Chhattisgarh,NFHS5_ground_truth_unmatched
-Kodagaon,Chhattisgarh,NFHS5_ground_truth_unmatched
-Mungeli,Chhattisgarh,NFHS5_ground_truth_unmatched
-Narayanpur,Chhattisgarh,NFHS5_ground_truth_unmatched
-Sukma,Chhattisgarh,NFHS5_ground_truth_unmatched
-Surajpur,Chhattisgarh,NFHS5_ground_truth_unmatched
-Uttar Bastar Kanker,Chhattisgarh,NFHS5_ground_truth_unmatched
-Dadra & Nagar Haveli,Dadra Nagar Haveli Daman Diu,NFHS5_ground_truth_unmatched
-Daman,Dadra Nagar Haveli Daman Diu,NFHS5_ground_truth_unmatched
-Diu,Dadra Nagar Haveli Daman Diu,NFHS5_ground_truth_unmatched
-Ahmedabad,Gujarat,NFHS5_ground_truth_unmatched
-Aravali,Gujarat,NFHS5_ground_truth_unmatched
-Botad,Gujarat,NFHS5_ground_truth_unmatched
-Chhota Udaipur,Gujarat,NFHS5_ground_truth_unmatched
-Devbhumi Dwarka,Gujarat,NFHS5_ground_truth_unmatched
-Gir Somnath,Gujarat,NFHS5_ground_truth_unmatched
-Mahisagar,Gujarat,NFHS5_ground_truth_unmatched
-Morbi,Gujarat,NFHS5_ground_truth_unmatched
-Panchmahal,Gujarat,NFHS5_ground_truth_unmatched
-Tapi,Gujarat,NFHS5_ground_truth_unmatched
-Charkhi Dadri,Haryana,NFHS5_ground_truth_unmatched
-Mewat,Haryana,NFHS5_ground_truth_unmatched
-Palwal,Haryana,NFHS5_ground_truth_unmatched
-Sonipat,Haryana,NFHS5_ground_truth_unmatched
-Anantnag,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Badgam,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Bandipore,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Baramula,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Doda,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Ganderbal,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Jammu,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Kathua,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Kishtwar,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Kulgam,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Kupwara,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Pulwama,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Punch,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Rajouri,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Ramban,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Reasi,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Samba,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Shupiyan,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Srinagar,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Udhampur,Jammu Kashmir,NFHS5_ground_truth_unmatched
-Hazaribagh,Jharkhand,NFHS5_ground_truth_unmatched
-Khunti,Jharkhand,NFHS5_ground_truth_unmatched
-Kodarma,Jharkhand,NFHS5_ground_truth_unmatched
-Pashchimi Singhbhum,Jharkhand,NFHS5_ground_truth_unmatched
-Purbi Singhbhum,Jharkhand,NFHS5_ground_truth_unmatched
-Ramgarh,Jharkhand,NFHS5_ground_truth_unmatched
-Bangalore,Karnataka,NFHS5_ground_truth_unmatched
-Chamarajanagar,Karnataka,NFHS5_ground_truth_unmatched
-Chikkaballapura,Karnataka,NFHS5_ground_truth_unmatched
-Dakshina Kannada,Karnataka,NFHS5_ground_truth_unmatched
-Ramanagara,Karnataka,NFHS5_ground_truth_unmatched
-Uttara Kannada,Karnataka,NFHS5_ground_truth_unmatched
-Yadgir,Karnataka,NFHS5_ground_truth_unmatched
-Pathanamthitta,Kerala,NFHS5_ground_truth_unmatched
-Kargil,Ladakh,NFHS5_ground_truth_unmatched
-Leh(Ladakh),Ladakh,NFHS5_ground_truth_unmatched
-Agar Malwa,Madhya Pradesh,NFHS5_ground_truth_unmatched
-Alirajpur,Madhya Pradesh,NFHS5_ground_truth_unmatched
-Khandwa (East Nimar),Madhya Pradesh,NFHS5_ground_truth_unmatched
-Khargone (West Nimar),Madhya Pradesh,NFHS5_ground_truth_unmatched
-Narsimhapur,Madhya Pradesh,NFHS5_ground_truth_unmatched
-Singrauli,Madhya Pradesh,NFHS5_ground_truth_unmatched
-Ahmadnagar,Maharashtra,NFHS5_ground_truth_unmatched
-Gadchiroli,Maharashtra,NFHS5_ground_truth_unmatched
-Mumbai,Maharashtra,NFHS5_ground_truth_unmatched
-Palghar,Maharashtra,NFHS5_ground_truth_unmatched
-Imphal East,Manipur,NFHS5_ground_truth_unmatched
-Imphal West,Manipur,NFHS5_ground_truth_unmatched
-East Jantia Hills,Meghalaya,NFHS5_ground_truth_unmatched
-North Garo Hills,Meghalaya,NFHS5_ground_truth_unmatched
-South West Garo Hills,Meghalaya,NFHS5_ground_truth_unmatched
-South West Khasi Hills,Meghalaya,NFHS5_ground_truth_unmatched
-West Jaintia Hills,Meghalaya,NFHS5_ground_truth_unmatched
-Central,NCT Delhi,NFHS5_ground_truth_unmatched
-East,NCT Delhi,NFHS5_ground_truth_unmatched
-New Delhi,NCT Delhi,NFHS5_ground_truth_unmatched
-North,NCT Delhi,NFHS5_ground_truth_unmatched
-North East,NCT Delhi,NFHS5_ground_truth_unmatched
-North West,NCT Delhi,NFHS5_ground_truth_unmatched
-Shahdara,NCT Delhi,NFHS5_ground_truth_unmatched
-South,NCT Delhi,NFHS5_ground_truth_unmatched
-South East,NCT Delhi,NFHS5_ground_truth_unmatched
-South West,NCT Delhi,NFHS5_ground_truth_unmatched
-West,NCT Delhi,NFHS5_ground_truth_unmatched
-Kiphire,Nagaland,NFHS5_ground_truth_unmatched
-Longleng,Nagaland,NFHS5_ground_truth_unmatched
-Peren,Nagaland,NFHS5_ground_truth_unmatched
-Anugul,Odisha,NFHS5_ground_truth_unmatched
-Balangir,Odisha,NFHS5_ground_truth_unmatched
-Bargarh,Odisha,NFHS5_ground_truth_unmatched
-Baudh,Odisha,NFHS5_ground_truth_unmatched
-Debagarh,Odisha,NFHS5_ground_truth_unmatched
-Jagatsinghapur,Odisha,NFHS5_ground_truth_unmatched
-Jajapur,Odisha,NFHS5_ground_truth_unmatched
-Kendujhar,Odisha,NFHS5_ground_truth_unmatched
-Nabarangapur,Odisha,NFHS5_ground_truth_unmatched
-Subarnapur,Odisha,NFHS5_ground_truth_unmatched
-Barnala,Punjab,NFHS5_ground_truth_unmatched
-Fazilka,Punjab,NFHS5_ground_truth_unmatched
-Pathankot,Punjab,NFHS5_ground_truth_unmatched
-Sahibzada Ajit Singh Nagar,Punjab,NFHS5_ground_truth_unmatched
-Shahid Bhagat Singh Nagar,Punjab,NFHS5_ground_truth_unmatched
-Tarn Taran,Punjab,NFHS5_ground_truth_unmatched
-Pratapgarh,Rajasthan,NFHS5_ground_truth_unmatched
-East District,Sikkim,NFHS5_ground_truth_unmatched
-North  District,Sikkim,NFHS5_ground_truth_unmatched
-South District,Sikkim,NFHS5_ground_truth_unmatched
-West District,Sikkim,NFHS5_ground_truth_unmatched
-Krishnagiri,Tamil Nadu,NFHS5_ground_truth_unmatched
-The Nilgiris,Tamil Nadu,NFHS5_ground_truth_unmatched
-Thiruvarur,Tamil Nadu,NFHS5_ground_truth_unmatched
-Thoothukkudi,Tamil Nadu,NFHS5_ground_truth_unmatched
-Tiruchirappalli,Tamil Nadu,NFHS5_ground_truth_unmatched
-Tirunelveli,Tamil Nadu,NFHS5_ground_truth_unmatched
-Tiruppur,Tamil Nadu,NFHS5_ground_truth_unmatched
-Viluppuram,Tamil Nadu,NFHS5_ground_truth_unmatched
-Adilabad,Telangana,NFHS5_ground_truth_unmatched
-Bhadradri Kothagudem,Telangana,NFHS5_ground_truth_unmatched
-Hyderabad,Telangana,NFHS5_ground_truth_unmatched
-Jagitial,Telangana,NFHS5_ground_truth_unmatched
-Jangoan,Telangana,NFHS5_ground_truth_unmatched
-Jayashankar Bhupalapally,Telangana,NFHS5_ground_truth_unmatched
-Jogulamba Gadwal,Telangana,NFHS5_ground_truth_unmatched
-Kamareddy,Telangana,NFHS5_ground_truth_unmatched
-Karimnagar,Telangana,NFHS5_ground_truth_unmatched
-Khammam,Telangana,NFHS5_ground_truth_unmatched
-Komaram Bheem Asifabad,Telangana,NFHS5_ground_truth_unmatched
-Mahabubabad,Telangana,NFHS5_ground_truth_unmatched
-Mahabubnagar,Telangana,NFHS5_ground_truth_unmatched
-Mancherial,Telangana,NFHS5_ground_truth_unmatched
-Medak,Telangana,NFHS5_ground_truth_unmatched
-Medchal-Malkajgiri,Telangana,NFHS5_ground_truth_unmatched
-Nagarkurnool,Telangana,NFHS5_ground_truth_unmatched
-Nalgonda,Telangana,NFHS5_ground_truth_unmatched
-Nirmal,Telangana,NFHS5_ground_truth_unmatched
-Nizamabad,Telangana,NFHS5_ground_truth_unmatched
-Peddapalli,Telangana,NFHS5_ground_truth_unmatched
-Rajanna Sircilla,Telangana,NFHS5_ground_truth_unmatched
-Ranga Reddy,Telangana,NFHS5_ground_truth_unmatched
-Sangareddy,Telangana,NFHS5_ground_truth_unmatched
-Siddipet,Telangana,NFHS5_ground_truth_unmatched
-Suryapet,Telangana,NFHS5_ground_truth_unmatched
-Vikarabad,Telangana,NFHS5_ground_truth_unmatched
-Wanaparthy,Telangana,NFHS5_ground_truth_unmatched
-Warangal Rural,Telangana,NFHS5_ground_truth_unmatched
-Warangal Urban,Telangana,NFHS5_ground_truth_unmatched
-Yadadri Bhuvanagiri,Telangana,NFHS5_ground_truth_unmatched
-Gomati,Tripura,NFHS5_ground_truth_unmatched
-Khowai,Tripura,NFHS5_ground_truth_unmatched
-Sepahijala,Tripura,NFHS5_ground_truth_unmatched
-Unakoti,Tripura,NFHS5_ground_truth_unmatched
-Amethi,Uttar Pradesh,NFHS5_ground_truth_unmatched
-Budaun,Uttar Pradesh,NFHS5_ground_truth_unmatched
-Hapur,Uttar Pradesh,NFHS5_ground_truth_unmatched
-Kanpur Nagar,Uttar Pradesh,NFHS5_ground_truth_unmatched
-Kanshiram Nagar,Uttar Pradesh,NFHS5_ground_truth_unmatched
-Kheri,Uttar Pradesh,NFHS5_ground_truth_unmatched
-Mahamaya Nagar,Uttar Pradesh,NFHS5_ground_truth_unmatched
-Mahrajganj,Uttar Pradesh,NFHS5_ground_truth_unmatched
-Prayagraj,Uttar Pradesh,NFHS5_ground_truth_unmatched
-Sambhal,Uttar Pradesh,NFHS5_ground_truth_unmatched
-Sant Ravidas Nagar (Bhadohi),Uttar Pradesh,NFHS5_ground_truth_unmatched
-Shamli,Uttar Pradesh,NFHS5_ground_truth_unmatched
-Shrawasti,Uttar Pradesh,NFHS5_ground_truth_unmatched
-Hardwar,Uttarakhand,NFHS5_ground_truth_unmatched
-Darjeeling,West Bengal,NFHS5_ground_truth_unmatched
-North Twenty Four Parganas,West Bengal,NFHS5_ground_truth_unmatched
-Paschim Barddhaman,West Bengal,NFHS5_ground_truth_unmatched
-Paschim Medinipur,West Bengal,NFHS5_ground_truth_unmatched
-Purba Barddhaman,West Bengal,NFHS5_ground_truth_unmatched
-Purba Medinipur,West Bengal,NFHS5_ground_truth_unmatched
-South Twenty Four Parganas,West Bengal,NFHS5_ground_truth_unmatched
+side,state,district,best_suggestion,suggestion_score
+boundary,Meghalaya,Jaintia Hills,West Jaintia Hills,0.857
+boundary,Uttar Pradesh,Kanpur,Hapur,0.727
+boundary,West Bengal,Barddhaman,Purba Barddhaman,0.8
+nfhs,Andaman Nicobar Islands,Nicobar,,
+nfhs,Andaman Nicobar Islands,North  & Middle Andaman,,
+nfhs,Andaman Nicobar Islands,South Andaman,,
+nfhs,Andhra Pradesh,Sri Potti Sriramulu Nellore,,
+nfhs,Andhra Pradesh,Y.S.R.,,
+nfhs,Arunachal Pradesh,Anjaw,,
+nfhs,Arunachal Pradesh,Dibang Valley,,
+nfhs,Arunachal Pradesh,East Kameng,,
+nfhs,Arunachal Pradesh,Kra Daadi,,
+nfhs,Arunachal Pradesh,Kurung Kumey,,
+nfhs,Arunachal Pradesh,Longding,,
+nfhs,Arunachal Pradesh,Namsai,,
+nfhs,Arunachal Pradesh,Siang,,
+nfhs,Arunachal Pradesh,Tawang,,
+nfhs,Arunachal Pradesh,Upper Siang,,
+nfhs,Arunachal Pradesh,Upper Subansiri,,
+nfhs,Arunachal Pradesh,West Kameng,,
+nfhs,Assam,Baksa,,
+nfhs,Assam,Biswanath,,
+nfhs,Assam,Charaideo,,
+nfhs,Assam,Chirang,,
+nfhs,Assam,Dima Hasao,,
+nfhs,Assam,Hojai,,
+nfhs,Assam,Kamrup Metropolitan,,
+nfhs,Assam,Majuli,,
+nfhs,Assam,South Salmara Mancachar,,
+nfhs,Assam,Udalguri,,
+nfhs,Assam,West Karbi Anglong,,
+nfhs,Bihar,Arwal,,
+nfhs,Bihar,Kaimur (Bhabua),,
+nfhs,Chhattisgarh,Balod,,
+nfhs,Chhattisgarh,Baloda Bazar,,
+nfhs,Chhattisgarh,Balrampur,,
+nfhs,Chhattisgarh,Bemetara,,
+nfhs,Chhattisgarh,Bijapur,,
+nfhs,Chhattisgarh,Gariyaband,,
+nfhs,Chhattisgarh,Kabeerdham,,
+nfhs,Chhattisgarh,Kodagaon,,
+nfhs,Chhattisgarh,Mungeli,,
+nfhs,Chhattisgarh,Narayanpur,,
+nfhs,Chhattisgarh,Sukma,,
+nfhs,Chhattisgarh,Surajpur,,
+nfhs,Chhattisgarh,Uttar Bastar Kanker,,
+nfhs,Dadra Nagar Haveli Daman Diu,Dadra & Nagar Haveli,,
+nfhs,Dadra Nagar Haveli Daman Diu,Diu,,
+nfhs,Gujarat,Aravali,,
+nfhs,Gujarat,Botad,,
+nfhs,Gujarat,Chhota Udaipur,,
+nfhs,Gujarat,Devbhumi Dwarka,,
+nfhs,Gujarat,Gir Somnath,,
+nfhs,Gujarat,Mahisagar,,
+nfhs,Gujarat,Morbi,,
+nfhs,Gujarat,Tapi,,
+nfhs,Haryana,Charkhi Dadri,,
+nfhs,Haryana,Mewat,,
+nfhs,Haryana,Palwal,,
+nfhs,Jammu Kashmir,Anantnag,,
+nfhs,Jammu Kashmir,Badgam,,
+nfhs,Jammu Kashmir,Bandipore,,
+nfhs,Jammu Kashmir,Baramula,,
+nfhs,Jammu Kashmir,Doda,,
+nfhs,Jammu Kashmir,Ganderbal,,
+nfhs,Jammu Kashmir,Jammu,,
+nfhs,Jammu Kashmir,Kathua,,
+nfhs,Jammu Kashmir,Kishtwar,,
+nfhs,Jammu Kashmir,Kulgam,,
+nfhs,Jammu Kashmir,Kupwara,,
+nfhs,Jammu Kashmir,Pulwama,,
+nfhs,Jammu Kashmir,Punch,,
+nfhs,Jammu Kashmir,Rajouri,,
+nfhs,Jammu Kashmir,Ramban,,
+nfhs,Jammu Kashmir,Reasi,,
+nfhs,Jammu Kashmir,Samba,,
+nfhs,Jammu Kashmir,Shupiyan,,
+nfhs,Jammu Kashmir,Srinagar,,
+nfhs,Jammu Kashmir,Udhampur,,
+nfhs,Jharkhand,Khunti,,
+nfhs,Jharkhand,Ramgarh,,
+nfhs,Karnataka,Chikkaballapura,,
+nfhs,Karnataka,Ramanagara,,
+nfhs,Karnataka,Yadgir,,
+nfhs,Ladakh,Kargil,,
+nfhs,Ladakh,Leh(Ladakh),,
+nfhs,Madhya Pradesh,Agar Malwa,,
+nfhs,Madhya Pradesh,Alirajpur,,
+nfhs,Madhya Pradesh,Khandwa (East Nimar),,
+nfhs,Madhya Pradesh,Khargone (West Nimar),,
+nfhs,Madhya Pradesh,Singrauli,,
+nfhs,Maharashtra,Palghar,,
+nfhs,Manipur,Imphal East,,
+nfhs,Manipur,Imphal West,,
+nfhs,Meghalaya,East Jantia Hills,,
+nfhs,Meghalaya,North Garo Hills,,
+nfhs,Meghalaya,South West Garo Hills,,
+nfhs,Meghalaya,South West Khasi Hills,,
+nfhs,Meghalaya,West Jaintia Hills,,
+nfhs,NCT Delhi,Central,,
+nfhs,NCT Delhi,East,,
+nfhs,NCT Delhi,New Delhi,,
+nfhs,NCT Delhi,North,,
+nfhs,NCT Delhi,North East,,
+nfhs,NCT Delhi,North West,,
+nfhs,NCT Delhi,Shahdara,,
+nfhs,NCT Delhi,South,,
+nfhs,NCT Delhi,South East,,
+nfhs,NCT Delhi,South West,,
+nfhs,NCT Delhi,West,,
+nfhs,Nagaland,Kiphire,,
+nfhs,Nagaland,Longleng,,
+nfhs,Nagaland,Peren,,
+nfhs,Odisha,Anugul,,
+nfhs,Odisha,Balangir,,
+nfhs,Odisha,Bargarh,,
+nfhs,Odisha,Baudh,,
+nfhs,Odisha,Debagarh,,
+nfhs,Odisha,Jagatsinghapur,,
+nfhs,Odisha,Jajapur,,
+nfhs,Odisha,Kendujhar,,
+nfhs,Odisha,Nabarangapur,,
+nfhs,Odisha,Subarnapur,,
+nfhs,Punjab,Barnala,,
+nfhs,Punjab,Fazilka,,
+nfhs,Punjab,Pathankot,,
+nfhs,Punjab,Sahibzada Ajit Singh Nagar,,
+nfhs,Punjab,Shahid Bhagat Singh Nagar,,
+nfhs,Punjab,Tarn Taran,,
+nfhs,Rajasthan,Pratapgarh,,
+nfhs,Sikkim,North  District,,
+nfhs,Sikkim,South District,,
+nfhs,Sikkim,West District,,
+nfhs,Tamil Nadu,Krishnagiri,,
+nfhs,Tamil Nadu,Thiruvarur,,
+nfhs,Tamil Nadu,Tiruppur,,
+nfhs,Telangana,Bhadradri Kothagudem,,
+nfhs,Telangana,Jagitial,,
+nfhs,Telangana,Jangoan,,
+nfhs,Telangana,Jayashankar Bhupalapally,,
+nfhs,Telangana,Jogulamba Gadwal,,
+nfhs,Telangana,Kamareddy,,
+nfhs,Telangana,Komaram Bheem Asifabad,,
+nfhs,Telangana,Mahabubabad,,
+nfhs,Telangana,Mahabubnagar,,
+nfhs,Telangana,Mancherial,,
+nfhs,Telangana,Medchal-Malkajgiri,,
+nfhs,Telangana,Nagarkurnool,,
+nfhs,Telangana,Nirmal,,
+nfhs,Telangana,Peddapalli,,
+nfhs,Telangana,Rajanna Sircilla,,
+nfhs,Telangana,Ranga Reddy,,
+nfhs,Telangana,Sangareddy,,
+nfhs,Telangana,Siddipet,,
+nfhs,Telangana,Suryapet,,
+nfhs,Telangana,Vikarabad,,
+nfhs,Telangana,Wanaparthy,,
+nfhs,Telangana,Warangal Rural,,
+nfhs,Telangana,Warangal Urban,,
+nfhs,Telangana,Yadadri Bhuvanagiri,,
+nfhs,Tripura,Gomati,,
+nfhs,Tripura,Khowai,,
+nfhs,Tripura,Sepahijala,,
+nfhs,Tripura,Unakoti,,
+nfhs,Uttar Pradesh,Amethi,,
+nfhs,Uttar Pradesh,Hapur,,
+nfhs,Uttar Pradesh,Kanpur Nagar,,
+nfhs,Uttar Pradesh,Kanshiram Nagar,,
+nfhs,Uttar Pradesh,Kheri,,
+nfhs,Uttar Pradesh,Mahamaya Nagar,,
+nfhs,Uttar Pradesh,Prayagraj,,
+nfhs,Uttar Pradesh,Sambhal,,
+nfhs,Uttar Pradesh,Shamli,,
+nfhs,West Bengal,North Twenty Four Parganas,,
+nfhs,West Bengal,Paschim Barddhaman,,
+nfhs,West Bengal,Paschim Medinipur,,
+nfhs,West Bengal,Purba Barddhaman,,
+nfhs,West Bengal,Purba Medinipur,,
+nfhs,West Bengal,South Twenty Four Parganas,,
