@@ -1,0 +1,5 @@
+model,r2,mae,rmse,spearman,cat_accuracy,top20_recall,n,beats_mean_baseline,mae_vs_baseline_pct,cv_scheme,tuning
+Dummy,-0.058,0.1146,0.1377,-0.6904,0.3195,0.0,532.0,False,0.0,leave-one-state-out,none
+Ridge,0.2663,0.0908,0.1147,0.5534,0.5414,0.3738,532.0,True,-20.8,leave-one-state-out,none
+RandomForest,0.2879,0.0915,0.113,0.5439,0.5188,0.4486,532.0,True,-20.2,leave-one-state-out,none
+GradientBoosting,0.2448,0.0936,0.1164,0.5101,0.5113,0.4299,532.0,True,-18.3,leave-one-state-out,none

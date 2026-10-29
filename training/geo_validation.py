@@ -63,3 +63,37 @@ def get_group_kfold(n_groups_available: int, max_splits: int = 5):
         print(f"NOTE: only {n_groups_available} states available for CV -- "
               f"using {n_splits}-fold GroupKFold instead of the default {max_splits}-fold.")
     return GroupKFold(n_splits=n_splits)
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 additions: leave-one-state-out and repeated state-grouped K-fold
+# ---------------------------------------------------------------------------
+
+def leave_one_state_out(groups):
+    """Yields (state, train_idx, test_idx) with exactly one state held out per split.
+
+    This is the hardest honest test for a national model: every prediction is
+    made for a state the model has never seen. Rows are positional indexes.
+    """
+    groups = np.asarray(groups)
+    for state in sorted(set(groups)):
+        test_idx = np.where(groups == state)[0]
+        train_idx = np.where(groups != state)[0]
+        yield state, train_idx, test_idx
+
+
+def repeated_group_kfold(groups, n_splits=5, n_repeats=5, seed=42):
+    """Yields (repeat, fold, train_idx, test_idx). Each repeat shuffles the STATES into
+    n_splits folds, so a state is never split between train and test, and different
+    repeats give different groupings. Used as a second view next to leave-one-state-out."""
+    groups = np.asarray(groups)
+    states = np.array(sorted(set(groups)))
+    n_splits = min(n_splits, len(states))
+    if n_splits < 2:
+        raise ValueError("Need at least 2 states for grouped cross-validation.")
+    rng = np.random.RandomState(seed)
+    for rep in range(n_repeats):
+        shuffled = rng.permutation(states)
+        for fold, chunk in enumerate(np.array_split(shuffled, n_splits)):
+            test_mask = np.isin(groups, chunk)
+            yield rep, fold, np.where(~test_mask)[0], np.where(test_mask)[0]

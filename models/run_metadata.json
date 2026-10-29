@@ -1,0 +1,16 @@
+{
+  "data_file": "final_training_table.csv",
+  "data_sha256_16": "ac98f7dad421b388",
+  "n_rows": 529,
+  "n_states": 30,
+  "n_features": 4,
+  "visual_mode": "none",
+  "seed": 42,
+  "tuning": "none",
+  "best_model": "RandomForest",
+  "data_mode": "real",
+  "sklearn": "1.5.1",
+  "pandas": "2.2.2",
+  "numpy": "1.26.4",
+  "timestamp_utc": "2026-10-29T04:27:45.300786+00:00"
+}

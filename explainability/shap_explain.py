@@ -22,21 +22,49 @@ import numpy as np
 import pandas as pd
 
 
+class _PipelineExplainer:
+    """Lets SHAP explain a fitted sklearn Pipeline (clip -> impute -> ... -> model).
+
+    The Phase 2 model is a Pipeline, and shap.TreeExplainer cannot take a Pipeline directly. This wrapper
+    pushes rows through the fitted preprocessing steps and explains the final estimator on the
+    transformed features. With visual mode 'all' or 'none' the transformed columns are the same as the
+    input columns, so the callers below work unchanged. With visual mode 'pca' the visual columns become
+    principal components (pca0, pca1, ...); read the names from .feature_names.
+    """
+
+    def __init__(self, pipeline, X_background):
+        import shap
+        from sklearn.linear_model import LinearRegression, Ridge
+
+        self.pre = pipeline.named_steps["pre"]
+        est = pipeline.named_steps["model"]
+        Xt = self.pre.transform(X_background) if X_background is not None else None
+        self.feature_names = list(Xt.columns) if Xt is not None else None
+        if isinstance(est, (LinearRegression, Ridge)):
+            self._inner = shap.LinearExplainer(est, Xt)
+        else:
+            self._inner = shap.TreeExplainer(est)
+        self.expected_value = self._inner.expected_value
+
+    def shap_values(self, X):
+        return self._inner.shap_values(self.pre.transform(X))
+
+
 def build_explainer(model, X_background: pd.DataFrame):
     """
-    X_background: a representative sample of training rows, used for
-    explainers (e.g. LinearExplainer) that need a background distribution.
-    Tree explainers ignore this if not needed but accept it for a uniform
-    interface.
+    model: a fitted sklearn Pipeline from training/pipelines.py (bundle["model"]), or a bare estimator.
+    X_background: a representative sample of training rows (raw feature columns). Needed by the linear
+    explainer; tree explainers ignore it.
     """
     import shap
-    from sklearn.linear_model import LinearRegression
+    from sklearn.linear_model import LinearRegression, Ridge
 
-    if isinstance(model, LinearRegression):
+    if hasattr(model, "named_steps") and "model" in model.named_steps:
+        return _PipelineExplainer(model, X_background)
+    if isinstance(model, (LinearRegression, Ridge)):
         return shap.LinearExplainer(model, X_background)
-    else:
-        # Works for RandomForestRegressor and XGBRegressor
-        return shap.TreeExplainer(model)
+    # Works for RandomForestRegressor, GradientBoostingRegressor and XGBRegressor
+    return shap.TreeExplainer(model)
 
 
 def global_feature_importance(explainer, X: pd.DataFrame, top_n: int = 15) -> pd.DataFrame:

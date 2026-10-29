@@ -1,0 +1,2 @@
+model,r2,mae,rmse,spearman,cat_accuracy,top20_recall,n,WARNING
+RandomForest,0.4476,0.0805,0.0995,0.6787,0.5602,0.5327,532,LEAKY: random folds ignore states; not a valid accuracy estimate

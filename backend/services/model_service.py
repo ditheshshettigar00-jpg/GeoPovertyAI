@@ -145,22 +145,10 @@ def predict_custom_features(feature_dict: dict) -> dict:
     contributions = []
     base_val = 0.0
     try:
-        import shap
-        model_obj = _model_bundle["model"]
-        if hasattr(model_obj, "named_steps"):
-            tree_model = model_obj.named_steps.get("model", model_obj)
-            X_trans = X.copy()
-            if "clipper" in model_obj.named_steps:
-                X_trans = model_obj.named_steps["clipper"].transform(X_trans)
-            if "imputer" in model_obj.named_steps:
-                X_trans = model_obj.named_steps["imputer"].transform(X_trans)
-            if "scaler" in model_obj.named_steps:
-                X_trans = model_obj.named_steps["scaler"].transform(X_trans)
-            explainer = shap.TreeExplainer(tree_model)
-            shap_values = explainer.shap_values(X_trans)[0]
-        else:
-            explainer = shap.TreeExplainer(model_obj)
-            shap_values = explainer.shap_values(X)[0]
+        from explainability.shap_explain import build_explainer
+        background = _feature_table[_feature_cols] if _feature_table is not None else X
+        explainer = build_explainer(_model_bundle["model"], background)
+        shap_values = explainer.shap_values(X)[0]
         bv = explainer.expected_value
         base_val = float(np.ravel(bv)[0]) if isinstance(bv, (list, np.ndarray)) else float(bv)
 
