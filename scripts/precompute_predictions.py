@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import DB_PATH, MODELS_DIR, SATELLITE_DIR, EXPLAIN_DIR
+from config import DB_PATH, MODELS_DIR, PROCESSED_DIR
 from explainability.shap_explain import build_explainer, local_explanation
 from training.train_models import get_feature_columns
 
@@ -76,61 +76,16 @@ def upsert_area(cur, row, data_mode):
         )
 
 
-def try_generate_gradcam(area_id: int, vgg_feature_weights: np.ndarray) -> str | None:
-    """
-    Attempts to generate a Grad-CAM overlay for this area's satellite image,
-    IF an image file for it exists on disk. Returns the saved path, or None
-    if no image is available (this is expected/normal until Module 2/3's
-    real images -- or Module 1's demo images -- have been generated for
-    this area; it is not treated as an error).
-
-    IMPORTANT: SHAP-derived feature_weights are only meaningful if they
-    came from REAL VGG-16 features (512-d, matching vgg16_feature_extractor.py's
-    pooling='avg' output). Module 1's demo dataset uses a much shorter
-    placeholder vector (DEMO_VGG_FEATURE_COUNT=16) that is NOT actual VGG-16
-    output -- weighting Grad-CAM by those numbers would be meaningless,
-    since they don't correspond to the real network's channels at all. In
-    that case we fall back to unweighted Grad-CAM (still demonstrates the
-    mechanism correctly, just without a SHAP-informed weighting).
-    """
-    from preprocessing.vgg16_feature_extractor import FEATURE_DIM as REAL_VGG_DIM
-
-    candidates = [
-        os.path.join(SATELLITE_DIR, f"district_{area_id:03d}_rgb.png"),
-        os.path.join(SATELLITE_DIR, f"district_{area_id:03d}_rgb.tif"),
-        os.path.join(SATELLITE_DIR, "demo", f"district_{area_id:03d}_DEMO.png"),
-    ]
-    image_path = next((p for p in candidates if os.path.exists(p)), None)
-    if image_path is None:
-        return None
-
-    if vgg_feature_weights is not None and len(vgg_feature_weights) != REAL_VGG_DIM:
-        # Demo placeholder features don't match real VGG-16's dimensionality --
-        # fall back to unweighted Grad-CAM rather than applying meaningless weights.
-        vgg_feature_weights = None
-
-    try:
-        from tensorflow.keras.applications import VGG16
-        from explainability.gradcam import generate_gradcam_for_image
-
-        # NOTE: uses weights=None here only because this sandbox cannot reach
-        # storage.googleapis.com to download real ImageNet weights (see
-        # Module 3 notes). On your machine, swap in weights='imagenet' for a
-        # meaningful heatmap -- see vgg16_feature_extractor.build_feature_extractor().
-        vgg_model = VGG16(weights=None, include_top=False, pooling="avg", input_shape=(224, 224, 3))
-        vgg_model.trainable = False
-
-        out_path = os.path.join(EXPLAIN_DIR, f"gradcam_area_{area_id:03d}.png")
-        generate_gradcam_for_image(vgg_model, image_path, out_path, feature_weights=vgg_feature_weights)
-        return out_path
-    except Exception as e:
-        print(f"  WARNING: Grad-CAM generation failed for area_id={area_id}: {e}")
-        return None
-
-
 def main():
-    parser = argparse.ArgumentParser(description="Precompute predictions + SHAP + Grad-CAM for every area")
-    parser.add_argument("--data", type=str, required=True)
+    default_data = os.path.join(PROCESSED_DIR, "final_training_table.csv")
+    if not os.path.exists(default_data):
+        default_data = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "demo", "demo_training_data.csv")
+
+    parser = argparse.ArgumentParser(description="Precompute predictions + SHAP explanations using out-of-state LOSO scores")
+    parser.add_argument("--data", type=str, default=default_data,
+                        help="Path to feature dataset (default: data/processed/final_training_table.csv)")
+    parser.add_argument("--loso", type=str, default=os.path.join(MODELS_DIR, "loso_predictions.csv"),
+                        help="Path to models/loso_predictions.csv (default: models/loso_predictions.csv)")
     args = parser.parse_args()
 
     df = pd.read_csv(args.data)
@@ -144,63 +99,70 @@ def main():
     X = df[feature_cols]
     explainer = build_explainer(model, X)
 
+    # 1. Read area_id, y_pred_out_of_state, low_80, high_80 from loso_predictions.csv
+    loso_lookup = {}
+    if os.path.exists(args.loso):
+        loso_df = pd.read_csv(args.loso)
+        for _, r in loso_df.iterrows():
+            aid = int(r["area_id"])
+            loso_lookup[aid] = (
+                float(r["y_pred_out_of_state"]),
+                float(r["low_80"]) if pd.notna(r["low_80"]) else None,
+                float(r["high_80"]) if pd.notna(r["high_80"]) else None,
+            )
+        print(f"Loaded {len(loso_lookup)} leave-one-state-out predictions from {args.loso}")
+    else:
+        print(f"WARNING: {args.loso} not found. Falling back to live model inference.")
+
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
-    # Clear previous predictions/explanations for this data_mode so this script is safely re-runnable
-    cur.execute("""DELETE FROM explanations WHERE prediction_id IN
-                   (SELECT prediction_id FROM predictions WHERE model_name = ?)""", (model_name,))
-    cur.execute("DELETE FROM predictions WHERE model_name = ?", (model_name,))
+    # Clear previous predictions/explanations so this script is safely re-runnable
+    cur.execute("DELETE FROM explanations")
+    cur.execute("DELETE FROM predictions")
     conn.commit()
 
     n_done = 0
-    gradcam_dim_warning_shown = False
     for i, row in df.iterrows():
         area_id = int(row["area_id"])
         upsert_area(cur, row, data_mode)
 
-        score = float(model.predict(X.iloc[[i]])[0])
+        if area_id in loso_lookup:
+            score, low_80, high_80 = loso_lookup[area_id]
+        else:
+            score = float(model.predict(X.iloc[[i]])[0])
+            low_80 = None
+            high_80 = None
+
         category = score_to_category(score, thresholds)
 
         cur.execute(
-            """INSERT INTO predictions (area_id, model_name, predicted_score, predicted_category)
-               VALUES (?, ?, ?, ?)""",
-            (area_id, model_name, score, category),
+            """INSERT INTO predictions (area_id, model_name, predicted_score, predicted_category, predicted_low, predicted_high, prediction_type)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (area_id, model_name, score, category, low_80, high_80, "leave-one-state-out"),
         )
         prediction_id = cur.lastrowid
 
         local_expl = local_explanation(explainer, X, i, top_n=8)
         shap_json = json.dumps(local_expl)
 
-        vgg_weights = np.array([
-            next((c["shap_contribution"] for c in local_expl["top_contributions"] if c["feature"] == f), 0.0)
-            for f in feature_cols if f.startswith("vgg_feat_")
-        ], dtype=np.float32)
-
-        if data_mode == "demo" and not gradcam_dim_warning_shown:
-            from preprocessing.vgg16_feature_extractor import FEATURE_DIM as REAL_VGG_DIM
-            if len(vgg_weights) != REAL_VGG_DIM:
-                print(f"  NOTE: demo dataset's vgg_feat_* columns are {len(vgg_weights)}-d "
-                      f"placeholders, not real {REAL_VGG_DIM}-d VGG-16 output -- Grad-CAM will "
-                      f"use unweighted saliency for demo areas instead of SHAP-weighted saliency.")
-                gradcam_dim_warning_shown = True
-
-        gradcam_path = try_generate_gradcam(area_id, vgg_weights if len(vgg_weights) > 0 else None)
-
+        # 4. Skip Grad-CAM in this script, because the model no longer uses images
         cur.execute(
             """INSERT INTO explanations (prediction_id, shap_json, gradcam_image_path)
                VALUES (?, ?, ?)""",
-            (prediction_id, shap_json, gradcam_path),
+            (prediction_id, shap_json, None),
         )
 
         n_done += 1
-        if n_done % 10 == 0:
+        if n_done % 50 == 0 or n_done == len(df):
             print(f"  Processed {n_done}/{len(df)} areas ...")
 
     conn.commit()
     conn.close()
     print(f"\nDone. Precomputed predictions + SHAP explanations for {n_done} areas "
           f"using model '{model_name}' (data_mode='{data_mode}').")
+    if data_mode == "demo":
+        print("REMINDER: predictions computed on SYNTHETIC DEMO data.")
     if data_mode == "demo":
         print("REMINDER: predictions computed on SYNTHETIC DEMO data.")
 

@@ -63,6 +63,8 @@ def predict(area_id):
         "state_name": area["state_name"],
         "data_mode": area["data_mode"],
         "predicted_score": prediction["predicted_score"],
+        "predicted_low": prediction.get("predicted_low"),
+        "predicted_high": prediction.get("predicted_high"),
         "predicted_category": prediction["predicted_category"],
         "model_name": prediction["model_name"],
         "prediction_timestamp": prediction["prediction_timestamp"],

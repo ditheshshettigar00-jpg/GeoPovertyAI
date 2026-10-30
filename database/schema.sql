@@ -83,6 +83,9 @@ CREATE TABLE IF NOT EXISTS predictions (
     predicted_score       REAL NOT NULL,
     predicted_category    TEXT,                  -- 'Low' / 'Medium' / 'High'
     prediction_timestamp   TEXT DEFAULT CURRENT_TIMESTAMP,
+    predicted_low        REAL,                   -- 80% lower bound (leave-one-state-out residual)
+    predicted_high       REAL,                   -- 80% upper bound (leave-one-state-out residual)
+    prediction_type      TEXT DEFAULT 'leave-one-state-out', -- evaluation scheme (e.g. 'leave-one-state-out')
     FOREIGN KEY (area_id) REFERENCES areas(area_id)
 );
 

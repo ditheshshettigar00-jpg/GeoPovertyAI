@@ -41,7 +41,15 @@ def close_connection(e=None):
 def list_areas():
     conn = get_connection()
     rows = conn.execute(
-        "SELECT area_id, area_name, state_name, centroid_lat, centroid_lon, data_mode FROM areas ORDER BY area_id"
+        """SELECT a.area_id, a.area_name, a.state_name, a.centroid_lat, a.centroid_lon, a.data_mode,
+                  p.predicted_score, p.predicted_category, p.predicted_low, p.predicted_high
+           FROM areas a
+           LEFT JOIN predictions p
+             ON p.area_id = a.area_id
+             AND p.prediction_id = (
+                 SELECT MAX(p2.prediction_id) FROM predictions p2 WHERE p2.area_id = a.area_id
+             )
+           ORDER BY a.area_id"""
     ).fetchall()
     return [dict(r) for r in rows]
 
@@ -79,7 +87,7 @@ def get_all_areas_with_predictions():
     conn = get_connection()
     rows = conn.execute(
         """SELECT a.area_id, a.area_name, a.state_name, a.centroid_lat, a.centroid_lon, a.data_mode,
-                  p.predicted_score, p.predicted_category, p.model_name
+                  p.predicted_score, p.predicted_category, p.predicted_low, p.predicted_high, p.model_name
            FROM areas a
            LEFT JOIN predictions p
              ON p.area_id = a.area_id

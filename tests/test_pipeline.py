@@ -322,7 +322,7 @@ def test_final_table_data_ranges_and_integrity():
         assert (b <= 100.0).all(), "builtup_pct values exceed 100%"
         assert (b >= 0.0).all(), "builtup_pct values below 0%"
 
-    # 2. Population density valid range
+    # 2. Population density valid rangepytest tests/test_pipeline.py -k final_table -v
         assert (df["population_density"].dropna() >= 0.0).all()
 
     # 3. No constant columns across real districts
@@ -364,4 +364,68 @@ def test_district_matching_stays_inside_state():
     # Belagavi in Karnataka must NOT match Belagavi in Maharashtra (stays inside state)
     belagavi_match = report[report["gaul_district"] == "Belagavi"].iloc[0]
     assert belagavi_match["method"] == "UNMATCHED"
+
+
+def test_stored_scores_equal_loso_predictions(client):
+    from config import DB_PATH, MODELS_DIR
+    loso_path = os.path.join(MODELS_DIR, "loso_predictions.csv")
+    if not os.path.exists(loso_path) or not os.path.exists(DB_PATH):
+        pytest.skip("loso_predictions.csv or database not available")
+
+    loso_df = pd.read_csv(loso_path)
+    assert len(loso_df) > 0
+
+    import sqlite3
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    # Fetch latest prediction per area
+    cur.execute("""
+        SELECT p.area_id, p.predicted_score, p.predicted_low, p.predicted_high
+        FROM predictions p
+        WHERE p.prediction_id = (
+            SELECT MAX(p2.prediction_id) FROM predictions p2 WHERE p2.area_id = p.area_id
+        )
+    """)
+    db_rows = {row[0]: (row[1], row[2], row[3]) for row in cur.fetchall()}
+    conn.close()
+
+    # Verify stored scores equal loso_predictions.csv values
+    matched_count = 0
+    for _, r in loso_df.iterrows():
+        aid = int(r["area_id"])
+        if aid in db_rows:
+            pred_score, pred_low, pred_high = db_rows[aid]
+            assert np.isclose(pred_score, r["y_pred_out_of_state"], atol=1e-4), (
+                f"Score mismatch for area_id {aid}: db={pred_score}, loso={r['y_pred_out_of_state']}"
+            )
+            if pred_low is not None and pd.notna(r["low_80"]):
+                assert np.isclose(pred_low, r["low_80"], atol=1e-4)
+            if pred_high is not None and pd.notna(r["high_80"]):
+                assert np.isclose(pred_high, r["high_80"], atol=1e-4)
+            matched_count += 1
+
+    assert matched_count == len(loso_df)
+
+    # Also verify API endpoints return predicted_low and predicted_high
+    first_aid = int(loso_df.iloc[0]["area_id"])
+    r_pred = client.get(f"/api/predict/{first_aid}")
+    assert r_pred.status_code == 200
+    d_pred = r_pred.get_json()
+    assert "predicted_low" in d_pred
+    assert "predicted_high" in d_pred
+    assert np.isclose(d_pred["predicted_score"], loso_df.iloc[0]["y_pred_out_of_state"], atol=1e-4)
+
+    r_areas = client.get("/api/areas")
+    assert r_areas.status_code == 200
+    d_areas = r_areas.get_json()
+    assert len(d_areas) > 0
+    assert "predicted_low" in d_areas[0]
+    assert "predicted_high" in d_areas[0]
+
+    r_map = client.get("/api/map")
+    assert r_map.status_code == 200
+    d_map = r_map.get_json()
+    assert len(d_map) > 0
+    assert "predicted_low" in d_map[0]
+    assert "predicted_high" in d_map[0]
 
