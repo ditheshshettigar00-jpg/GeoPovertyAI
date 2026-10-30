@@ -1,5 +1,5 @@
 feature_group,r2_without_group,r2_drop_when_removed
-nightlight,0.2306,0.1366
-vegetation,0.1455,0.2216
-built_up,0.3031,0.064
-population,0.2404,0.1268
+nightlight,0.2894,0.0466
+vegetation,0.1567,0.1793
+built_up,0.2529,0.0831
+population,0.1854,0.1506

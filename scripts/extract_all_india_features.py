@@ -10,6 +10,7 @@ Outputs:
   data/processed/real_geospatial_features.csv  -- merged features for all districts
 """
 import json, os, sys, time
+from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -32,6 +33,13 @@ END_DATE   = GEE_END_DATE
 OUT_CSV    = os.path.join(PROCESSED_DIR, "real_geospatial_features.csv")
 PROGRESS_FILE = "data/raw/gee_extraction_progress.json"
 
+# Speed settings. Earth Engine calls spend most of their time waiting on the network, so several
+# districts can be processed at once. If you see "Too many concurrent" errors, lower MAX_WORKERS.
+MAX_WORKERS = 6
+# District-mean NDVI is practically identical at 30 m and about 9x cheaper than at 10 m.
+# Mention this in the report ("NDVI aggregated at 30 m").
+NDVI_SCALE_M = 30
+
 def mask_s2_clouds(image, ee):
     scl = image.select("SCL")
     good = scl.eq(4).Or(scl.eq(5)).Or(scl.eq(6)).Or(scl.eq(7))
@@ -40,7 +48,7 @@ def mask_s2_clouds(image, ee):
 def reduce_mean(ee, image, geometry, band, scale):
     result = image.select(band).reduceRegion(
         reducer=ee.Reducer.mean(), geometry=geometry,
-        scale=scale, maxPixels=1e9, bestEffort=True
+        scale=scale, maxPixels=1e9, bestEffort=True, tileScale=4
     ).getInfo()
     return result.get(band)
 
@@ -82,14 +90,15 @@ def extract_features(ee, district):
                .map(lambda img: mask_s2_clouds(img, ee)))
         n = col.size().getInfo()
         if n > 0:
-            ndvi = col.median().clip(geom).normalizedDifference(["B8","B4"]).rename("NDVI")
-            row["ndvi_mean"] = reduce_mean(ee, ndvi, geom, "NDVI", 10)
+            ndvi = col.median().normalizedDifference(["B8","B4"]).rename("NDVI")
+            row["ndvi_mean"] = reduce_mean(ee, ndvi, geom, "NDVI", NDVI_SCALE_M)
             row["s2_image_count"] = n
         else:
             row["ndvi_mean"] = None; row["s2_image_count"] = 0   # stays missing, never filled with a median here
     except Exception as ex:
-        row["ndvi_mean"] = None; row["s2_image_count"] = 0
-        print(f"    NDVI error: {ex}")
+        # An error is NOT the same as "no images": leave the count missing so it is not confused with a real zero.
+        row["ndvi_mean"] = None; row["s2_image_count"] = None
+        print(f"    NDVI error for {district['area_name']}: {ex}")
     # GHSL built-up share (true %, survey-period epoch) and population density (people per km2)
     try:
         row["builtup_pct"] = builtup_pct_for(ee, geom)
@@ -102,6 +111,18 @@ def extract_features(ee, district):
         row["population_density"] = None
         print(f"    population error: {ex}")
     return row
+
+def extract_with_retry(ee, district, attempts=3):
+    """Retries transient Earth Engine failures with a short back-off."""
+    for k in range(attempts):
+        try:
+            return extract_features(ee, district)
+        except Exception as ex:
+            if k == attempts - 1:
+                print(f"  [{district['area_name']}] ERROR after {attempts} tries: {ex}")
+                return None
+            time.sleep(2 ** (k + 1))
+
 
 def main():
     ee = initialize_ee()
@@ -142,17 +163,16 @@ def main():
                 json.dump(districts, f)
             print(f"  Saved {len(districts)} district boundaries")
 
-        # Extract features
+        # Extract features (several districts at a time; results keep the original order)
         state_rows = []
-        for d in districts:
-            print(f"  [{d['area_name']}]", end=" ", flush=True)
-            try:
-                row = extract_features(ee, d)
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+            results = pool.map(lambda d: extract_with_retry(ee, d), districts)
+            for d, row in zip(districts, results):
+                if row is None:
+                    continue
                 state_rows.append(row)
-                print(f"nightlight={row.get('nightlight_mean','N/A'):.3f}" if row.get('nightlight_mean') else "done")
-            except Exception as ex:
-                print(f"ERROR: {ex}")
-                time.sleep(2)
+                nl = row.get("nightlight_mean")
+                print(f"  [{d['area_name']}] " + (f"nightlight={nl:.3f}" if nl else "done"), flush=True)
 
         all_rows.extend(state_rows)
 
