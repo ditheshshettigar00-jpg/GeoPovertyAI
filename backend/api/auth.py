@@ -1,6 +1,8 @@
+import collections
 import functools
 import sys
 import os
+import time
 
 from flask import Blueprint, request, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -9,6 +11,37 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from backend.services import db_service
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
+
+# In-memory failed login attempts tracker: (email, ip) -> list of failure timestamps
+FAILED_LOGIN_ATTEMPTS = collections.defaultdict(list)
+RATE_LIMIT_WINDOW_SECONDS = 15 * 60  # 15 minutes
+MAX_FAILED_ATTEMPTS = 5
+
+def _get_client_ip():
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.remote_addr or "127.0.0.1"
+
+def is_login_rate_limited(email: str, ip: str) -> bool:
+    now = time.time()
+    cutoff = now - RATE_LIMIT_WINDOW_SECONDS
+    key = (email.strip().lower(), ip.strip())
+    attempts = [t for t in FAILED_LOGIN_ATTEMPTS.get(key, []) if t > cutoff]
+    FAILED_LOGIN_ATTEMPTS[key] = attempts
+    return len(attempts) >= MAX_FAILED_ATTEMPTS
+
+def record_failed_login(email: str, ip: str):
+    now = time.time()
+    cutoff = now - RATE_LIMIT_WINDOW_SECONDS
+    key = (email.strip().lower(), ip.strip())
+    attempts = [t for t in FAILED_LOGIN_ATTEMPTS.get(key, []) if t > cutoff]
+    attempts.append(now)
+    FAILED_LOGIN_ATTEMPTS[key] = attempts
+
+def clear_failed_logins(email: str, ip: str):
+    key = (email.strip().lower(), ip.strip())
+    FAILED_LOGIN_ATTEMPTS.pop(key, None)
 
 def login_required(view):
     @functools.wraps(view)
@@ -42,8 +75,8 @@ def register():
     import re
     if not re.match(r"[^@]+@[^@]+\.[^@]+", data["email"]):
         return jsonify({"error": "Invalid email format"}), 400
-    if len(data["password"]) < 6:
-        return jsonify({"error": "Password must be at least 6 characters"}), 400
+    if len(data["password"]) < 8:
+        return jsonify({"error": "Password must be at least 8 characters"}), 400
         
     user = db_service.get_user_by_email(data["email"])
     if user:
@@ -65,14 +98,22 @@ def login():
     data = request.get_json(silent=True)
     if not data or not data.get("email") or not data.get("password"):
         return jsonify({"error": "Missing email or password"}), 400
+
+    email = data.get("email", "").strip().lower()
+    ip = _get_client_ip()
+
+    if is_login_rate_limited(email, ip):
+        return jsonify({"error": "Too many failed login attempts. Please try again later."}), 429
         
     user = db_service.get_user_by_email(data["email"])
     if not user or not check_password_hash(user["password_hash"], data["password"]):
+        record_failed_login(email, ip)
         return jsonify({"error": "Invalid email or password"}), 401
         
     if user["status"] != "active":
         return jsonify({"error": "Account is inactive"}), 403
         
+    clear_failed_logins(email, ip)
     session.clear()
     session["user_id"] = user["user_id"]
     

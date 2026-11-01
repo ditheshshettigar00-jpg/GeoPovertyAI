@@ -54,6 +54,14 @@ GHSL_CELL_AREA_M2 = 10_000.0    # one GHSL cell is 100 m x 100 m
 DISTRICT_ALIASES_CSV = os.path.join(GROUND_TRUTH_DIR, "district_name_aliases.csv")
 FUZZY_MATCH_CUTOFF = 0.90
 
+# --------------------------------------------------------------------------
+# Hotspot spatial clustering constants (DBSCAN with Haversine metric)
+# --------------------------------------------------------------------------
+EARTH_RADIUS_KM = 6371.0
+HOTSPOT_DISTANCE_KM = 150.0
+HOTSPOT_EPS = HOTSPOT_DISTANCE_KM / EARTH_RADIUS_KM  # 150 / 6371 radians (~0.02354)
+HOTSPOT_MIN_SAMPLES = 3
+
 # Ensure required directories exist
 for _dir in [RAW_DIR, PROCESSED_DIR, SATELLITE_DIR, GROUND_TRUTH_DIR, DEMO_DIR,
              MODELS_DIR, DATABASE_DIR, EXPLAIN_DIR]:

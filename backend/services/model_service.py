@@ -13,10 +13,12 @@ everything else is served from cache).
 """
 
 import json
+import math
 import os
 import sys
 
 import joblib
+import numpy as np
 import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -88,6 +90,16 @@ def predict_from_features(feature_dict: dict) -> float:
     return float(_model_bundle["model"].predict(X)[0])
 
 
+def get_feature_training_ranges() -> dict:
+    load_artifacts()
+    ranges = {}
+    if _feature_table is not None:
+        for c in _feature_cols:
+            if c in _feature_table.columns:
+                ranges[c] = (float(_feature_table[c].min()), float(_feature_table[c].max()))
+    return ranges
+
+
 def predict_scenario(area_id: int, modified_features: dict):
     """
     Returns (original_score, scenario_score, category_original, category_scenario)
@@ -100,10 +112,29 @@ def predict_scenario(area_id: int, modified_features: dict):
     original_score = predict_from_features(base_features)
 
     scenario_features = dict(base_features)
+    training_ranges = get_feature_training_ranges()
+    warnings = []
+
     for k, v in modified_features.items():
         if k not in scenario_features:
             raise ValueError(f"Unknown feature '{k}'. Valid features: {list(scenario_features.keys())}")
-        scenario_features[k] = float(v)
+        if isinstance(v, bool):
+            raise ValueError(f"Feature '{k}' must be numeric, got boolean {v!r}")
+        try:
+            val = float(v)
+            if not np.isfinite(val):
+                raise ValueError()
+        except (ValueError, TypeError):
+            raise ValueError(f"Feature '{k}' must be numeric, got {v!r}")
+        scenario_features[k] = val
+
+        if k in training_ranges:
+            col_min, col_max = training_ranges[k]
+            if val < col_min or val > col_max:
+                warnings.append(
+                    f"Feature '{k}' value {val} is outside the training range [{col_min:.3f}, {col_max:.3f}]."
+                )
+
     scenario_score = predict_from_features(scenario_features)
 
     return {
@@ -112,6 +143,7 @@ def predict_scenario(area_id: int, modified_features: dict):
         "scenario_score": scenario_score,
         "scenario_category": score_to_category(scenario_score),
         "difference": scenario_score - original_score,
+        "warnings": warnings,
         "model_name": _model_bundle["model_name"],
         "note": "This is a model sensitivity exploration, not a causal simulation. "
                 "Real-world interventions may not produce the same change.",
@@ -127,14 +159,32 @@ def predict_custom_features(feature_dict: dict) -> dict:
     """Runs live model prediction and real-time SHAP explanation for user-provided inputs."""
     import numpy as np
     load_artifacts()
+    training_ranges = get_feature_training_ranges()
+    warnings = []
+
+    # First validate all provided values are strictly numeric
+    for k, v in feature_dict.items():
+        if v is not None:
+            if isinstance(v, bool):
+                raise ValueError(f"Feature '{k}' must be numeric, got boolean {v!r}")
+            try:
+                val = float(v)
+                if not np.isfinite(val):
+                    raise ValueError()
+            except (ValueError, TypeError):
+                raise ValueError(f"Feature '{k}' must be numeric, got {v!r}")
 
     clean_dict = {}
     for c in _feature_cols:
         if c in feature_dict and feature_dict[c] is not None:
-            try:
-                clean_dict[c] = float(feature_dict[c])
-            except (ValueError, TypeError):
-                clean_dict[c] = float(_feature_table[c].median()) if _feature_table is not None and c in _feature_table.columns else 0.0
+            val = float(feature_dict[c])
+            clean_dict[c] = val
+            if c in training_ranges:
+                col_min, col_max = training_ranges[c]
+                if val < col_min or val > col_max:
+                    warnings.append(
+                        f"Feature '{c}' value {val} is outside the training range [{col_min:.3f}, {col_max:.3f}]."
+                    )
         else:
             clean_dict[c] = float(_feature_table[c].median()) if _feature_table is not None and c in _feature_table.columns else 0.0
 
@@ -191,6 +241,7 @@ def predict_custom_features(feature_dict: dict) -> dict:
         "predicted_category": category,
         "base_value": round(base_val, 4),
         "thresholds": _thresholds,
+        "warnings": warnings,
         "model_name": _model_bundle["model_name"],
         "contributions": contributions,
         "interpretation": interpretation,

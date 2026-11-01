@@ -34,16 +34,30 @@ def create_app():
         template_folder=os.path.join(FRONTEND_DIR, "templates"),
         static_folder=os.path.join(FRONTEND_DIR, "static"),
     )
-    # In a production environment, you should restrict CORS to your frontend domain
-    # e.g., CORS(app, resources={r"/api/*": {"origins": "https://yourdomain.com"}})
-    CORS(app)
+    # CORS: allow only origins listed in env CORS_ORIGINS; default is none
+    cors_origins_env = os.environ.get("CORS_ORIGINS", "").strip()
+    if cors_origins_env:
+        origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+    else:
+        origins = []
+    CORS(app, origins=origins)
     
-    # 🚨 SECURITY FIX: Do not use a hardcoded fallback in production!
-    # If FLASK_ENV is production, enforce a real secret key.
-    env = os.environ.get("FLASK_ENV", "development")
-    if env == "production" and "FLASK_SECRET_KEY" not in os.environ:
-        raise RuntimeError("FATAL: FLASK_SECRET_KEY must be set in production!")
-    app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key_geopoverty")
+    # Secret key: read FLASK_SECRET_KEY. Dev key ONLY when FLASK_ENV=development
+    flask_secret_key = os.environ.get("FLASK_SECRET_KEY")
+    flask_env = os.environ.get("FLASK_ENV")
+    if flask_secret_key:
+        app.secret_key = flask_secret_key
+    elif flask_env == "development":
+        app.secret_key = "dev_secret_key_geopoverty"
+    else:
+        raise RuntimeError("FLASK_SECRET_KEY must be set in the environment unless FLASK_ENV=development")
+
+    # Session cookie hardening
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+    # FLASK_DEBUG defaults to False
+    app.config["DEBUG"] = os.environ.get("FLASK_DEBUG", "False").lower() in ["true", "1", "yes"]
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
@@ -138,7 +152,6 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    # 🚨 SECURITY FIX: Never run debug=True in production. Read from environment variable.
-    is_debug = os.environ.get("FLASK_DEBUG", "True").lower() in ["true", "1", "yes"]
+    is_debug = os.environ.get("FLASK_DEBUG", "False").lower() in ["true", "1", "yes"]
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=is_debug, port=port)
