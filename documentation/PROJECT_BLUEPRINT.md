@@ -8,212 +8,201 @@
 * **Project Title:** GeoPoverty AI: Multimodal Explainable AI System for Area-Level Socioeconomic Deprivation Estimation
 * **Domain:** Geospatial Artificial Intelligence (GeoAI), Remote Sensing, Machine Learning, Explainable AI (XAI), Computational Social Science.
 * **Scope & Ethics Statement:** 
-  * Estimates socioeconomic deprivation at the aggregate geographic administrative level (districts / sub-districts).
+  * Estimates socioeconomic deprivation at the aggregate geographic administrative level (districts across India).
   * **Ethical Boundary:** Does **not** classify, profile, or track individual persons or households.
-  * **Statistical Stance:** Treats satellite imagery, nighttime luminosity, and infrastructure density as statistical correlates of poverty, not causal explanations or ground truth. Designed as an automated decision-support research prototype.
-* **Operating Modes:** Dual-mode architecture supporting **Demo Mode** (synthetic 60-district data with zero network/API dependency for instant reproduction) and **Real Data Mode** (Google Earth Engine, OpenStreetMap, Census/NFHS ground truth).
+  * **Statistical Stance:** Treats satellite imagery, nighttime luminosity, and settlement density as statistical correlates of poverty, not causal explanations or ground truth. Designed as an automated decision-support research prototype.
+* **Operating Modes:** Dual-mode architecture supporting **Demo Mode** (synthetic district data with zero network/API dependency for instant reproduction) and **Real Data Mode** (Google Earth Engine, Census/NFHS-5 survey ground truth).
 
 ---
 
 ## 2. Technology Stack & Environment Requirements
 
-### 2.1 Language & Framework Versions
-* **Python Runtime:** Python 3.10 – 3.11 (CPU-compatible, no discrete GPU required)
-* **Web Backend:** Flask 3.0.3, Flask-CORS 4.0.1, Werkzeug
-* **Database / ORM:** SQLite 3 (built-in), SQLAlchemy 2.0.31
-* **Machine Learning:** Scikit-Learn 1.5.1, XGBoost 2.0.3
-* **Deep Learning (Computer Vision):** TensorFlow 2.16.1 (CPU build, VGG-16 feature extraction)
-* **Explainability (XAI):** SHAP 0.45.1 (TreeExplainer, LinearExplainer), Custom Layer-Activation Grad-CAM
-* **Geospatial & Remote Sensing:** GeoPandas 0.14.4, Rasterio 1.3.10, Shapely 2.0.4, OSMnx 1.9.3, EarthEngine-API 0.1.408, Geemap 0.32.1
-* **Report Generation & Utilities:** ReportLab 4.2.0, Pillow 10.4.0, Matplotlib 3.9.0, Pandas 2.2.2, NumPy 1.26.4
-* **Testing:** PyTest 8.2.2
+### 2.1 Language & Framework Versions (Pinned to `requirements.txt`)
+* **Python Runtime:** Python 3.10 – 3.12 (CPU-compatible, standard laptop deployment)
+* **Web Backend:** Flask 3.0.3, Flask-CORS 4.0.1, Werkzeug 3.1.8
+* **Database & Persistence:** SQLite 3 (built-in), SQLAlchemy 2.0.31
+* **Machine Learning & Core Math:** Scikit-Learn 1.5.1, XGBoost 2.0.3, SciPy 1.17.1, Joblib 1.6.0, NumPy 1.26.4, Pandas 2.2.2
+* **Explainability (XAI):** SHAP 0.45.1 (TreeExplainer for tree ensembles and pipelines)
+* **Geospatial & Remote Sensing:** GeoPandas 0.14.4, Rasterio 1.3.10, Shapely 2.0.4, OSMnx 1.9.3, EarthEngine-API 0.1.408, Geemap 0.32.1, PyProj 3.7.2
+* **Visualization & Report Generation:** ReportLab 5.0.1, Pillow 10.4.0, Matplotlib 3.9.0
+* **Testing & Quality Assurance:** PyTest 8.2.2 (**65 passed** tests in automated test suite)
+* **Explored Deep Learning Extension:** TensorFlow 2.16.1 (CPU build, preserved for experimental VGG-16 feature extraction)
 
 ### 2.2 Frontend Stack
 * **Architecture:** Server-side Jinja2 templates coupled with dynamic Vanilla JavaScript client fetch calls.
-* **Styling:** Custom CSS design system (responsive dark/modern styling, CSS variables, glassmorphism cards).
+* **Styling:** Custom CSS design system (responsive clean styling, CSS variables, structured cards).
 * **Mapping Engine:** Leaflet.js (Choropleth polygons, GeoJSON layers, custom tile layers, cluster heatmaps).
-* **Data Visualization:** Chart.js (SHAP feature attribution bar charts, model regression parity plots, residual histograms).
+* **Data Visualization:** Chart.js and customized HTML/CSS horizontal contribution bars with plain-language explanations.
 
 ---
 
 ## 3. Directory & File Organization
 
-```
+```text
 GeoPovertyAI/
 ├── backend/
-│   ├── app.py                      # Flask app factory, session configuration, HTML route controllers
+│   ├── app.py                      # Flask app factory, session security, CORS origin checking
 │   ├── api/
 │   │   ├── routes.py               # Core REST API (areas, predictions, map GeoJSON, XAI, scenarios)
-│   │   ├── auth.py                 # User authentication (register, login, session logout)
+│   │   ├── auth.py                 # User authentication & memory rate limiting (5 failed / 15 min)
 │   │   ├── reports.py              # ReportLab automated PDF executive report generation
-│   │   └── admin.py                # Admin dashboard stats, user role management, audit log viewing
+│   │   └── admin.py                # Admin endpoints, user roles, security audit trail
 │   └── services/
 │       ├── db_service.py           # Thread-safe database querying & transaction service
 │       ├── model_service.py        # Model loading, inference pipeline, live what-if simulation
-│       └── hotspot_service.py      # DBSCAN geospatial clustering of high-deprivation regions
+│       └── hotspot_service.py      # Haversine DBSCAN with 150 km radius clustering
 ├── frontend/
-│   ├── templates/                  # 15 Jinja2 HTML views (home, map, district, compare, whatif, etc.)
+│   ├── templates/                  # Jinja2 HTML views (home, map, district, compare, whatif, etc.)
 │   └── static/
 │       ├── css/                    # Custom CSS design system stylesheets
 │       └── js/                     # Modular client-side controllers (map.js, explain.js, compare.js)
 ├── geospatial/
 │   ├── GEE_SETUP.md                # Google Earth Engine authentication & cloud project instructions
 │   ├── gee_config.py               # Earth Engine asset IDs, projection coordinates, state configurations
-│   ├── fetch_district_boundaries.py# Administrative polygon fetching via FAO GAUL
 │   ├── extract_geospatial_features.py # Extraction for Sentinel-2, VIIRS nightlights, GHSL population
-│   ├── download_satellite_patches.py  # District-centered RGB GeoTIFF/PNG patch downloader
-│   └── extract_accessibility_features.py # OSMnx road network density & distance to amenities
+│   ├── download_satellite_patches.py  # District-centered RGB patch downloader
+│   └── extract_accessibility_features.py # Explored OSMnx extraction script
 ├── preprocessing/
-│   ├── image_preprocessing.py      # Resizing (224x224), min-max normalization, ImageNet preprocessing
-│   ├── vgg16_feature_extractor.py  # Frozen VGG-16 deep feature extractor (512-d pooled vectors)
+│   ├── name_keys.py                # Canonical state-contained district key matching
 │   ├── generate_demo_images.py     # Deterministic synthetic satellite patch generator
-│   └── feature_fusion.py           # Multimodal merge, 3xIQR outlier clipping, median imputation
+│   └── feature_fusion.py           # Multimodal merge, 3xIQR outlier clipping, pipeline imputation
 ├── training/
-│   ├── geo_validation.py           # State-level GroupKFold split preventing spatial autocorrelation leakage
-│   └── train_models.py             # Linear Regression, Random Forest, XGBoost training & tuning
+│   ├── geo_validation.py           # Leave-One-State-Out & RepeatedGroupKFold spatial splitters
+│   ├── pipelines.py                # Pipeline transformers (IQRClipper, median imputer, build_pipeline)
+│   ├── leaky_kfold_demo.py         # Dynamic demonstration of spatial leakage from models/*.csv
+│   └── train_models.py             # Linear, Ridge, RandomForest, GradientBoosting, XGBoost training
 ├── explainability/
 │   ├── shap_explain.py             # SHAP local additive contributions & global feature importance
-│   └── gradcam.py                  # Gradient-weighted Class Activation Mapping for deep feature activations
+│   └── gradcam.py                  # Explored extension: reference Grad-CAM adapter for image models
 ├── database/
-│   ├── schema.sql                  # Complete 8-table relational database DDL
-│   ├── init_db.py                  # Database initialization script
-│   └── geopoverty.db               # SQLite database file
+│   ├── schema.sql                  # Complete relational database DDL with prediction intervals
+│   └── init_db.py                  # Safe migration and database initialization script
 ├── scripts/
-│   ├── generate_demo_data.py       # 60-district synthetic dataset generator with realistic physics
-│   ├── load_demo_to_db.py          # Bulk loader of demo records into SQLite
-│   ├── precompute_predictions.py   # Batch prediction, SHAP, and Grad-CAM offline precomputing
-│   └── run_full_demo_pipeline.sh   # One-command full bootstrap & test runner
+│   ├── create_admin.py             # Interactive admin creation with prompt/env options
+│   ├── generate_results_doc.py     # Dynamic generator of documentation/RESULTS.md & README tables
+│   ├── precompute_predictions.py   # Precompute LOSO out-of-state estimates & consistent SHAP
+│   └── refill_missing_features.py  # Secondary Earth Engine extraction for large districts (250m)
 ├── tests/
-│   └── test_pipeline.py            # Comprehensive 19-test PyTest validation suite
+│   ├── conftest.py                 # Shared test fixtures & client configuration
+│   ├── test_pipeline.py            # Core pipeline and API endpoint tests (26 tests)
+│   ├── test_phase2.py              # Spatial cross-validation & pipeline tests (10 tests)
+│   ├── test_phase3.py              # Additive SHAP equality & safety tests (7 tests)
+│   └── test_security_hotspots.py   # CORS, cookies, rate limiting, DBSCAN tests (22 tests)
 ├── documentation/
-│   └── PROJECT_BLUEPRINT.md        # Complete system blueprint & synopsis reference
-├── config.py                       # Global project directory paths & shared constants
-└── requirements.txt                # Pinned dependency specification
+│   ├── METHODS.md                  # Comprehensive methodology, formulas, and limitations
+│   ├── RESULTS.md                  # Generated benchmark tables from models/*.csv
+│   └── PROJECT_BLUEPRINT.md        # System blueprint and technical specification
+├── config.py                       # Global directory paths, DBSCAN constants, security settings
+└── requirements.txt                # Pinned dependency specification from pip freeze
 ```
 
 ---
 
 ## 4. End-to-End Data Pipeline & Feature Engineering
 
-### 4.1 Data Sources
-1. **Satellite Remote Sensing (Google Earth Engine):**
-   * **Sentinel-2 MultiSpectral Instrument (MSI):** Cloud-masked surface reflectance composites (Bands B4, B3, B2 for RGB; B8 for NIR to calculate Normalized Difference Vegetation Index: $NDVI = \frac{NIR - Red}{NIR + Red}$).
-   * **VIIRS Day/Night Band (DNB):** Monthly average radiance composite representing anthropogenic nocturnal luminosity ($nW \cdot cm^{-2} \cdot sr^{-1}$).
-   * **GHSL (Global Human Settlement Layer):** Built-up surface percentage and population density grids.
-2. **Infrastructure & Accessibility (OpenStreetMap via OSMnx):**
-   * **Road Network Density:** Total drivable road length per unit district area ($km / km^2$).
-   * **Nearest Healthcare Distance:** Euclidean/network distance from district centroid to closest hospital/clinic ($km$).
-   * **Nearest Education Distance:** Distance from district centroid to nearest primary/secondary school ($km$).
-3. **Socioeconomic Ground Truth:**
-   * Government census statistics (e.g., Census of India 2011) or demographic health surveys (NFHS-4/5).
-   * Target variable: Continuous Multidimensional Deprivation Index / Deprivation Score ($Y \in [0.0, 1.0]$).
+### 4.1 Data Sources & Active Features
+The final production model uses **4 features only**, anchored to the NFHS-5 survey window (**2019-11-01 to 2021-04-30**):
+1. **`nightlight_mean`**: VIIRS Day/Night Band monthly radiance ($nW \cdot cm^{-2} \cdot sr^{-1}$).
+2. **`ndvi_mean`**: Cloud-filtered Sentinel-2 surface reflectance (100 m / 250 m scale).
+3. **`builtup_pct`**: Global Human Settlement Layer built-up land percentage (GHSL epoch 2020).
+4. **`population_density`**: GHSL human population density grid (GHSL epoch 2020).
 
-### 4.2 Feature Fusion & Cleaning Pipeline (`feature_fusion.py`)
-* **ID Resolution & Merging:** Inner join on normalized district identifier (`area_id` / `district_name`).
-* **Handling Missing Data:** Median imputation calculated strictly across training folds to prevent target leakage.
-* **Robust Outlier Management:** Deliberately relaxed $3.0 \times \text{IQR}$ threshold clipping. Extreme geographic values (e.g., very high remote mountain road distances or ultra-dense urban centres) represent true real-world signal rather than measurement error.
-* **Feature Vector Composition:**
-  * Tabular features: `nightlight_mean`, `ndvi_mean`, `builtup_pct`, `population_density`, `road_distance_km`, `school_distance_km`, `hospital_distance_km`.
-  * Deep visual features: 512-dimensional bottleneck latent vector $V_1, V_2, \dots, V_{512}$ extracted from district satellite imagery.
+*Explored extensions not in final model:* Deep visual features (VGG-16) were evaluated only in an exploratory run on the original project dataset (data/exploratory/original_table_with_visual_features.csv; 2023 imagery). In that run, leave-one-state-out R2 was 0.3273 without the visual features (using 7 tabular features: 4 satellite + 3 accessibility columns, not the final 4-feature model) and 0.2879 with them, and visual features alone gave 0.0702 (models/exploratory_visual_ablation/ablation_results.csv). They were not re-evaluated on the final 2019-21 data, and the final model does not use them. The accessibility columns in the original dataset (road density, school and hospital distance) could not be traced to an extraction script and were almost perfectly correlated with each other (|r| about 0.96); removing the accessibility columns changed R2 by about 0.003 (0.288 to 0.291) when the visual features were present, so they were not used. An OSM extraction script is included for future work but was not run nationally.
+
+### 4.2 Socioeconomic Ground Truth
+* Derived from the National Family Health Survey 5 (NFHS-5, 2019–2021).
+* Deprivation score is an unweighted composite of 5 min-max scaled indicators: sanitation, electricity, clean cooking fuel, child stunting, and maternal anaemia (see [`documentation/METHODS.md`](METHODS.md)).
+* Continuous ground truth score range: $[0.0, 1.0]$.
+
+### 4.3 Feature Fusion & Pipeline Transformation
+* **ID Resolution & Merging:** State-contained canonical key matching via `preprocessing/name_keys.py`.
+* **Imputation:** Executed as **training-fold median inside the pipeline** to guarantee zero data leakage between training and held-out folds.
+* **Outlier Management:** Relaxed $3.0 \times \text{IQR}$ threshold clipping within the pipeline to preserve legitimate remote or dense geographical signal.
 
 ---
 
 ## 5. Machine Learning & Spatial Cross-Validation
 
 ### 5.1 Spatial Autocorrelation & Geography-Aware Validation (`geo_validation.py`)
-* **The Problem:** Standard random K-Fold cross-validation suffers from severe spatial autocorrelation. Neighboring districts share climate, topography, and governance, artificially inflating cross-validation scores.
-* **Solution:** **Spatial State-Grouped Cross-Validation (`GroupKFold`)**. Entire administrative states are held out as independent test blocks. Models are evaluated on their ability to generalize to unseen geographic territories.
-
-### 5.2 Model Architectures & Hyperparameter Optimization (`train_models.py`)
-1. **Baseline Regressor:** Ordinary Least Squares (OLS) Linear Regression with standard feature scaling.
-2. **Non-Linear Ensemble:** Random Forest Regressor (`n_estimators=100-300`, `max_depth=5-15`, `min_samples_split=2-10`).
-3. **Gradient Boosting:** XGBoost Regressor (`learning_rate=0.01-0.1`, `max_depth=3-7`, `subsample=0.8`, `colsample_bytree=0.8`).
-4. **Model Selection Criteria:** Minimized Root Mean Squared Error ($RMSE$) and Mean Absolute Error ($MAE$), alongside coefficient of determination ($R^2$).
-5. **Categorical Quantile Thresholds:** Training fold tertiles derive boundary thresholds for classifying continuous scores into discrete tiers (`Low`, `Medium`, `High` deprivation).
+* Standard random K-Fold cross-validation yields inflated accuracy due to spatial proximity (Tobler's First Law).
+* **Primary Evaluation Scheme:** **Leave-One-State-Out (LOSO) Cross-Validation**. Entire administrative states are held out as independent test blocks (31 folds across 564 districts).
+* **Secondary Scheme:** Repeated State-Grouped 5-Fold Cross-Validation (`RepeatedGroupKFold`, 5 repeats).
+* **Evaluation Metrics:** Evaluated by MAE, RMSE, $R^2$, and Spearman rank correlation $\rho$. All empirical numbers are reported directly from [`models/model_comparison_results.csv`](../models/model_comparison_results.csv) and tabulated in [`documentation/RESULTS.md`](RESULTS.md).
+* **Best Model:** `RandomForestRegressor` selected as the highest-performing architecture by LOSO RMSE and MAE.
 
 ---
 
 ## 6. Explainable AI (XAI) Architecture
 
 ### 6.1 Tabular Explainability: SHAP (SHapley Additive exPlanations)
-* Implements game-theoretic Shapley values via `shap.TreeExplainer` (for tree ensembles) and `shap.LinearExplainer`.
-* **Additive Decomposition:** Every individual district prediction satisfies:
-  $$\hat{y}_i = \phi_0 + \sum_{j=1}^{M} \phi_{ij}$$
-  Where $\phi_0$ is the base expected value across the training population, and $\phi_{ij}$ is the contribution of feature $j$.
-* Precomputed into structured JSON arrays: `[{"feature": "nightlight_mean", "contribution": -0.12, "value": 14.5}, ...]`.
+* Implemented via `explainability/shap_explain.py` wrapping the Scikit-Learn Pipeline with `shap.TreeExplainer`.
+* **Additive Decomposition Guarantee:** For every district $i$:
+  $$\hat{y}_i = \phi_0 + \sum_{j=1}^{4} \phi_{ij}$$
+  Where $\phi_0$ is the base expected value from training and $\phi_{ij}$ are the exact feature attributions.
+* In [`scripts/precompute_predictions.py`](../scripts/precompute_predictions.py), SHAP values are precomputed per state using the exact LOSO pipeline fitted on other states, ensuring additive consistency with stored out-of-state predicted scores.
+* District pages display plain-language explanations alongside contribution bars with the explicit notice: *"Contributions show what drove this estimate; they describe the model, not causes."*
 
-### 6.2 Computer Vision Explainability: Layer-Activation Grad-CAM
-* Computes gradients of target latent activations with respect to the final convolutional feature maps (`block5_conv3` in VGG-16).
-* Computes spatial importance weight $\alpha_k$ for each filter map $A^k$:
-  $$L_{\text{Grad-CAM}} = \text{ReLU}\left(\sum_k \alpha_k A^k\right)$$
-* Generates a 2D heatmap overlaid onto the original RGB satellite patch, highlighting structural elements (e.g., informal settlements, barren terrain, dense road intersections) driving model representations.
-* Stored as pre-rendered transparent overlay PNG images served via REST API.
+### 6.2 Explored Vision Extension: Grad-CAM
+* Grad-CAM was explored as an extension for convolutional feature extractors in `explainability/gradcam.py`.
+* Because the final model relies exclusively on 4 tabular satellite statistics, Grad-CAM is deactivated in the web interface and API (`gradcam_available: false` with reason: *"The current model uses satellite statistics only, not image features"*). The reference implementation is retained for future image-based models.
 
 ---
 
 ## 7. Spatial Clustering & Hotspot Detection (`hotspot_service.py`)
 
-* **Algorithm:** Density-Based Spatial Clustering of Applications with Noise (DBSCAN) using the Haversine metric on district centroids:
-  $$\text{dist}((\text{lat}_1, \text{lon}_1), (\text{lat}_2, \text{lon}_2)) \le \epsilon$$
-* **Objective:** Automatically detect contiguous regional belts of severe socioeconomic deprivation (High Deprivation Clusters) requiring priority intervention, filtering out isolated outlier districts.
-* Outputs cluster labels, convex hull bounding boxes, and regional vulnerability statistics.
+* **Algorithm:** **Haversine DBSCAN with 150 km radius** (`eps = 150 / 6371 \approx 0.02354` radians, `min_samples = 3`).
+* **Target Filter:** Identifies geographic clusters among districts whose predicted deprivation tier is `'High'` (discretized from empirical training tertiles).
+* Generates regional poverty corridor boundaries, filtering isolated outliers to help planners prioritize contiguous multi-district interventions.
 
 ---
 
 ## 8. Relational Database Schema (`database/schema.sql`)
 
-1. **`users`**: User accounts, passwords (`password_hash`), RBAC roles (`PUBLIC`, `RESEARCHER`, `ADMIN`), account status.
-2. **`areas`**: Geographic district entities, centroid coordinates (`lat`, `lon`), GeoJSON boundary polygons, and `data_mode` (`demo` vs `real`).
-3. **`ground_truth`**: Ground-truth target metrics (`deprivation_score`), data source label, and survey year.
-4. **`satellite_data`**: Metadata for satellite image patches, acquisition timestamps, cloud cover percentage, file paths.
-5. **`geospatial_features`**: Tabular remote sensing & accessibility attributes per district.
-6. **`predictions`**: Model output per district, model identifier (`model_name`), continuous score, and categorical class (`Low`/`Medium`/`High`).
-7. **`explanations`**: Serialized SHAP contribution JSON strings and relative paths to Grad-CAM heatmap PNG files.
-8. **`model_results`**: Historical training and cross-validation performance metrics ($MAE$, $RMSE$, $R^2$) per model version.
-9. **`audit_logs`**: System security auditing recording user ID, action timestamps, and operation details.
+1. **`users`**: User authentication, passwords (`password_hash`), RBAC roles (`PUBLIC`, `RESEARCHER`, `ADMIN`), account status.
+2. **`areas`**: Geographic district records (`area_id`, `area_name`, `state_name`, `centroid_lat`, `centroid_lon`, `data_mode`).
+3. **`ground_truth`**: NFHS-5 survey values (`deprivation_score`, `data_source`, `data_year`).
+4. **`satellite_data`**: Metadata for Sentinel-2 optical imagery.
+5. **`geospatial_features`**: Tabular remote sensing indicators per district.
+6. **`predictions`**: Model predictions per district (`predicted_score`, `predicted_low`, `predicted_high`, `predicted_category`, `prediction_type='leave-one-state-out'`). Displayed district scores are **out-of-state estimates**.
+7. **`explanations`**: Serialized SHAP contribution JSON strings (`shap_json`) matching out-of-state scores.
+8. **`audit_logs`**: Security logging tracking administrative actions.
 
 ---
 
-## 9. REST API & Endpoint Specification
+## 9. REST API Specification
 
 | Method | Endpoint | Description | Access Tier |
 |---|---|---|---|
-| `GET` | `/api/areas` | List of all monitored districts with metadata | Public |
-| `GET` | `/api/predict/<area_id>` | Predicted deprivation score, category, and ranking | Public |
-| `GET` | `/api/map` | Full GeoJSON FeatureCollection with fused predictions | Public |
-| `GET` | `/api/explain/<area_id>` | Detailed SHAP breakdown and base value | Public |
-| `GET` | `/api/gradcam/<area_id>` | Serves visual Grad-CAM heatmap overlay PNG image | Public |
-| `GET` | `/api/model-performance` | Evaluation metrics ($R^2$, $MAE$, $RMSE$) for models | Public |
-| `POST` | `/api/scenario` | Interactive "What-If" simulation on modified feature vector | Public |
-| `POST` | `/api/auth/register` | Create user account with hashed credentials | Public |
-| `POST` | `/api/auth/login` | Authenticate and initialize Flask session | Public |
-| `GET` | `/api/auth/logout` | Terminate session | Public |
-| `GET` | `/api/reports/district/<id>`| Automated PDF generation of district dossier | Researcher / Admin |
-| `GET` | `/api/admin/stats` | System-wide statistics and data health monitoring | Admin |
-| `POST` | `/api/admin/user/<id>/role`| Update user authorization role | Admin |
-| `GET` | `/api/admin/audit-logs` | Retrieve chronological security audit records | Admin |
+| `GET` | `/api/areas` | List of all monitored districts with coordinates | Public |
+| `GET` | `/api/predict/<area_id>` | Predicted score, 80% range, category, and satellite status | Public |
+| `GET` | `/api/map` | Full district list with predictions for Leaflet choropleth | Public |
+| `GET` | `/api/explain/<area_id>` | SHAP values, base value, and `gradcam_available: false` | Public |
+| `GET` | `/api/satellite-image/<id>`| Real Sentinel-2 RGB patch (demo images never served for real districts) | Public |
+| `GET` | `/api/hotspots` | Haversine DBSCAN clusters for High-deprivation districts | Public |
+| `GET` | `/api/model-performance` | LOSO validation benchmarks from `model_comparison_results.csv` | Public |
+| `POST` | `/api/scenario` | Live What-If policy simulation on user-modified features | Public |
+| `POST` | `/api/auth/register` | Register new user account with hashed password | Public |
+| `POST` | `/api/auth/login` | Session login with rate limiting (5 failed / 15 min) | Public |
+| `GET` | `/api/auth/logout` | Terminate session and clear cookie | Public |
+| `GET` | `/api/reports/district/<id>`| ReportLab PDF executive dossier generation | Public |
 
 ---
 
-## 10. Frontend User Interface Modules
+## 10. Frontend Modules
 
-1. **Executive Dashboard (`home.html`):** High-level summary of national deprivation, top vulnerable districts, and quick navigation.
-2. **Interactive Spatial Map (`map.html`):** Leaflet choropleth with dynamic color ramps, district popups, layer toggle (Satellite vs OpenStreetMap), and filtering.
-3. **Unified District Deep-Dive (`district.html` / `explanation.html`):** Detailed scorecard combining satellite patch view, Grad-CAM attention heatmap, and Chart.js horizontal SHAP feature attribution bar chart.
-4. **Comparative Analysis (`compare.html`):** Side-by-side radar and bar chart evaluation of up to 5 districts across all geospatial and socioeconomic metrics.
-5. **Spatial Hotspot Map (`hotspots.html`):** DBSCAN cluster visualization showing prioritized intervention corridors.
-6. **Policy Scenario "What-If" Simulator (`whatif.html`):** Sliders allowing planners to simulate the impact of infrastructure investments (e.g., building roads or hospitals) on estimated deprivation.
-7. **Data Quality & Ingestion Health (`data_quality.html`):** Missing value audits, outlier checks, and distribution histograms.
-8. **Administration Portal (`admin_dashboard.html`):** User management, role elevation, and audit logs.
+1. **Executive Dashboard (`home.html`):** National deprivation summary, top vulnerable districts, and navigation.
+2. **Interactive Spatial Map (`map.html`):** Leaflet choropleth rendering out-of-state scores with dynamic filtering.
+3. **District Deep-Dive (`district.html`):** Scorecard with out-of-state estimate, 80% range, plain-language SHAP bars, and Sentinel-2 satellite image (or *"No satellite image available"*).
+4. **Comparative Analysis (`compare.html`):** Side-by-side evaluation of 2 to 5 districts across satellite indicators.
+5. **Spatial Hotspots (`hotspots.html`):** Interactive visualization of Haversine DBSCAN clusters.
+6. **Policy Scenario Simulator (`whatif.html`):** Sliders allowing live simulation of shifts across the 4 satellite indicators using the final model.
 
 ---
 
 ## 11. Testing & Quality Assurance
 
-* **PyTest Suite (`tests/test_pipeline.py`):** 19 automated unit and integration tests:
-  * Synthetic dataset generation integrity (schema, ranges, null absence).
-  * Feature fusion edge cases (missing attributes, duplicate handling, IQR clipping).
-  * Geography-aware state partition validity (zero overlap between train and test states).
-  * Model training, parameter serialization, and threshold derivation.
-  * REST API response status codes, payload schemas, and error boundaries (404 on missing districts, 400 on malformed scenario inputs).
-* **Reproduction Script:** `scripts/run_full_demo_pipeline.sh` executes the complete pipeline from scratch in under 3 minutes on any standard dual-core laptop.
+* **PyTest Suite:** **65 automated unit and integration tests** passing with 0 failures:
+  - `tests/test_phase2.py`: Spatial cross-validation integrity, pipeline imputation, prediction intervals (10 tests).
+  - `tests/test_phase3.py`: Additive SHAP equality ($\le 10^{-4}$), Grad-CAM deactivation, satellite image safety (7 tests).
+  - `tests/test_pipeline.py`: Feature fusion, API endpoints, authentication, district matching (26 tests).
+  - `tests/test_security_hotspots.py`: CORS origin validation, session cookie flags, rate limiting, DBSCAN clustering (22 tests).

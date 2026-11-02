@@ -1,6 +1,11 @@
 """
 gradcam.py
 ------------
+NOTE: This module is for image-based models only (VGG-16 feature extractor
+pipeline). The current GeoPoverty AI model uses satellite statistics
+(tabular features) only — Grad-CAM is not applicable. This module is
+preserved for reference when image-based models are used.
+
 Grad-CAM for a VGG-16 FEATURE EXTRACTOR (not a classifier).
 
 IMPORTANT DESIGN NOTE: textbook Grad-CAM explains a classifier's predicted

@@ -4,65 +4,74 @@ leaky_kfold_demo.py
 DEMONSTRATION OF SPATIAL DATA LEAKAGE (TOBLER'S FIRST LAW).
 
 WARNING:
-This script intentionally runs a standard random (non-grouped) KFold split
-to illustrate why geography-aware validation is essential in geospatial AI.
-
+This script illustrates why geography-aware validation is essential in geospatial AI.
 In spatial datasets, adjacent administrative districts share geographic,
 climatic, and socioeconomic features. Randomly splitting districts allows
-the model to train on a district (e.g. Bangalore Urban) and test on its
-immediate neighbor (e.g. Bangalore Rural), artificially inflating performance.
+the model to train on a district and test on its immediate neighbor,
+artificially inflating performance.
 
-Compare the results here (R2 ~ 0.48) with the honest state-held-out cross-validation
-(R2 ~ 0.32) in training/train_models.py.
+Metrics are loaded directly from models/leaky_random_kfold_results.csv and
+models/model_comparison_results.csv rather than using hardcoded values.
 """
 
 import os
 import sys
-import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import KFold
-from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
-from scipy.stats import spearmanr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import PROCESSED_DIR, RANDOM_SEED
+from config import MODELS_DIR
 
-def run_leaky_kfold(data_path=None):
-    if data_path is None:
-        data_path = os.path.join(PROCESSED_DIR, "final_training_table.csv")
 
-    df = pd.read_csv(data_path)
-    features = ["nightlight_mean", "ndvi_mean", "builtup_pct", "population_density"]
-    X = df[features].values
-    y = df["deprivation_score"].values
+def print_leakage_comparison():
+    leaky_path = os.path.join(MODELS_DIR, "leaky_random_kfold_results.csv")
+    honest_path = os.path.join(MODELS_DIR, "model_comparison_results.csv")
 
-    kf = KFold(n_splits=5, shuffle=True, random_state=RANDOM_SEED)
-    y_pred = np.zeros_like(y)
+    if not os.path.exists(leaky_path) or not os.path.exists(honest_path):
+        print("Error: models/leaky_random_kfold_results.csv or models/model_comparison_results.csv not found.")
+        return
 
-    for train_idx, test_idx in kf.split(X, y):
-        rf = RandomForestRegressor(
-            n_estimators=150, max_depth=10, min_samples_leaf=3, random_state=RANDOM_SEED, n_jobs=-1
-        )
-        rf.fit(X[train_idx], y[train_idx])
-        y_pred[test_idx] = rf.predict(X[test_idx])
+    leaky_df = pd.read_csv(leaky_path)
+    honest_df = pd.read_csv(honest_path)
 
-    r2 = r2_score(y, y_pred)
-    mae = mean_absolute_error(y, y_pred)
-    rmse = np.sqrt(mean_squared_error(y, y_pred))
-    sp = spearmanr(y, y_pred)[0]
+    # Pick the best model (RandomForest)
+    rf_leaky = leaky_df.iloc[0]
+    best_model_name = rf_leaky["model"]
+    rf_honest = honest_df[honest_df["model"] == best_model_name].iloc[0]
 
-    print("\n" + "=" * 65)
-    print("WARNING: LEAKY MODEL RESULTS (RANDOM 5-FOLD CV, NO SPATIAL GROUPING)")
-    print("=" * 65)
-    print(f"R2 Score:              {r2:.4f}  (Inflated by ~50% due to spatial autocorrelation)")
-    print(f"Mean Absolute Error:   {mae:.4f}  (Artificially deflated)")
-    print(f"Root Mean Squared Err: {rmse:.4f}")
-    print(f"Spearman Correlation:  {sp:.4f}")
-    print("=" * 65)
-    print("CONCLUSION: Always use Leave-One-State-Out or GroupKFold in production.")
+    leaky_r2 = float(rf_leaky["r2"])
+    leaky_mae = float(rf_leaky["mae"])
+    leaky_rmse = float(rf_leaky["rmse"])
+    leaky_sp = float(rf_leaky["spearman"])
 
-    return {"r2": r2, "mae": mae, "rmse": rmse, "spearman": sp}
+    honest_r2 = float(rf_honest["r2"])
+    honest_mae = float(rf_honest["mae"])
+    honest_rmse = float(rf_honest["rmse"])
+    honest_sp = float(rf_honest["spearman"])
+
+    r2_diff = leaky_r2 - honest_r2
+    r2_pct = (r2_diff / abs(honest_r2)) * 100 if honest_r2 != 0 else 0.0
+
+    print("\n" + "=" * 70)
+    print("SPATIAL DATA LEAKAGE DEMONSTRATION (TOBLER'S FIRST LAW)")
+    print("=" * 70)
+    print(f"Model Evaluated: {best_model_name}")
+    print("-" * 70)
+    print(f"{'Metric':<20} | {'Honest LOSO':<16} | {'Leaky Random 5-Fold':<18} | {'Difference':<12}")
+    print("-" * 70)
+    print(f"{'R2 Score':<20} | {honest_r2:<16.4f} | {leaky_r2:<18.4f} | {r2_diff:+.4f} ({r2_pct:+.1f}%)")
+    print(f"{'MAE':<20} | {honest_mae:<16.4f} | {leaky_mae:<18.4f} | {leaky_mae - honest_mae:+.4f}")
+    print(f"{'RMSE':<20} | {honest_rmse:<16.4f} | {leaky_rmse:<18.4f} | {leaky_rmse - honest_rmse:+.4f}")
+    print(f"{'Spearman rho':<20} | {honest_sp:<16.4f} | {leaky_sp:<18.4f} | {leaky_sp - honest_sp:+.4f}")
+    print("=" * 70)
+    print(f"Notice: Random splitting inflates R2 from {honest_r2:.4f} to {leaky_r2:.4f} ({r2_pct:+.1f}%).")
+    print("CONCLUSION: Always use Leave-One-State-Out or state-grouped CV in production.")
+    print("=" * 70 + "\n")
+
+    return {
+        "honest": {"r2": honest_r2, "mae": honest_mae, "rmse": honest_rmse, "spearman": honest_sp},
+        "leaky": {"r2": leaky_r2, "mae": leaky_mae, "rmse": leaky_rmse, "spearman": leaky_sp},
+    }
+
 
 if __name__ == "__main__":
-    run_leaky_kfold()
+    print_leakage_comparison()

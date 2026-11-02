@@ -1,0 +1,11 @@
+{
+  "80": {
+    "lower": -0.14110204684001187,
+    "upper": 0.1540619766308691
+  },
+  "90": {
+    "lower": -0.16789207928946054,
+    "upper": 0.19787995247114012
+  },
+  "note": "Add 'lower'/'upper' to a prediction to get the interval. Derived from leave-one-state-out residuals, i.e. the error made for states the model had not seen."
+}

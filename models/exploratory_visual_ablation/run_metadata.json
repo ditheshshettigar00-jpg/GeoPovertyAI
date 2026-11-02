@@ -1,0 +1,16 @@
+{
+  "data_file": "original_table_with_visual_features.csv",
+  "data_sha256_16": "7a850a9a894d1d60",
+  "n_rows": 532,
+  "n_states": 29,
+  "n_features": 23,
+  "visual_mode": "all",
+  "seed": 42,
+  "tuning": "none",
+  "best_model": "RandomForest",
+  "data_mode": "real",
+  "sklearn": "1.5.1",
+  "pandas": "2.2.2",
+  "numpy": "1.26.4",
+  "timestamp_utc": "2026-11-02T00:48:29.226823+00:00"
+}

@@ -7,6 +7,15 @@ venv/
 .venv/
 env/
 
+# --- Model & Data Backups ---
+models_before_*
+models_*backup*
+data/backup_old_extraction/
+
+# --- SQLite Databases ---
+database/*.db
+*.db
+
 # --- Python bytecode & cache ---
 __pycache__/
 *.py[cod]
@@ -16,8 +25,9 @@ __pycache__/
 # --- Pytest ---
 .pytest_cache/
 
-# --- Application cache ---
+# --- Application cache & temp ---
 cache/
+data/processed/temp/
 
 # --- IDE / Editor files ---
 .vscode/
@@ -43,3 +53,6 @@ build/
 .env
 .env.local
 
+# --- Exploratory Visual Ablation Models ---
+models/exploratory_visual_ablation/*.pkl
+database/*.db

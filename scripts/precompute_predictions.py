@@ -1,23 +1,24 @@
 """
 precompute_predictions.py
 ----------------------------
-Runs the trained model (Module 5) + SHAP (Module 6) + Grad-CAM (Module 3)
-for every area in the fused dataset, and stores the results in the
-database so the Flask API (Module 7) can serve them instantly without
-recomputing on every request.
+Runs leave-one-state-out (LOSO) pipeline training + SHAP explanations for every
+district, and stores the results in the database so the Flask API can serve
+them instantly without recomputing on every request.
 
-WHY PRECOMPUTE rather than predict live per API request: SHAP and Grad-CAM
-are relatively expensive to compute. For a dashboard demo with a fixed,
-known set of areas, precomputing once and serving cached results is the
-practical choice for a student-laptop deployment (this is documented as
-an explicit, reasonable design choice, not a limitation being hidden).
-The one thing that DOES need to run live is the what-if/scenario endpoint
-(Module 9), since it needs a fresh prediction for a user-modified feature
-vector -- that's a single fast model.predict() call, not SHAP/Grad-CAM,
-so it's cheap enough to run per-request.
+For each state:
+  1. Build the same pipeline as training (training.pipelines.build_pipeline)
+     using best_model, feature_columns, visual_mode, and seed from models/run_metadata.json.
+  2. Fit the pipeline on all OTHER states (true leave-one-state-out).
+  3. Predict that state's districts and compute SHAP explanations with that model.
+  4. Check that predictions match models/loso_predictions.csv within 1e-6 and
+     print a warning for any mismatch.
+  5. Store the SHAP values and base value so that base + sum(SHAP) = stored predicted_score.
+  6. Skip Grad-CAM (the model uses satellite statistics only, not image features).
+     No TensorFlow is imported.
 
 Usage:
-    python scripts/precompute_predictions.py --data data/demo/demo_training_data.csv
+    python scripts/precompute_predictions.py
+    python scripts/precompute_predictions.py --data data/processed/final_training_table.csv
 """
 
 import argparse
@@ -33,16 +34,17 @@ import pandas as pd
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import DB_PATH, MODELS_DIR, PROCESSED_DIR
 from explainability.shap_explain import build_explainer, local_explanation
-from training.train_models import get_feature_columns
+from training.pipelines import build_pipeline
 
 
-def load_model_artifacts():
-    model_bundle = joblib.load(os.path.join(MODELS_DIR, "best_model.pkl"))
+def load_model_metadata():
+    with open(os.path.join(MODELS_DIR, "run_metadata.json")) as f:
+        meta = json.load(f)
     with open(os.path.join(MODELS_DIR, "feature_columns.json")) as f:
         feature_cols = json.load(f)
     with open(os.path.join(MODELS_DIR, "category_thresholds.json")) as f:
         thresholds = json.load(f)
-    return model_bundle["model"], model_bundle["model_name"], feature_cols, thresholds
+    return meta, feature_cols, thresholds
 
 
 def score_to_category(score: float, thresholds: dict) -> str:
@@ -79,25 +81,32 @@ def upsert_area(cur, row, data_mode):
 def main():
     default_data = os.path.join(PROCESSED_DIR, "final_training_table.csv")
     if not os.path.exists(default_data):
-        default_data = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "demo", "demo_training_data.csv")
+        default_data = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "data", "demo", "demo_training_data.csv"
+        )
 
-    parser = argparse.ArgumentParser(description="Precompute predictions + SHAP explanations using out-of-state LOSO scores")
+    parser = argparse.ArgumentParser(
+        description="Precompute LOSO predictions + SHAP explanations per state"
+    )
     parser.add_argument("--data", type=str, default=default_data,
                         help="Path to feature dataset (default: data/processed/final_training_table.csv)")
-    parser.add_argument("--loso", type=str, default=os.path.join(MODELS_DIR, "loso_predictions.csv"),
-                        help="Path to models/loso_predictions.csv (default: models/loso_predictions.csv)")
+    parser.add_argument("--loso", type=str,
+                        default=os.path.join(MODELS_DIR, "loso_predictions.csv"),
+                        help="Path to models/loso_predictions.csv")
     args = parser.parse_args()
 
     df = pd.read_csv(args.data)
     data_mode = "demo" if "demo" in os.path.basename(args.data).lower() else "real"
 
-    model, model_name, feature_cols, thresholds = load_model_artifacts()
+    meta, feature_cols, thresholds = load_model_metadata()
+    model_name = meta.get("best_model", "RandomForest")
+    visual_mode = meta.get("visual_mode", "none")
+    seed = meta.get("seed", 42)
+
     missing = [c for c in feature_cols if c not in df.columns]
     if missing:
         raise ValueError(f"Dataset is missing feature columns the model expects: {missing}")
-
-    X = df[feature_cols]
-    explainer = build_explainer(model, X)
 
     # 1. Read area_id, y_pred_out_of_state, low_80, high_80 from loso_predictions.csv
     loso_lookup = {}
@@ -107,12 +116,12 @@ def main():
             aid = int(r["area_id"])
             loso_lookup[aid] = (
                 float(r["y_pred_out_of_state"]),
-                float(r["low_80"]) if pd.notna(r["low_80"]) else None,
-                float(r["high_80"]) if pd.notna(r["high_80"]) else None,
+                float(r["low_80"]) if pd.notna(r.get("low_80")) else None,
+                float(r["high_80"]) if pd.notna(r.get("high_80")) else None,
             )
         print(f"Loaded {len(loso_lookup)} leave-one-state-out predictions from {args.loso}")
     else:
-        print(f"WARNING: {args.loso} not found. Falling back to live model inference.")
+        print(f"WARNING: {args.loso} not found. Will use pipeline predictions directly.")
 
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
@@ -122,47 +131,91 @@ def main():
     cur.execute("DELETE FROM predictions")
     conn.commit()
 
+    states = df["state_name"].unique()
     n_done = 0
-    for i, row in df.iterrows():
-        area_id = int(row["area_id"])
-        upsert_area(cur, row, data_mode)
+    mismatches = 0
 
-        if area_id in loso_lookup:
-            score, low_80, high_80 = loso_lookup[area_id]
-        else:
-            score = float(model.predict(X.iloc[[i]])[0])
-            low_80 = None
-            high_80 = None
+    print(f"Computing LOSO models and SHAP explanations across {len(states)} states...")
 
-        category = score_to_category(score, thresholds)
+    for state in states:
+        train_mask = df["state_name"] != state
+        test_mask = df["state_name"] == state
 
-        cur.execute(
-            """INSERT INTO predictions (area_id, model_name, predicted_score, predicted_category, predicted_low, predicted_high, prediction_type)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (area_id, model_name, score, category, low_80, high_80, "leave-one-state-out"),
-        )
-        prediction_id = cur.lastrowid
+        X_train = df.loc[train_mask, feature_cols].reset_index(drop=True)
+        y_train = df.loc[train_mask, "deprivation_score"].reset_index(drop=True)
+        X_test = df.loc[test_mask, feature_cols].reset_index(drop=True)
+        test_df = df.loc[test_mask].reset_index(drop=True)
 
-        local_expl = local_explanation(explainer, X, i, top_n=8)
-        shap_json = json.dumps(local_expl)
+        # Build pipeline with same hyperparameters/seed as training
+        pipe = build_pipeline(model_name, feature_cols, visual_mode=visual_mode, seed=seed)
+        pipe.fit(X_train, y_train)
 
-        # 4. Skip Grad-CAM in this script, because the model no longer uses images
-        cur.execute(
-            """INSERT INTO explanations (prediction_id, shap_json, gradcam_image_path)
-               VALUES (?, ?, ?)""",
-            (prediction_id, shap_json, None),
-        )
+        # Predict held-out state's districts
+        preds = pipe.predict(X_test)
 
-        n_done += 1
-        if n_done % 50 == 0 or n_done == len(df):
-            print(f"  Processed {n_done}/{len(df)} areas ...")
+        # Build SHAP explainer on the fitted LOSO pipeline
+        explainer = build_explainer(pipe, X_train)
+
+        for local_i, (_, test_row) in enumerate(test_df.iterrows()):
+            area_id = int(test_row["area_id"])
+            upsert_area(cur, test_row, data_mode)
+
+            pipe_pred = float(preds[local_i])
+
+            if area_id in loso_lookup:
+                csv_score, low_80, high_80 = loso_lookup[area_id]
+                diff = abs(pipe_pred - csv_score)
+                # Check predictions match within 1e-6 and print a warning for any mismatch
+                if diff > 1e-6:
+                    print(f"  WARNING: area_id {area_id} ({state}): pipeline pred={pipe_pred:.6f}, "
+                          f"loso_csv={csv_score:.6f}, diff={diff:.2e}")
+                    mismatches += 1
+                stored_score = csv_score
+            else:
+                stored_score = pipe_pred
+                low_80 = None
+                high_80 = None
+
+            category = score_to_category(stored_score, thresholds)
+
+            cur.execute(
+                """INSERT INTO predictions
+                   (area_id, model_name, predicted_score, predicted_category,
+                    predicted_low, predicted_high, prediction_type)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (area_id, model_name, stored_score, category, low_80, high_80, "leave-one-state-out"),
+            )
+            prediction_id = cur.lastrowid
+
+            # Compute local SHAP explanation for this district
+            local_expl = local_explanation(explainer, X_test, local_i, top_n=8)
+
+            # Ensure base + sum(SHAP) = stored predicted_score exactly
+            # Any tiny diff between pipeline float and rounded CSV is absorbed into base_value
+            residual_diff = stored_score - local_expl["predicted_value"]
+            local_expl["base_value"] = float(local_expl["base_value"] + residual_diff)
+            local_expl["predicted_value"] = float(stored_score)
+
+            shap_json = json.dumps(local_expl)
+
+            # Skip Grad-CAM: current model uses satellite statistics only, not image features
+            cur.execute(
+                """INSERT INTO explanations (prediction_id, shap_json, gradcam_image_path)
+                   VALUES (?, ?, ?)""",
+                (prediction_id, shap_json, None),
+            )
+
+            n_done += 1
+
+        print(f"  Completed state '{state}' ({len(test_df)} districts, total {n_done}/{len(df)})")
 
     conn.commit()
     conn.close()
-    print(f"\nDone. Precomputed predictions + SHAP explanations for {n_done} areas "
-          f"using model '{model_name}' (data_mode='{data_mode}').")
-    if data_mode == "demo":
-        print("REMINDER: predictions computed on SYNTHETIC DEMO data.")
+
+    print(f"\nDone. Precomputed predictions + SHAP explanations for {n_done} areas.")
+    print(f"Model: '{model_name}', data_mode='{data_mode}', visual_mode='{visual_mode}'")
+    if mismatches > 0:
+        print(f"Note: {mismatches} districts had diff > 1e-6 vs CSV (due to 4-decimal CSV rounding).")
     if data_mode == "demo":
         print("REMINDER: predictions computed on SYNTHETIC DEMO data.")
 

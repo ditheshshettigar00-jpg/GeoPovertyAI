@@ -25,15 +25,58 @@ from backend.services import db_service, model_service, hotspot_service
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
 
-def _find_satellite_image(area_id: int, data_mode: str = "real"):
-    candidates = [
-        os.path.join(SATELLITE_DIR, f"district_{area_id:03d}_rgb.png"),
-        os.path.join(SATELLITE_DIR, f"district_{area_id:03d}_rgb.tif"),
-        os.path.join(SATELLITE_DIR, f"district_{area_id}_rgb.png"),
+def _find_satellite_image(area_id: int, area_name: str = None, state_name: str = None, data_mode: str = "real"):
+    """
+    Returns (path, is_demo) or (None, False).
+    - For real districts (data_mode == 'real'):
+      Only returns an image if a real image exists for that district's state and name
+      (file name pattern state_district_rgb.png).
+      Never returns a demo image (name contains DEMO).
+    - For demo districts (data_mode == 'demo'):
+      Can return demo images (labeled as illustrative demo images).
+    """
+    if area_name is None or state_name is None:
+        area = db_service.get_area(area_id)
+        if area:
+            area_name = area.get("area_name", "")
+            state_name = area.get("state_name", "")
+            data_mode = area.get("data_mode", data_mode)
+        else:
+            area_name = ""
+            state_name = ""
+
+    if data_mode == "real":
+        if state_name and area_name:
+            from preprocessing.name_keys import clean_key
+            sk = clean_key(state_name)
+            dk = clean_key(area_name)
+            s_under = state_name.strip().replace(" ", "_")
+            d_under = area_name.strip().replace(" ", "_")
+            s_lower_under = state_name.strip().lower().replace(" ", "_")
+            d_lower_under = area_name.strip().lower().replace(" ", "_")
+
+            candidates = [
+                os.path.join(SATELLITE_DIR, f"{sk}_{dk}_rgb.png"),
+                os.path.join(SATELLITE_DIR, f"{s_lower_under}_{d_lower_under}_rgb.png"),
+                os.path.join(SATELLITE_DIR, f"{s_under}_{d_under}_rgb.png"),
+                os.path.join(SATELLITE_DIR, "real", f"{sk}_{dk}_rgb.png"),
+                os.path.join(SATELLITE_DIR, "real", f"{s_lower_under}_{d_lower_under}_rgb.png"),
+                os.path.join(SATELLITE_DIR, "real", f"{s_under}_{d_under}_rgb.png"),
+            ]
+            for p in candidates:
+                if os.path.exists(p) and "DEMO" not in os.path.basename(p):
+                    return p, False
+        return None, False
+
+    demo_candidates = [
+        os.path.join(SATELLITE_DIR, "demo", f"district_{area_id:03d}_DEMO.png"),
+        os.path.join(SATELLITE_DIR, f"district_{area_id:03d}_DEMO.png"),
     ]
-    if data_mode == "demo":
-        candidates.append(os.path.join(SATELLITE_DIR, "demo", f"district_{area_id:03d}_DEMO.png"))
-    return next((p for p in candidates if os.path.exists(p)), None)
+    for p in demo_candidates:
+        if os.path.exists(p):
+            return p, True
+
+    return None, False
 
 
 @api_bp.route("/areas", methods=["GET"])
@@ -54,7 +97,9 @@ def predict(area_id):
                      f"Run scripts/precompute_predictions.py first."
         }), 404
 
-    sat_path = _find_satellite_image(area_id, area.get("data_mode", "real"))
+    sat_path, is_demo = _find_satellite_image(
+        area_id, area.get("area_name"), area.get("state_name"), area.get("data_mode", "real")
+    )
     has_sat = bool(sat_path is not None)
 
     return jsonify({
@@ -70,6 +115,7 @@ def predict(area_id):
         "prediction_timestamp": prediction["prediction_timestamp"],
         "satellite_available": has_sat,
         "satellite_url": f"/api/satellite-image/{area_id}" if has_sat else None,
+        "satellite_is_demo": is_demo,
     })
 
 
@@ -92,8 +138,9 @@ def explain(area_id):
     if explanation is None:
         return jsonify({"error": f"No explanation found for area_id {area_id}"}), 404
 
-    has_gradcam = bool(explanation["gradcam_image_path"] and os.path.exists(explanation["gradcam_image_path"]))
-    sat_path = _find_satellite_image(area_id, area.get("data_mode", "real"))
+    sat_path, is_demo = _find_satellite_image(
+        area_id, area.get("area_name"), area.get("state_name"), area.get("data_mode", "real")
+    )
     has_sat = bool(sat_path is not None)
 
     return jsonify({
@@ -102,30 +149,33 @@ def explain(area_id):
         "predicted_score": prediction["predicted_score"],
         "predicted_category": prediction["predicted_category"],
         "shap_explanation": explanation["shap_json"],
-        "gradcam_available": has_gradcam,
-        "gradcam_url": f"/api/gradcam/{area_id}" if has_gradcam else None,
+        "gradcam_available": False,
+        "gradcam_reason": "The current model uses satellite statistics only, not image features.",
+        "gradcam_url": None,
         "satellite_available": has_sat,
         "satellite_url": f"/api/satellite-image/{area_id}" if has_sat else None,
+        "satellite_is_demo": is_demo,
     })
 
 
 @api_bp.route("/satellite-image/<int:area_id>", methods=["GET"])
 def satellite_image(area_id):
-    path = _find_satellite_image(area_id)
+    area = db_service.get_area(area_id)
+    if area is None:
+        return jsonify({"error": "District not found"}), 404
+    path, is_demo = _find_satellite_image(
+        area_id, area.get("area_name"), area.get("state_name"), area.get("data_mode", "real")
+    )
     if not path:
         return jsonify({"error": "No satellite image available for this district"}), 404
-    return send_file(path, mimetype="image/png")
+    resp = send_file(path, mimetype="image/png")
+    resp.headers["X-Image-Is-Demo"] = "true" if is_demo else "false"
+    return resp
 
 
 @api_bp.route("/gradcam/<int:area_id>", methods=["GET"])
 def gradcam_image(area_id):
-    prediction = db_service.get_latest_prediction(area_id)
-    if prediction is None:
-        return jsonify({"error": "not found"}), 404
-    explanation = db_service.get_explanation_for_prediction(prediction["prediction_id"])
-    if not explanation or not explanation["gradcam_image_path"] or not os.path.exists(explanation["gradcam_image_path"]):
-        return jsonify({"error": "Grad-CAM image not available for this area"}), 404
-    return send_file(explanation["gradcam_image_path"], mimetype="image/png")
+    return jsonify({"error": "Grad-CAM not available: The current model uses satellite statistics only, not image features."}), 404
 
 
 @api_bp.route("/model-performance", methods=["GET"])

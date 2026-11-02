@@ -1,0 +1,6 @@
+{
+  "low_medium_boundary": 0.3195,
+  "medium_high_boundary": 0.45449999999999996,
+  "derived_from": "deprivation_score tertiles of all rows used to fit the final model",
+  "note": "Low: score <= low_medium_boundary; Medium: between; High: score > medium_high_boundary. A display simplification of the continuous score, not a separate target."
+}
