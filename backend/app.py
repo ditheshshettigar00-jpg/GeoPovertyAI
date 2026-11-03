@@ -111,6 +111,10 @@ def create_app():
 
 
 
+    @app.route("/hidden-gaps")
+    def hidden_gaps_page():
+        return render_template("hidden_gaps.html")
+
     @app.route("/hotspots")
     def hotspots_page():
         return render_template("hotspots.html")

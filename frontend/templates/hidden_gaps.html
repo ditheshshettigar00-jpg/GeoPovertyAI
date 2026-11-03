@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Hidden Gap Detector - GeoPoverty AI{% endblock %}
+{% block extra_head %}
+<style>
+  .hg-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; margin:18px 0; }
+  .hg-card { background:#fff; border-radius:8px; padding:16px; box-shadow:0 4px 6px rgba(0,0,0,.08); }
+  .hg-card .v { font-size:1.8rem; font-weight:700; color:#2c3e50; }
+  .hg-card .l { color:#7f8c8d; font-size:.85rem; }
+  .hg-controls { display:flex; gap:12px; flex-wrap:wrap; margin:12px 0; align-items:center; }
+  .hg-controls select, .hg-controls input { padding:8px; border:1px solid #ccd; border-radius:6px; }
+  table.hg { width:100%; border-collapse:collapse; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 4px 6px rgba(0,0,0,.08); }
+  table.hg th, table.hg td { padding:10px 12px; text-align:left; border-bottom:1px solid #eee; font-size:.92rem; }
+  table.hg th { background:#f4f6f8; }
+  .bar-wrap { position:relative; width:180px; height:14px; background:#f0f2f4; border-radius:7px; }
+  .bar-mid { position:absolute; left:50%; top:0; bottom:0; width:1px; background:#99a; }
+  .bar { position:absolute; top:0; bottom:0; border-radius:7px; }
+  .pos { background:#e74c3c; } .neg { background:#27ae60; }
+  .tag { padding:2px 8px; border-radius:10px; font-size:.78rem; color:#fff; }
+  .tag.hidden { background:#e74c3c; } .tag.resilient { background:#27ae60; }
+  .caution { color:#b9770e; font-size:.8rem; }
+  .hg-note { background:#fff8e1; border-left:4px solid #f1c40f; padding:10px 14px; border-radius:4px; margin:14px 0; font-size:.88rem; }
+</style>
+{% endblock %}
+{% block content %}
+<h1>Hidden Gap Detector</h1>
+<p>Where do satellites misread a district? Each district's NFHS-5 survey score is compared with the satellite-only prediction made when its whole state was unseen by the model.</p>
+<div class="hg-note" id="hg-note">Loading…</div>
+<div class="hg-grid" id="hg-summary"></div>
+<div class="hg-controls">
+  <label>Show
+    <select id="hg-dir">
+      <option value="hidden">Hidden-deprivation candidates (survey &gt; satellite)</option>
+      <option value="resilient">Resilient candidates (survey &lt; satellite)</option>
+      <option value="all">Both</option>
+    </select>
+  </label>
+  <label>State <input id="hg-state" placeholder="e.g. Bihar"></label>
+  <label>Top <input id="hg-limit" type="number" min="5" max="200" value="25" style="width:70px"></label>
+  <button id="hg-go" class="btn btn-primary">Apply</button>
+</div>
+<table class="hg"><thead><tr>
+  <th>District</th><th>State</th><th>Survey</th><th>Satellite (80% range)</th><th>Gap</th><th>Rank gap</th><th style="width:200px">Direction</th><th>Type</th>
+</tr></thead><tbody id="hg-body"><tr><td colspan="8">Loading…</td></tr></tbody></table>
+<h3 style="margin-top:28px">States the model misreads systematically (reliable states first)</h3>
+<p class="hg-note" style="margin-top:6px">States with fewer than <span id="hg-minn">5</span> districts are greyed out and should not be interpreted: their averages are very noisy.</p>
+<table class="hg"><thead><tr><th>State</th><th>Districts</th><th>Mean gap</th><th>Mean abs. error</th><th>Hidden candidates</th><th>Resilient candidates</th></tr></thead>
+<tbody id="hg-states"></tbody></table>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function loadGaps() {
+  const q = new URLSearchParams({
+    direction: document.getElementById('hg-dir').value,
+    limit: document.getElementById('hg-limit').value || 25
+  });
+  const st = document.getElementById('hg-state').value.trim();
+  if (st) q.set('state', st);
+  const res = await fetch('/api/residual-atlas?' + q);
+  const d = await res.json();
+  if (d.error) { document.getElementById('hg-body').innerHTML = `<tr><td colspan="8">${esc(d.error)}</td></tr>`; return; }
+  document.getElementById('hg-note').textContent = d.note;
+  const s = d.summary;
+  document.getElementById('hg-summary').innerHTML = [
+    [s.n_districts, 'Districts analysed'],
+    [s.hidden_candidates, 'Hidden-deprivation candidates'],
+    [s.resilient_candidates, 'Resilient candidates'],
+    [(s.share_outside_80*100).toFixed(1)+'%', 'Outside 80% interval (≈20% expected)'],
+    [s.correlation_gap_vs_survey, 'Gap vs survey score (r): high = predictions compressed toward the mean']
+  ].map(([v,l]) => `<div class="hg-card"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+  const maxAbs = 0.4;
+  document.getElementById('hg-body').innerHTML = d.districts.map(r => {
+    const w = Math.min(Math.abs(r.gap)/maxAbs, 1) * 50;
+    const bar = r.gap >= 0 ? `left:50%;width:${w}%` : `left:${50-w}%;width:${w}%`;
+    const cls = r.class.startsWith('Hidden') ? 'hidden' : 'resilient';
+    return `<tr>
+      <td><a href="/district/${r.area_id}">${esc(r.area_name)}</a>${r.match_caution ? '<div class="caution">⚠ approximate name match</div>' : ''}</td>
+      <td>${esc(r.state_name)}</td><td>${r.survey_score.toFixed(3)}</td><td>${r.satellite_prediction.toFixed(3)} <span style="color:#7f8c8d">(${r.low_80.toFixed(2)} to ${r.high_80.toFixed(2)})</span></td>
+      <td>${r.gap>0?'+':''}${r.gap.toFixed(3)}</td><td>${r.rank_gap>0?'+':''}${r.rank_gap.toFixed(2)}</td>
+      <td><div class="bar-wrap"><div class="bar-mid"></div><div class="bar ${r.gap>=0?'pos':'neg'}" style="${bar}"></div></div></td>
+      <td><span class="tag ${cls}">${esc(r.class)}</span></td></tr>`;
+  }).join('') || '<tr><td colspan="8">No districts match.</td></tr>';
+  document.getElementById('hg-minn').textContent = d.min_state_districts;
+  document.getElementById('hg-states').innerHTML = d.state_bias.map(r =>
+    `<tr style="${r.reliable ? '' : 'opacity:.45'}"><td>${esc(r.state_name)}</td><td>${r.n}</td><td>${r.mean_gap>0?'+':''}${r.mean_gap}</td><td>${r.mae}</td><td>${r.hidden}</td><td>${r.resilient}</td></tr>`).join('');
+}
+document.getElementById('hg-go').addEventListener('click', loadGaps);
+loadGaps();
+</script>
+{% endblock %}

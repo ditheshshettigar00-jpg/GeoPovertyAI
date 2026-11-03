@@ -20,7 +20,7 @@ from flask import Blueprint, jsonify, request, send_file
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from config import SATELLITE_DIR
-from backend.services import db_service, model_service, hotspot_service
+from backend.services import db_service, model_service, hotspot_service, residual_service
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -294,3 +294,18 @@ def similar_districts(area_id):
         return jsonify(results)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/residual-atlas", methods=["GET"])
+def residual_atlas():
+    """Hidden Gap Detector: districts where survey and satellite-only prediction disagree."""
+    try:
+        return jsonify(residual_service.get_residual_atlas(
+            direction=request.args.get("direction", "all"),
+            state=request.args.get("state"),
+            limit=request.args.get("limit", 25),
+        ))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 503
