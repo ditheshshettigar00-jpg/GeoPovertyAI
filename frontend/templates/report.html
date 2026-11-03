@@ -531,8 +531,9 @@ function makeInfoRow(label, value) {
 }
 
 // ── Main loader ──────────────────────────────────────────────────────────────
-const urlParams = new URLSearchParams(window.location.search);
-const areaId = parseInt(urlParams.get('area_id'));
+const serverAreaId = {{ area_id|tojson }};   // Jinja value from the route; may be null
+const queryAreaId  = parseInt(new URLSearchParams(window.location.search).get('area_id'), 10);
+const areaId = Number.isInteger(serverAreaId) ? serverAreaId : queryAreaId;
 
 if (!areaId) {
     showError('No district selected. Please go back and choose a district.');
@@ -541,25 +542,51 @@ if (!areaId) {
 }
 
 async function loadReport(areaId) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+    let res;
     try {
-        const res = await fetch(`/api/reports/district-data/${areaId}`);
-        const data = await res.json();
-
-        if (!res.ok) {
-            showError(data.error || 'Failed to load report data.');
-            return;
-        }
-
-        renderReport(data);
+        res = await fetch(`/api/reports/district-data/${areaId}`, { signal: controller.signal });
     } catch (e) {
-        showError('Network error: ' + e.message);
+        if (e.name === 'AbortError') {
+            showError('The report took too long to load. Please try again.');
+        } else {
+            showError('Network error: ' + e.message);
+        }
+        return;
+    } finally {
+        clearTimeout(timeoutId);
     }
+
+    let data;
+    try {
+        data = await res.json();
+    } catch (e) {
+        showError('The server returned an unexpected response.');
+        return;
+    }
+
+    if (!res.ok) {
+        showError(data.error || 'Failed to load report data.');
+        return;
+    }
+
+    renderReport(data);
 }
 
 function showError(msg) {
     el('loadingState').style.display = 'none';
     el('errorState').style.display = 'block';
     el('errorMessage').textContent = msg;
+
+    el('actionBarTitle').textContent = 'Report unavailable';
+    el('actionBarMeta').textContent = msg;
+
+    const pdfBtn = el('btnDownloadPDF');
+    pdfBtn.style.pointerEvents = 'none';
+    pdfBtn.style.opacity = '0.5';
+    pdfBtn.href = '#';
 }
 
 // ── Render ───────────────────────────────────────────────────────────────────

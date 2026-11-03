@@ -30,6 +30,8 @@ body {
     color: white;
     padding: 0.9rem 1.5rem;
     flex-wrap: wrap;
+    position: relative;
+    z-index: 9999; /* Ensure navbar stays above Leaflet maps and interactive canvases */
 }
 
 .navbar-brand {
@@ -55,45 +57,71 @@ body {
     display: inline-block;
 }
 
+.dropbtn {
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 0;
+}
+
 .dropdown-content {
     display: none;
     position: absolute;
-    background-color: var(--color-card);
-    min-width: 170px;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.15);
-    z-index: 1000;
+    top: 100%;
+    left: 0;
+    background-color: #ffffff;
+    min-width: 210px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    z-index: 10000;
     border-radius: var(--radius);
-    overflow: hidden;
-    margin-top: 0.5rem;
-    border: 1px solid #e6e4de;
+    overflow: visible;
+    margin-top: 0; /* Zero margin gap so mouse movement never loses hover */
+    border: 1px solid #d1d5db;
+    padding: 4px 0;
+}
+
+/* Invisible bridge: covers any micro-gap between button and menu */
+.dropdown-content::before {
+    content: '';
+    position: absolute;
+    top: -12px;
+    left: 0;
+    right: 0;
+    height: 12px;
+    background: transparent;
 }
 
 .dropdown-content a {
-    color: var(--color-text);
-    padding: 10px 16px;
+    color: #1e293b;
+    padding: 10px 18px;
     text-decoration: none;
     display: block;
     margin-left: 0;
     font-size: 0.9rem;
-    border-bottom: 1px solid #f0f0f0;
+    font-weight: 500;
+    border-bottom: 1px solid #f1f5f9;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .dropdown-content a:last-child {
     border-bottom: none;
 }
 
-.dropdown-content a:hover {
-    background-color: #f7f6f3;
+.dropdown-content a:hover,
+.dropdown-content a:focus {
+    background-color: #f1f5f9;
     text-decoration: none;
     color: var(--color-primary);
+    font-weight: 600;
 }
 
-.dropdown:hover .dropdown-content {
+/* Show dropdown on hover, focus-within, and on touch/click via .open class */
+.dropdown:hover .dropdown-content,
+.dropdown:focus-within .dropdown-content,
+.dropdown.open .dropdown-content {
     display: block;
-}
-
-.dropbtn {
-    cursor: pointer;
 }
 
 

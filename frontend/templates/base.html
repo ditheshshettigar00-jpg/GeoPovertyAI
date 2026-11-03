@@ -24,7 +24,7 @@
             <a href="/">Home</a>
             
             <div class="dropdown">
-                <a class="dropbtn">Dashboard ▾</a>
+                <a class="dropbtn" href="javascript:void(0)" role="button" aria-haspopup="true" aria-expanded="false">Dashboard ▾</a>
                 <div class="dropdown-content">
                     <a href="/prediction">District Prediction</a>
                     <a href="/map">Interactive Map</a>
@@ -33,7 +33,7 @@
             </div>
 
             <div class="dropdown">
-                <a class="dropbtn">Analytics ▾</a>
+                <a class="dropbtn" href="javascript:void(0)" role="button" aria-haspopup="true" aria-expanded="false">Analytics ▾</a>
                 <div class="dropdown-content">
                     <a href="/matchmaker">AI District Matchmaker 🤖</a>
                     <a href="/hotspots">Hotspot Detection</a>
@@ -43,7 +43,7 @@
             </div>
 
             <div class="dropdown">
-                <a class="dropbtn">AI & Models ▾</a>
+                <a class="dropbtn" href="javascript:void(0)" role="button" aria-haspopup="true" aria-expanded="false">AI & Models ▾</a>
                 <div class="dropdown-content">
                     <a href="/explanation">Explainable AI (SHAP)</a>
                     <a href="/performance">Model Performance</a>
@@ -99,6 +99,55 @@
             .catch(() => {
                 // Not logged in, leave default login/register links
             });
+    </script>
+    <script>
+        // Dropdown Click & Touch Support for Navigation Bar
+        document.querySelectorAll('.dropdown .dropbtn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const currentDropdown = this.closest('.dropdown');
+                const isOpen = currentDropdown.classList.contains('open');
+
+                // Close any other open dropdowns
+                document.querySelectorAll('.dropdown.open').forEach(d => {
+                    if (d !== currentDropdown) {
+                        d.classList.remove('open');
+                        const b = d.querySelector('.dropbtn');
+                        if (b) b.setAttribute('aria-expanded', 'false');
+                    }
+                });
+
+                if (isOpen) {
+                    currentDropdown.classList.remove('open');
+                    this.setAttribute('aria-expanded', 'false');
+                } else {
+                    currentDropdown.classList.add('open');
+                    this.setAttribute('aria-expanded', 'true');
+                }
+            });
+        });
+
+        // Close dropdowns when clicking outside or pressing Escape
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.dropdown')) {
+                document.querySelectorAll('.dropdown.open').forEach(d => {
+                    d.classList.remove('open');
+                    const b = d.querySelector('.dropbtn');
+                    if (b) b.setAttribute('aria-expanded', 'false');
+                });
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.dropdown.open').forEach(d => {
+                    d.classList.remove('open');
+                    const b = d.querySelector('.dropbtn');
+                    if (b) b.setAttribute('aria-expanded', 'false');
+                });
+            }
+        });
     </script>
 </body>
 </html>

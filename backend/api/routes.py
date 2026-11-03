@@ -20,7 +20,7 @@ from flask import Blueprint, jsonify, request, send_file
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from config import SATELLITE_DIR
-from backend.services import db_service, model_service, hotspot_service, residual_service
+from backend.services import db_service, model_service, hotspot_service, residual_service, profile_service
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -309,3 +309,15 @@ def residual_atlas():
         return jsonify({"error": str(e)}), 400
     except FileNotFoundError as e:
         return jsonify({"error": str(e)}), 503
+
+
+@api_bp.route("/area-profile/<int:area_id>", methods=["GET"])
+def area_profile(area_id):
+    """Complete District Indicators profile."""
+    try:
+        profile = profile_service.get_area_profile(area_id)
+        if profile is None:
+            return jsonify({"error": f"area_id {area_id} not found"}), 404
+        return jsonify(profile)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

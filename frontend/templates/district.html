@@ -31,6 +31,35 @@
 
     .gradcam-notice { margin-top: 14px; padding: 10px 14px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; font-size: 0.84rem; color: #991b1b; }
     .demo-badge { display: inline-block; padding: 3px 8px; background: #fef3c7; color: #92400e; font-size: 0.75rem; font-weight: 600; border-radius: 4px; margin-bottom: 8px; }
+
+    /* District Indicators Panel Styles */
+    .di-section { border-bottom: 1px solid #e5e7eb; margin-bottom: 8px; padding-bottom: 8px; }
+    .di-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .di-summary { font-weight: 700; font-size: 0.92rem; color: #1b4332; cursor: pointer; padding: 6px 0; user-select: none; }
+    .di-summary:hover { color: #2d6a4f; }
+    .di-body { padding: 8px 0; }
+    .di-row { margin-bottom: 10px; padding: 6px 0; border-bottom: 1px dashed #f0f0f0; }
+    .di-row:last-child { border-bottom: none; margin-bottom: 0; }
+    .di-row-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .di-label { font-size: 0.88rem; color: #2b2b2b; font-weight: 600; }
+    .di-value { font-size: 0.92rem; font-weight: 700; color: #1b4332; white-space: nowrap; }
+    .di-bar-container { position: relative; height: 6px; background: #e2e8f0; border-radius: 3px; margin: 8px 0 3px; }
+    .di-bar-marker { position: absolute; top: -3px; width: 12px; height: 12px; border-radius: 50%; background: #1b4332; border: 2px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transform: translateX(-50%); }
+    .di-bar-meta { display: flex; justify-content: space-between; font-size: 0.74rem; color: #64748b; }
+    .di-desc { font-size: 0.78rem; color: #64748b; margin-top: 4px; line-height: 1.35; }
+    .di-table-wrap { width: 100%; overflow-x: auto; max-height: 380px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 6px; margin-top: 8px; }
+    .di-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .di-table th { background: #f8fafc; position: sticky; top: 0; padding: 7px 10px; text-align: left; font-weight: 700; color: #334155; border-bottom: 1px solid #e2e8f0; white-space: nowrap; z-index: 2; }
+    .di-table td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; color: #1e293b; }
+    .di-table tr:hover td { background: #f8fafc; }
+    .di-group-header td { background: #f1f5f9; font-weight: 700; color: #1b4332; font-size: 0.8rem; padding: 6px 10px; }
+    .di-badge-good { color: #15803d; font-weight: 700; }
+    .di-badge-bad { color: #b91c1c; font-weight: 700; }
+    .di-badge-neutral { color: #64748b; }
+    .di-caution-box { background: #fffbeb; border-left: 3px solid #f59e0b; padding: 6px 10px; margin: 6px 0; font-size: 0.8rem; color: #92400e; border-radius: 3px; }
+    .di-filter-input { width: 100%; padding: 6px 10px; font-size: 0.82rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 6px; box-sizing: border-box; }
+    .di-note-text { font-size: 0.82rem; color: #475569; margin-bottom: 8px; line-height: 1.4; }
+
 </style>
 {% endblock %}
 
@@ -65,12 +94,14 @@
         <div id="prediction-content">Loading...</div>
     </div>
 
-    <!-- Top Right: Geospatial Indicators -->
-    <div class="card">
-        <h3>Geospatial Indicators</h3>
-        <ul class="feature-list" id="features-list">
-            <li>Loading...</li>
-        </ul>
+    <!-- Top Right: District Indicators -->
+    <div class="card" id="indicators-card" style="max-width:100%; overflow:hidden;">
+        <h3>District Indicators</h3>
+        <div id="indicators-content">
+            <div id="indicators-loading" style="padding:15px; color:#666;">Loading district indicators…</div>
+            <div id="indicators-error" style="display:none; padding:12px; background:#fef2f2; border:1px solid #f87171; border-radius:6px; color:#991b1b; font-size:0.9rem;"></div>
+            <div id="indicators-panel" style="display:none;"></div>
+        </div>
     </div>
 
     <!-- Bottom Left: SHAP Explanation -->
@@ -165,20 +196,8 @@ async function loadDistrictData() {
             </p>
         `;
 
-        // Fetch features
-        const resFeat = await fetch(`/api/area-features/${areaId}`);
-        const feat = await resFeat.json();
-        if (!feat.error) {
-            const list = document.getElementById('features-list');
-            list.innerHTML = '';
-            for (const [key, value] of Object.entries(feat)) {
-                if(key !== 'area_id' && key !== 'data_mode') {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<span>${formatFeatureName(key)}</span> <strong>${parseFloat(value).toFixed(2)}</strong>`;
-                    list.appendChild(li);
-                }
-            }
-        }
+        // Fetch complete district profile indicators
+        await loadAreaProfile(areaId);
 
         // Fetch Explanation (SHAP)
         const resExp = await fetch(`/api/explain/${areaId}`);
@@ -293,6 +312,366 @@ function renderShapBars(shapData) {
     </div>`;
 
     container.innerHTML = html;
+}
+
+
+// ── District Indicators Panel Implementation ────────────────────────────────
+function showIndicatorsError(msg) {
+    const loadingEl = document.getElementById('indicators-loading');
+    const errorEl = document.getElementById('indicators-error');
+    const panelEl = document.getElementById('indicators-panel');
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (panelEl) panelEl.style.display = 'none';
+    if (errorEl) {
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+    }
+}
+
+async function loadAreaProfile(areaId) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    try {
+        let res;
+        try {
+            res = await fetch(`/api/area-profile/${areaId}`, { signal: controller.signal });
+        } catch (fetchErr) {
+            if (fetchErr.name === 'AbortError') {
+                showIndicatorsError('The district indicators took too long to load (8s timeout). Please try again.');
+            } else {
+                showIndicatorsError('Network error while loading district indicators: ' + fetchErr.message);
+            }
+            return;
+        } finally {
+            clearTimeout(timeoutId);
+        }
+
+        let data;
+        try {
+            data = await res.json();
+        } catch (jsonErr) {
+            showIndicatorsError('The server returned an unexpected response format.');
+            return;
+        }
+
+        if (!res.ok) {
+            showIndicatorsError(data.error || 'Failed to load district indicators.');
+            return;
+        }
+
+        renderIndicatorsPanel(data);
+    } catch (e) {
+        showIndicatorsError('Error rendering district indicators: ' + e.message);
+    }
+}
+
+function renderIndicatorsPanel(data) {
+    const loadingEl = document.getElementById('indicators-loading');
+    const errorEl = document.getElementById('indicators-error');
+    const panelEl = document.getElementById('indicators-panel');
+
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (errorEl) errorEl.style.display = 'none';
+    panelEl.innerHTML = ''; // safe clear of previous panel content
+    panelEl.style.display = 'block';
+
+    // ── Helper DOM creators (strictly using textContent / createElement) ───────
+    function createEl(tag, className, text) {
+        const el = document.createElement(tag);
+        if (className) el.className = className;
+        if (text !== undefined && text !== null) el.textContent = String(text);
+        return el;
+    }
+
+    // ── Section 1: Satellite & geospatial inputs (used by the model) ─────────
+    const sec1 = createEl('details', 'di-section');
+    sec1.open = true;
+    const sum1 = createEl('summary', 'di-summary', '1. Satellite and geospatial inputs (used by the model)');
+    sec1.appendChild(sum1);
+    const body1 = createEl('div', 'di-body');
+
+    (data.model_inputs || []).forEach(item => {
+        const row = createEl('div', 'di-row');
+        const header = createEl('div', 'di-row-header');
+        header.appendChild(createEl('span', 'di-label', item.label));
+        const valText = item.value !== null ? (item.value + ' ' + (item.unit || '')) : '—';
+        header.appendChild(createEl('span', 'di-value', valText));
+        row.appendChild(header);
+
+        if (item.value !== null && item.dataset_min !== null && item.dataset_max !== null) {
+            const barCont = createEl('div', 'di-bar-container');
+            const span = (item.dataset_max - item.dataset_min) || 1.0;
+            const pct = Math.max(0, Math.min(100, ((item.value - item.dataset_min) / span) * 100));
+            const marker = createEl('div', 'di-bar-marker');
+            marker.style.left = pct.toFixed(1) + '%';
+            barCont.appendChild(marker);
+            row.appendChild(barCont);
+
+            const meta = createEl('div', 'di-bar-meta');
+            meta.appendChild(createEl('span', null, 'Min: ' + item.dataset_min));
+            meta.appendChild(createEl('span', null, 'higher than ' + item.percentile + '% of districts'));
+            meta.appendChild(createEl('span', null, 'Max: ' + item.dataset_max));
+            row.appendChild(meta);
+        }
+
+        if (item.description) {
+            row.appendChild(createEl('div', 'di-desc', item.description));
+        }
+        body1.appendChild(row);
+    });
+    sec1.appendChild(body1);
+    panelEl.appendChild(sec1);
+
+    // ── Section 2: Survey results behind deprivation score (NOT model inputs) ──
+    const sec2 = createEl('details', 'di-section');
+    sec2.open = true;
+    const sum2 = createEl('summary', 'di-summary', '2. Survey results behind the deprivation score (NOT model inputs)');
+    sec2.appendChild(sum2);
+    const body2 = createEl('div', 'di-body');
+
+    const sc = data.survey_components || {};
+    const noteP = createEl('div', 'di-note-text', sc.note || 'Survey indicators averaged into the target deprivation score. Not used as model inputs.');
+    body2.appendChild(noteP);
+
+    if (sc.composite_score !== undefined && sc.composite_score !== null) {
+        const scoreDiv = createEl('div', null);
+        scoreDiv.style.marginBottom = '10px';
+        scoreDiv.style.fontSize = '0.9rem';
+        scoreDiv.appendChild(createEl('span', null, 'Composite Deprivation Score: '));
+        const strongScore = createEl('strong', null, String(sc.composite_score.toFixed(4)));
+        strongScore.style.color = '#1b4332';
+        scoreDiv.appendChild(strongScore);
+        body2.appendChild(scoreDiv);
+    }
+
+    const tblWrap2 = createEl('div', 'di-table-wrap');
+    const tbl2 = createEl('table', 'di-table');
+    const thead2 = createEl('thead');
+    const trh2 = createEl('tr');
+    trh2.appendChild(createEl('th', null, 'Survey Indicator'));
+    trh2.appendChild(createEl('th', null, 'NFHS-5'));
+    trh2.appendChild(createEl('th', null, 'NFHS-4'));
+    trh2.appendChild(createEl('th', null, 'Change'));
+    thead2.appendChild(trh2);
+    tbl2.appendChild(thead2);
+
+    const tbody2 = createEl('tbody');
+    (sc.indicators || []).forEach(ind => {
+        const tr = createEl('tr');
+        tr.appendChild(createEl('td', null, ind.label));
+
+        // NFHS-5 cell
+        const td5 = createEl('td');
+        if (ind.flagged) {
+            const spanFlag = createEl('span', 'di-badge-neutral', 'Not reported (small sample)');
+            spanFlag.style.fontStyle = 'italic';
+            if (ind.flag_text) spanFlag.title = ind.flag_text;
+            td5.appendChild(spanFlag);
+        } else if (ind.nfhs5 !== null && ind.nfhs5 !== undefined) {
+            td5.appendChild(createEl('span', null, ind.nfhs5 + '%'));
+        } else {
+            td5.appendChild(createEl('span', 'di-badge-neutral', '—'));
+        }
+        tr.appendChild(td5);
+
+        // NFHS-4 cell
+        const td4 = createEl('td');
+        if (ind.nfhs4 !== null && ind.nfhs4 !== undefined) {
+            td4.appendChild(createEl('span', null, ind.nfhs4 + '%'));
+        } else {
+            td4.appendChild(createEl('span', 'di-badge-neutral', '—'));
+        }
+        tr.appendChild(td4);
+
+        // Change cell
+        const tdChg = createEl('td');
+        if (ind.change !== null && ind.change !== undefined) {
+            const chgVal = ind.change;
+            let arrowText = (chgVal > 0 ? '▲ +' : (chgVal < 0 ? '▼ ' : '')) + chgVal.toFixed(1) + '%';
+            let badgeCls = 'di-badge-neutral';
+            if (chgVal !== 0) {
+                if (ind.higher_is_worse) {
+                    badgeCls = chgVal > 0 ? 'di-badge-bad' : 'di-badge-good';
+                } else {
+                    badgeCls = chgVal > 0 ? 'di-badge-good' : 'di-badge-bad';
+                }
+            }
+            tdChg.appendChild(createEl('span', badgeCls, arrowText));
+        } else {
+            tdChg.appendChild(createEl('span', 'di-badge-neutral', '—'));
+        }
+        tr.appendChild(tdChg);
+        tbody2.appendChild(tr);
+    });
+    tbl2.appendChild(tbody2);
+    tblWrap2.appendChild(tbl2);
+    body2.appendChild(tblWrap2);
+    sec2.appendChild(body2);
+    panelEl.appendChild(sec2);
+
+    // ── Section 3: Accessibility (OpenStreetMap) ──────────────────────────────
+    const sec3 = createEl('details', 'di-section');
+    const sum3 = createEl('summary', 'di-summary', '3. Accessibility (OpenStreetMap)');
+    sec3.appendChild(sum3);
+    const body3 = createEl('div', 'di-body');
+
+    const acc = data.accessibility || {};
+    if (acc.available && acc.items && acc.items.length > 0) {
+        acc.items.forEach(item => {
+            const row = createEl('div', 'di-row');
+            const h = createEl('div', 'di-row-header');
+            h.appendChild(createEl('span', 'di-label', item.label));
+            const vText = item.value !== null ? (item.value + ' ' + (item.unit || '')) : '—';
+            h.appendChild(createEl('span', 'di-value', vText));
+            row.appendChild(h);
+            body3.appendChild(row);
+        });
+    } else {
+        const naText = createEl('div', 'di-note-text', 'Not computed for this district (available for 29 districts only)');
+        naText.style.fontStyle = 'italic';
+        body3.appendChild(naText);
+    }
+    sec3.appendChild(body3);
+    panelEl.appendChild(sec3);
+
+    // ── Section 4: Location and data quality ──────────────────────────────────
+    const sec4 = createEl('details', 'di-section');
+    const sum4 = createEl('summary', 'di-summary', '4. Location and data quality');
+    sec4.appendChild(sum4);
+    const body4 = createEl('div', 'di-body');
+
+    const lq = data.location_quality || {};
+    const lqRows = [
+        ['Coordinates', (lq.latitude !== null && lq.longitude !== null) ? `${lq.latitude}°, ${lq.longitude}°` : '—'],
+        ['Sentinel-2 Scenes', lq.s2_image_count !== null ? `${lq.s2_image_count} cloud-free scenes` : '—'],
+        ['Data Source & Year', `${lq.data_source || 'Unknown'} (${lq.data_year || '—'})`],
+        ['Boundary Match Method', lq.match_method || 'Unknown']
+    ];
+
+    lqRows.forEach(([lbl, val]) => {
+        const row = createEl('div', 'di-row');
+        const h = createEl('div', 'di-row-header');
+        h.appendChild(createEl('span', 'di-label', lbl));
+        h.appendChild(createEl('span', 'di-value', val));
+        row.appendChild(h);
+        body4.appendChild(row);
+    });
+
+    if (lq.match_caution) {
+        body4.appendChild(createEl('div', 'di-caution-box', 'Approximate name match: some survey values may belong to a neighbouring or renamed district.'));
+    }
+    sec4.appendChild(body4);
+    panelEl.appendChild(sec4);
+
+    // ── Section 5: All NFHS-5 survey indicators (N) ───────────────────────────
+    const allList = data.all_nfhs5 || [];
+    const sec5 = createEl('details', 'di-section');
+    const sum5 = createEl('summary', 'di-summary', `5. All NFHS-5 survey indicators (${allList.length})`);
+    sec5.appendChild(sum5);
+    const body5 = createEl('div', 'di-body');
+
+    if (allList.length > 0) {
+        const filterInput = createEl('input', 'di-filter-input');
+        filterInput.type = 'text';
+        filterInput.placeholder = 'Filter indicators by keyword or number...';
+        body5.appendChild(filterInput);
+
+        const tblWrap5 = createEl('div', 'di-table-wrap');
+        const tbl5 = createEl('table', 'di-table');
+        const thead5 = createEl('thead');
+        const trh5 = createEl('tr');
+        trh5.appendChild(createEl('th', null, 'No.'));
+        trh5.appendChild(createEl('th', null, 'Indicator'));
+        trh5.appendChild(createEl('th', null, 'NFHS-5'));
+        trh5.appendChild(createEl('th', null, 'NFHS-4'));
+        thead5.appendChild(trh5);
+        tbl5.appendChild(thead5);
+
+        const tbody5 = createEl('tbody');
+
+        // Group indicators by thematic domain
+        const groupsMap = new Map();
+        allList.forEach(ind => {
+            const grp = ind.group || 'Other';
+            if (!groupsMap.has(grp)) groupsMap.set(grp, []);
+            groupsMap.get(grp).push(ind);
+        });
+
+        const groupRowsTracker = [];
+
+        groupsMap.forEach((indList, grpName) => {
+            const grpTr = createEl('tr', 'di-group-header');
+            const grpTd = createEl('td');
+            grpTd.colSpan = 4;
+            grpTd.textContent = `${grpName} (${indList.length})`;
+            grpTr.appendChild(grpTd);
+            tbody5.appendChild(grpTr);
+
+            const childRows = [];
+
+            indList.forEach(ind => {
+                const tr = createEl('tr');
+                tr.dataset.text = (ind.number + ' ' + ind.label).toLowerCase();
+
+                tr.appendChild(createEl('td', null, String(ind.number)));
+                tr.appendChild(createEl('td', null, ind.label));
+
+                // NFHS-5
+                const td5 = createEl('td');
+                if (ind.flag_text) {
+                    const spanF = createEl('span', 'di-badge-neutral', 'Not reported (small sample)');
+                    spanF.style.fontStyle = 'italic';
+                    spanF.title = ind.flag_text;
+                    td5.appendChild(spanF);
+                } else if (ind.nfhs5 !== null && ind.nfhs5 !== undefined) {
+                    td5.appendChild(createEl('span', null, ind.nfhs5 + '%'));
+                } else {
+                    const spanNa = createEl('span', 'di-badge-neutral', 'Not available for this district');
+                    spanNa.style.fontStyle = 'italic';
+                    td5.appendChild(spanNa);
+                }
+                tr.appendChild(td5);
+
+                // NFHS-4
+                const td4 = createEl('td');
+                if (ind.nfhs4 !== null && ind.nfhs4 !== undefined) {
+                    td4.appendChild(createEl('span', null, ind.nfhs4 + '%'));
+                } else {
+                    td4.appendChild(createEl('span', 'di-badge-neutral', '—'));
+                }
+                tr.appendChild(td4);
+
+                tbody5.appendChild(tr);
+                childRows.push(tr);
+            });
+
+            groupRowsTracker.push({ header: grpTr, rows: childRows });
+        });
+
+        // Filter event listener
+        filterInput.addEventListener('input', function() {
+            const query = this.value.trim().toLowerCase();
+            groupRowsTracker.forEach(group => {
+                let anyVisible = false;
+                group.rows.forEach(r => {
+                    const matches = !query || r.dataset.text.includes(query);
+                    r.style.display = matches ? '' : 'none';
+                    if (matches) anyVisible = true;
+                });
+                group.header.style.display = anyVisible ? '' : 'none';
+            });
+        });
+
+        tbl5.appendChild(tbody5);
+        tblWrap5.appendChild(tbl5);
+        body5.appendChild(tblWrap5);
+    } else {
+        body5.appendChild(createEl('div', 'di-note-text', 'No NFHS-5 indicator records available for this district.'));
+    }
+
+    sec5.appendChild(body5);
+    panelEl.appendChild(sec5);
 }
 
 window.onload = loadDistrictData;
