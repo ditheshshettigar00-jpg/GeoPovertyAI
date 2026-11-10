@@ -14,7 +14,11 @@ data/backup_old_extraction/
 
 # --- SQLite Databases ---
 database/*.db
+database/*.db-wal
+database/*.db-shm
 *.db
+*.db-wal
+*.db-shm
 
 # --- Python bytecode & cache ---
 __pycache__/

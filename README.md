@@ -93,7 +93,6 @@ GeoPovertyAI/
 │   ├── test_report_page.py   # District report preview route & JSON data endpoints (4 tests)
 │   ├── test_scenario_explorer.py # Scenario presets, group aggregation & error text (8 tests)
 │   └── test_security_hotspots.py # CORS, cookie security, rate limiting, DBSCAN (22 tests)
-├── ui_prototype/             # Standalone UI wireframes and visual prototypes
 ├── requirements.txt          # Pinned Python package dependencies from pip freeze
 └── README.md                 # Project documentation and quick-start guide
 ```
