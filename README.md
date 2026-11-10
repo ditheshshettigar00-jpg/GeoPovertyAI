@@ -50,6 +50,8 @@ GeoPovertyAI/
 ├── documentation/            # Technical specifications, architecture, and reports
 │   ├── METHODS.md            # Detailed methodology, formulas, matching logic & limitations
 │   ├── RESULTS.md            # Generated benchmark and evaluation tables
+│   ├── VIVA_QA.md            # Comprehensive viva examination Q&A guide (27 questions with citations)
+│   ├── DEMO_SCRIPT.md        # 5-minute click-by-click viva demonstration script & fallback guide
 │   ├── PROJECT_BLUEPRINT.md  # Master project blueprint, task specifications & milestones
 │   ├── PIPELINE_HISTORY.md   # Historical development logs (Phase 1 & Phase 2)
 │   ├── SYSTEM_ARCHITECTURE.md# Architecture diagrams and system component specifications
