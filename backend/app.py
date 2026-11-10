@@ -134,8 +134,10 @@ def create_app():
             return redirect(url_for("home"))
         return render_template("admin_dashboard.html")
 
+    @app.route("/scenarios")
+    @app.route("/scenario-explorer")
     @app.route("/whatif")
-    def whatif_page():
+    def scenarios_page():
         return render_template("whatif.html")
 
     @app.route("/login")

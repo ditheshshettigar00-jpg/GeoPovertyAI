@@ -132,3 +132,67 @@ Spatial hotspot identification is executed via **Haversine DBSCAN with 150 km ra
    The What-If scenario simulator reflects model inference under perturbed inputs; it does not simulate equilibrium socioeconomic interventions or macroeconomic policy impacts.
 8. **Evaluation Discrepancy:**
    District scores displayed on district profile pages are out-of-state estimates, whereas live What-If simulations are computed using the final model fitted across all districts.
+
+
+---
+
+## 7. Scenario Explorer & Sensitivity Proxies
+
+The **Scenario Explorer** (`/scenarios`, aliased to `/whatif`) provides an interactive simulation harness to inspect how the production model responds to systematic perturbations in satellite-derived features.
+
+### 1. Sensitivity Proxies vs. Policy Interventions
+Perturbations are defined and reported strictly as **proxies**, never policy interventions or causal simulations. The production model relies solely on four remote sensing proxies (`nightlight_mean`, `ndvi_mean`, `builtup_pct`, `population_density`). Real-world socioeconomic drivers such as education, public health infrastructure, child nutrition, and governance are not captured in the feature space.
+
+### 2. Standardized Presets (`config.py`)
+Six standardized proxy scenarios are configured in `config.py`:
+- **Electrification Proxy (+25%)** (`ntl_plus_25`): Nighttime luminosity multiplied by 1.25x.
+- **Electrification Proxy (+50%)** (`ntl_plus_50`): Nighttime luminosity multiplied by 1.50x.
+- **Urbanisation Proxy (+1 pp)** (`builtup_plus_1`): Built-up surface percentage increased by +1.0 percentage point.
+- **Urbanisation Proxy (+2 pp)** (`builtup_plus_2`): Built-up surface percentage increased by +2.0 percentage points.
+- **Greening Proxy (+0.05)** (`ndvi_plus_05`): Sentinel-2 NDVI increased by +0.05.
+- **Combined Growth Proxy** (`combined_growth`): Nighttime lights x1.25, Built-up +1.0 pp, NDVI +0.05.
+
+### 3. Group Aggregations (States & Hotspot Clusters)
+Users can evaluate scenarios for a single district, across all districts of an administrative state (31 states/UTs), or across contiguous high-deprivation spatial clusters identified by Haversine DBSCAN (150 km radius). Group evaluations compute:
+- **Mean Change & Median Change:** Distributional shifts across the target region.
+- **Category Transitions:** Count and percentage of districts transitioning across deprivation tiers (Low, Medium, High).
+- **Sub-MAE Insignificance Share:** Percentage of districts where |Delta| < MAE (0.0883). Changes smaller than the model's typical cross-validation error are explicitly marked as *within noise threshold*.
+
+### 4. Bounding, Uncertainty & Mandatory Disclaimer
+- **Training Range Guardrails:** Any perturbed value exceeding the empirical training range triggers explicit non-extrapolation warnings.
+- **Prediction Intervals:** Every scenario estimate displays the calibrated 80% empirical prediction interval from `models/uncertainty.json` ([-0.1363, +0.1437]).
+- **Mandatory System Note:** All endpoints and views enforce the explicit disclaimer:
+  > *"This shows how the model's estimate responds to changes in satellite-derived features. It is not a prediction of the effect of a policy or programme. Schooling, health, nutrition and infrastructure are not in the model."*
+
+
+---
+
+## 8. District Indicator Telemetry & Ground Truth Specifications
+
+All district reports, profile views, and APIs expose real, empirical indicator telemetry. Values are never imputed with synthetic constants, never defaulted to 0.0, and never entered manually.
+
+### 8.1 Satellite-Derived Indicators (7)
+Extracted across administrative boundaries for all 564 districts in the training table:
+
+| Indicator (`key`) | Unit | India Median | Min | Max | Source | Period | Definition |
+|---|---|---|---|---|---|---|---|
+| **Nighttime Light Radiance** (`nightlight_mean`) | `nW/cm2/sr` | 0.8710 | 0.2257 | 45.0564 | VIIRS monthly | 2019-11-01 to 2021-04-30 | District-wide nocturnal luminosity spatial mean |
+| **Normalized Difference Vegetation Index (NDVI)** (`ndvi_mean`) | `index (-1 to 1)` | 0.4266 | 0.0795 | 0.8023 | Sentinel-2 SR median NDVI | 2019-11-01 to 2021-04-30 | District spatial median Normalized Difference Vegetation Index |
+| **Built-Up Surface Area** (`builtup_pct`) | `% of land area` | 1.2974 | 0.0075 | 40.5230 | GHSL built-up surface (epoch 2020) | Epoch 2020 | Spatial percentage of land covered by built-up settlements |
+| **Population Density** (`population_density`) | `people per km2` | 424.5 | 2.5 | 44741.3 | GHSL population grid (epoch 2020) | Epoch 2020 | Spatial human residential population density |
+| **Cloud-Free Sentinel-2 Scenes** (`s2_image_count`) | `scenes` | 286 | 18 | 1677 | usable Sentinel-2 scenes in window | 2019-11-01 to 2021-04-30 | Total usable cloud-free Sentinel-2 MSI observations |
+| **Centroid Latitude** (`latitude`) | `degrees` | 24.2595 | 7.5191 | 32.6557 | district centroid | GAUL 2015 | Centroid administrative latitude coordinate |
+| **Centroid Longitude** (`longitude`) | `degrees` | 79.4415 | 69.8004 | 96.3563 | district centroid | GAUL 2015 | Centroid administrative longitude coordinate |
+
+### 8.2 Survey Components of Deprivation Score (NFHS-5)
+The 5 component indicators joined via `clean_key` across 100% of the 564 districts (all 705 national survey districts evaluated for distribution statistics):
+
+| # | Indicator Label | Better Direction | National Median | Min | Max | Target Formulation Description |
+|---|---|---|---|---|---|---|
+| **#7** | Population living in households with electricity (%) | `higher` | 98.7% | 68.4% | 100.0% | Indicator 7: Electricity access percentage |
+| **#9** | Population living in households that use an improved sanitation facility (%) | `higher` | 73.7% | 29.2% | 99.9% | Indicator 9: Sanitation facility percentage |
+| **#10** | Households using clean fuel for cooking (%) | `higher` | 50.0% | 8.6% | 99.8% | Indicator 10: Clean cooking fuel percentage (LPG/biogas/electricity) |
+| **#73** | Children under 5 years who are stunted (height-for-age) (%) | `lower` | 32.9% | 13.2% | 60.6% | Indicator 73: Under-5 child stunting prevalence (< -2 SD) |
+| **#84** | All women age 15-49 years who are anaemic (%) | `lower` | 57.2% | 14.9% | 93.5% | Indicator 84: Anaemia prevalence in reproductive-age women (< 11.0 g/dl) |
+
+> **Target Integration Rule:** In the composite deprivation score, electricity (#7), improved sanitation (#9), and clean cooking fuel (#10) enter as $100 - x$ (inverted so higher signifies greater deprivation), whereas child stunting (#73) and maternal anaemia (#84) enter directly. Each component is min-max normalized across all districts before unweighted averaging.

@@ -64,8 +64,8 @@ def test_district_without_and_with_accessibility_data(client):
     if not _datasets_available():
         pytest.skip("Required CSVs not available.")
 
-    # 1. District without accessibility: 182 (Pashchim Singhbhum)
-    res_no = client.get("/api/area-profile/182")
+    # 1. District without accessibility: 1 (Nicobar Islands)
+    res_no = client.get("/api/area-profile/1")
     assert res_no.status_code == 200
     data_no = res_no.get_json()
     acc_no = data_no["accessibility"]
@@ -81,8 +81,13 @@ def test_district_without_and_with_accessibility_data(client):
     acc_yes = data_yes["accessibility"]
     assert acc_yes["available"] is True
     assert len(acc_yes["items"]) == 3
+    values = {it["key"]: it["value"] for it in acc_yes["items"]}
     for it in acc_yes["items"]:
         assert it["value"] is not None
+    # Ensure real measured values are used, not the 1.5/2.0/5.0 dummy sample
+    assert values["road_density_km_per_sqkm"] != 1.5
+    assert values["school_distance_km"] != 2.0
+    assert values["hospital_distance_km"] != 5.0
 
 
 def test_percentiles_calculation(client):

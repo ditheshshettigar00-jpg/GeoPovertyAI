@@ -1,406 +1,584 @@
 {% extends "base.html" %}
-{% block title %}Policy Intervention Simulator - GeoPoverty AI{% endblock %}
+{% block title %}Scenario Explorer - GeoPoverty AI{% endblock %}
 
 {% block extra_head %}
 <style>
-/* ─── Simulator Page CSS ─────────────────────────────────────────────────── */
-.simulator-page {
-    max-width: 1100px;
+.scenario-page {
+    max-width: 1160px;
     margin: 0 auto;
-    padding: 2rem 1rem;
-    font-family: 'Inter', sans-serif;
+    padding: 2rem 1rem 4rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     color: #1e293b;
 }
 
-/* Header Area */
-.sim-header {
+/* Header */
+.scen-header {
     text-align: center;
-    margin-bottom: 2.5rem;
+    margin-bottom: 2rem;
 }
-.sim-header h1 {
-    font-size: 2.4rem;
+.scen-header h1 {
+    font-size: 2.3rem;
     color: #0f172a;
     margin-bottom: 0.5rem;
     font-weight: 800;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.02em;
 }
-.sim-header p {
-    color: #64748b;
-    font-size: 1.1rem;
-    max-width: 700px;
+.scen-header p {
+    color: #475569;
+    font-size: 1.05rem;
+    max-width: 780px;
     margin: 0 auto;
     line-height: 1.6;
 }
 
-/* District Selector */
-.district-selector-card {
+/* Mandatory Disclaimer Banner */
+.scen-disclaimer {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-left: 4px solid #f59e0b;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+    font-size: 0.92rem;
+    color: #92400e;
+    line-height: 1.55;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+.scen-disclaimer strong {
+    color: #78350f;
+}
+
+/* Scope Selection Card */
+.scope-card {
     background: white;
     border-radius: 12px;
     padding: 1.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    margin-bottom: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     border: 1px solid #e2e8f0;
+    margin-bottom: 2rem;
 }
-.district-selector-card select {
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
+.scope-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.2rem;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 0.8rem;
+    flex-wrap: wrap;
+}
+.scope-btn {
+    background: #f1f5f9;
     border: 1px solid #cbd5e1;
-    font-size: 1rem;
+    border-radius: 20px;
+    padding: 7px 18px;
+    font-size: 0.92rem;
     font-weight: 600;
     color: #334155;
-    background-color: #f8fafc;
-    min-width: 350px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
 }
-.district-selector-card select:focus {
+.scope-btn:hover {
+    background: #e2e8f0;
+}
+.scope-btn.active {
+    background: #1b4332;
+    color: white;
+    border-color: #1b4332;
+}
+.scope-target-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.scope-select {
+    padding: 0.65rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1e293b;
+    background-color: #f8fafc;
+    min-width: 320px;
+    max-width: 100%;
+    cursor: pointer;
+}
+.scope-select:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    border-color: #2d6a4f;
+    box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.15);
 }
 
-/* Main Layout Grid */
-.sim-grid {
+/* Main Grid */
+.scen-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.05fr 1fr;
     gap: 2rem;
-    display: none; /* Hidden until district selected */
 }
-@media (max-width: 900px) {
-    .sim-grid { grid-template-columns: 1fr; }
+@media (max-width: 960px) {
+    .scen-grid { grid-template-columns: 1fr; }
 }
 
-/* Base Cards */
 .panel {
     background: white;
-    border-radius: 16px;
-    padding: 2rem;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    border-radius: 14px;
+    padding: 1.8rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
     border: 1px solid #e2e8f0;
     position: relative;
-    overflow: hidden;
 }
 .panel h2 {
-    font-size: 1.3rem;
+    font-size: 1.25rem;
     color: #0f172a;
     margin-top: 0;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.4rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
-
-/* Score Display */
-.score-comparison {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    margin-bottom: 2rem;
-}
-.score-box {
-    text-align: center;
-    padding: 1.5rem;
-    border-radius: 12px;
-    width: 45%;
-    transition: all 0.3s ease;
-}
-.score-box.original {
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-}
-.score-box.simulated {
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-    border: 1px solid #bfdbfe;
-    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.15);
-}
-.score-label {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+.panel-sub {
+    font-size: 0.88rem;
     color: #64748b;
-    margin-bottom: 0.5rem;
-    font-weight: 700;
-}
-.score-value {
-    font-size: 3rem;
-    font-weight: 800;
-    color: #0f172a;
-    line-height: 1;
-    margin-bottom: 0.5rem;
-}
-.simulated .score-value { color: #1d4ed8; }
-.diff-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 700;
-}
-.diff-positive { background: #fee2e2; color: #991b1b; } /* Positive diff = worse poverty */
-.diff-negative { background: #dcfce7; color: #166534; } /* Negative diff = better */
-.diff-neutral { background: #f1f5f9; color: #64748b; }
-
-/* Interventions Grid */
-.interventions-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
-}
-.intervention-card {
-    background: #ffffff;
-    border: 2px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 1rem 1.2rem;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-}
-.intervention-card:hover {
-    border-color: #cbd5e1;
-    background: #f8fafc;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-}
-.intervention-card.active {
-    border-color: #3b82f6;
-    background: #eff6ff;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-}
-.intervention-icon {
-    font-size: 2rem;
-    background: #f1f5f9;
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 10px;
-    flex-shrink: 0;
-}
-.active .intervention-icon {
-    background: #bfdbfe;
-}
-.intervention-content h3 {
-    margin: 0 0 0.25rem 0;
-    font-size: 1.05rem;
-    color: #1e293b;
-}
-.intervention-content p {
-    margin: 0;
-    font-size: 0.85rem;
-    color: #64748b;
+    margin-bottom: 1.4rem;
     line-height: 1.4;
 }
 
-/* Feature Changes List */
-.feature-changes {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid #e2e8f0;
+/* Presets Grid */
+.presets-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    margin-bottom: 1.5rem;
 }
-.feature-changes h3 {
-    font-size: 0.95rem;
-    color: #475569;
-    margin-bottom: 1rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+@media (max-width: 600px) {
+    .presets-grid { grid-template-columns: 1fr; }
 }
-.feature-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-.feature-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px dashed #e2e8f0;
-}
-.feature-item:last-child { border-bottom: none; }
-.feat-name { font-weight: 600; color: #334155; }
-.feat-vals { display: flex; align-items: center; gap: 0.5rem; }
-.feat-old { color: #94a3b8; text-decoration: line-through; }
-.feat-arrow { color: #cbd5e1; }
-.feat-new { color: #059669; font-weight: 700; }
-
-/* Loading Overlay */
-.loading-overlay {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(255,255,255,0.8);
-    backdrop-filter: blur(2px);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    display: none;
-    border-radius: 16px;
-}
-.spinner {
-    width: 40px; height: 40px;
-    border: 4px solid #e2e8f0;
-    border-top-color: #3b82f6;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Advanced Toggle */
-.advanced-toggle {
-    margin-top: 1.5rem;
-    text-align: center;
-}
-.advanced-toggle button {
-    background: none;
-    border: none;
-    color: #64748b;
-    font-size: 0.85rem;
-    font-weight: 600;
+.preset-card {
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
     cursor: pointer;
-    text-decoration: underline;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
-.advanced-section {
-    display: none;
+.preset-card:hover {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+    transform: translateY(-1px);
+}
+.preset-card.active {
+    border-color: #2d6a4f;
+    background: #edf7f2;
+    box-shadow: 0 3px 10px rgba(45, 106, 79, 0.12);
+}
+.preset-card-title {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: #1e293b;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.preset-card.active .preset-card-title {
+    color: #1b4332;
+}
+.preset-card-desc {
+    font-size: 0.78rem;
+    color: #64748b;
+    line-height: 1.35;
+}
+.preset-card.active .preset-card-desc {
+    color: #2d6a4f;
+}
+
+/* Custom Controls Toggle */
+.custom-toggle {
     margin-top: 1rem;
     padding-top: 1rem;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px dashed #e2e8f0;
 }
-.slider-group {
+.custom-toggle button {
+    background: none;
+    border: none;
+    color: #2563eb;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+}
+.custom-sliders {
+    display: none;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+.slider-row {
     margin-bottom: 1rem;
 }
-.slider-group label {
+.slider-row:last-child { margin-bottom: 0; }
+.slider-labels {
     display: flex;
     justify-content: space-between;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 600;
-    color: #475569;
-    margin-bottom: 0.5rem;
+    color: #334155;
+    margin-bottom: 0.35rem;
 }
-.slider-group input[type="range"] {
+.slider-row input[type="range"] {
     width: 100%;
     cursor: pointer;
+    accent-color: #2d6a4f;
+}
+
+/* Results Section */
+.score-boxes {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+}
+.score-box {
+    flex: 1;
+    text-align: center;
+    padding: 1.25rem 1rem;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+.score-box.simulated {
+    background: #edf7f2;
+    border-color: #a7f3d0;
+}
+.score-lbl {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+}
+.score-val {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.1;
+}
+.score-box.simulated .score-val { color: #1b4332; }
+.score-ci {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-top: 0.35rem;
+}
+
+/* Diff Badge & MAE Callout */
+.diff-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+.diff-badge {
+    display: inline-block;
+    padding: 0.35rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+.diff-pos { background: #fee2e2; color: #991b1b; } /* Increased deprivation */
+.diff-neg { background: #dcfce7; color: #166534; } /* Decreased deprivation */
+.diff-zero { background: #f1f5f9; color: #475569; }
+
+.mae-alert {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    margin-bottom: 1.2rem;
+}
+.mae-alert.below {
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    color: #92400e;
+}
+.mae-alert.above {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+}
+
+/* Warnings */
+.warnings-card {
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.2rem;
+    font-size: 0.84rem;
+    color: #9f1239;
+}
+.warnings-card strong { display: block; margin-bottom: 0.25rem; }
+
+/* Group Metrics Grid */
+.group-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.group-stat-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+}
+.group-stat-val {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+.group-stat-lbl {
+    font-size: 0.78rem;
+    color: #64748b;
+    font-weight: 600;
+    margin-top: 0.25rem;
+}
+
+/* Group District Table */
+.districts-table-wrap {
+    max-height: 280px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+.districts-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+.districts-table th, .districts-table td {
+    padding: 6px 10px;
+    text-align: left;
+    border-bottom: 1px solid #f1f5f9;
+}
+.districts-table th {
+    background: #f8fafc;
+    position: sticky;
+    top: 0;
+    font-weight: 700;
+    color: #475569;
+}
+
+/* Category Pills */
+.cat-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.cat-low { background: #d1fae5; color: #065f46; }
+.cat-medium { background: #fef3c7; color: #92400e; }
+.cat-high { background: #fee2e2; color: #991b1b; }
+
+.loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 2rem 0;
+    color: #64748b;
+    font-weight: 600;
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="simulator-page">
+<div class="scenario-page">
 
-    <div class="sim-header">
-        <h1>Policy Intervention Simulator</h1>
-        <p>Simulate the impact of targeted infrastructure and social policies on the area's predicted socioeconomic deprivation score. See how AI perceives development.</p>
+    <!-- Header -->
+    <div class="scen-header">
+        <h1>Scenario Explorer ⚡</h1>
+        <p>Explore how the AI model's estimated deprivation responds to changes in satellite-derived feature proxies across individual districts, administrative states, or regional hotspot clusters.</p>
     </div>
 
-    <!-- District Selection -->
-    <div class="district-selector-card">
-        <label for="areaSelect" style="font-weight:700; color:#475569;">Target District:</label>
-        <select id="areaSelect">
-            <option value="">Loading districts...</option>
-        </select>
+    <!-- Mandatory Disclaimer Banner (Requirement 5) -->
+    <div class="scen-disclaimer">
+        <strong>⚠️ Model Sensitivity Exploration Notice:</strong>
+        This shows how the model's estimate responds to changes in satellite-derived features. It is not a prediction of the effect of a policy or programme. Schooling, health, nutrition and infrastructure are not in the model.
     </div>
 
-    <!-- Main Grid -->
-    <div class="sim-grid" id="simGrid">
-        
-        <!-- Left Panel: Interventions -->
-        <div class="panel">
-            <h2>🎯 Select Interventions</h2>
-            <p style="font-size:0.9rem; color:#64748b; margin-bottom:1.5rem;">Toggle policies below to simulate changes to the district's geospatial indicators.</p>
-            
-            <div class="interventions-grid">
-                
-                <div class="intervention-card" data-policy="electrification" onclick="togglePolicy(this)">
-                    <div class="intervention-icon">⚡</div>
-                    <div class="intervention-content">
-                        <h3>Rural Electrification Drive</h3>
-                        <p>Increases nighttime light emissions, signaling better grid access and economic activity.</p>
-                    </div>
-                </div>
-
-                <div class="intervention-card" data-policy="healthcare" onclick="togglePolicy(this)">
-                    <div class="intervention-icon">🏥</div>
-                    <div class="intervention-content">
-                        <h3>Healthcare Accessibility</h3>
-                        <p>Builds new primary health centers, significantly reducing the average distance to hospitals.</p>
-                    </div>
-                </div>
-
-                <div class="intervention-card" data-policy="education" onclick="togglePolicy(this)">
-                    <div class="intervention-icon">🏫</div>
-                    <div class="intervention-content">
-                        <h3>Education Infrastructure</h3>
-                        <p>Constructs new local schools, halving the average distance students must travel.</p>
-                    </div>
-                </div>
-
-                <div class="intervention-card" data-policy="roads" onclick="togglePolicy(this)">
-                    <div class="intervention-icon">🛣️</div>
-                    <div class="intervention-content">
-                        <h3>Road Network Expansion</h3>
-                        <p>Upgrades unpaved paths to all-weather roads, increasing overall road density.</p>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Advanced Manual Sliders (Hidden by default) -->
-            <div class="advanced-toggle">
-                <button onclick="document.getElementById('advSection').style.display = document.getElementById('advSection').style.display === 'block' ? 'none' : 'block'">
-                    ⚙️ Show Advanced Manual Sliders
-                </button>
-            </div>
-            
-            <div class="advanced-section" id="advSection">
-                <p style="font-size:0.8rem; color:#64748b; margin-bottom:1rem;">Manually fine-tune specific features to test custom scenarios. (Overrides policy cards)</p>
-                <div id="manualSliders"></div>
-            </div>
-
+    <!-- Targeting Scope Selector -->
+    <div class="scope-card">
+        <div class="scope-tabs">
+            <button type="button" class="scope-btn active" id="btnScopeDistrict" onclick="switchScope('district')">📍 Single District</button>
+            <button type="button" class="scope-btn" id="btnScopeState" onclick="switchScope('state')">🏛️ Whole State</button>
+            <button type="button" class="scope-btn" id="btnScopeCluster" onclick="switchScope('cluster')">🔴 Hotspot Cluster</button>
         </div>
 
-        <!-- Right Panel: Impact Analysis -->
+        <div class="scope-target-row">
+            <!-- District Target -->
+            <div id="targetDistrictWrap" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                <label for="districtSelect" style="font-weight:700; color:#334155;">Select District:</label>
+                <select id="districtSelect" class="scope-select" onchange="onDistrictSelected(this.value)">
+                    <option value="">-- Loading districts... --</option>
+                </select>
+            </div>
+
+            <!-- State Target -->
+            <div id="targetStateWrap" style="display:none; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                <label for="stateSelect" style="font-weight:700; color:#334155;">Select State:</label>
+                <select id="stateSelect" class="scope-select" onchange="runCurrentScenario()">
+                    <option value="">-- Loading states... --</option>
+                </select>
+            </div>
+
+            <!-- Hotspot Cluster Target -->
+            <div id="targetClusterWrap" style="display:none; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                <label for="clusterSelect" style="font-weight:700; color:#334155;">Select Cluster:</label>
+                <select id="clusterSelect" class="scope-select" onchange="runCurrentScenario()">
+                    <option value="">-- Loading clusters... --</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main 2-Panel Grid -->
+    <div class="scen-grid">
+
+        <!-- Left Panel: Proxies & Modifications -->
         <div class="panel">
-            <div class="loading-overlay" id="simLoading">
-                <div class="spinner"></div>
-                <div style="margin-top:1rem; font-weight:600; color:#334155;">Simulating Impact...</div>
+            <h2>🎯 Select Sensitivity Proxy</h2>
+            <div class="panel-sub">
+                Choose a standardized proxy or toggle custom parameter shifts. These test model responsiveness only.
             </div>
 
-            <h2>📊 Impact Analysis</h2>
-            
-            <div class="score-comparison">
-                <div class="score-box original">
-                    <div class="score-label">Current Baseline</div>
-                    <div class="score-value" id="origScore">--</div>
-                    <div id="origCat" style="font-weight:700;">--</div>
-                </div>
-                
-                <div style="font-size:2rem; color:#cbd5e1;">➔</div>
-                
-                <div class="score-box simulated">
-                    <div class="score-label">Simulated Outcome</div>
-                    <div class="score-value" id="simScore">--</div>
-                    <div id="simCat" style="font-weight:700;">--</div>
-                    <div style="margin-top:0.5rem;"><span id="simDiff" class="diff-badge diff-neutral">0.000</span></div>
-                </div>
+            <!-- Presets Grid -->
+            <div class="presets-grid" id="presetsGrid">
+                <!-- Preset Cards populated by JS from /api/scenario-presets -->
             </div>
 
-            <div class="feature-changes">
-                <h3>Underlying Indicator Shifts</h3>
-                <div class="feature-list" id="featureList">
-                    <div style="color:#94a3b8; font-size:0.85rem; font-style:italic;">Select a district and apply policies to see shifts.</div>
+            <!-- Advanced Manual Sliders (District Mode Only) -->
+            <div class="custom-toggle" id="customToggleWrap">
+                <button type="button" onclick="toggleCustomSliders()">
+                    ⚙️ Toggle Custom Sliders for Fine-Tuning
+                </button>
+                <div class="custom-sliders" id="customSlidersBox">
+                    <p style="font-size:0.78rem; color:#64748b; margin-top:0; margin-bottom:0.75rem;">
+                        Manually modify the 4 satellite inputs for this district. Overrides the active preset.
+                    </p>
+                    <div id="slidersList"></div>
                 </div>
             </div>
-            
-            <div style="margin-top: 1.5rem; background: #fffbeb; border: 1px solid #fef3c7; padding: 1rem; border-radius: 8px; font-size: 0.8rem; color: #92400e; line-height: 1.5;">
-                <strong>Note:</strong> The AI model evaluates these shifts holistically. Due to non-linear interactions in the random forest/XGBoost, combining multiple policies may yield compounded or diminished effects compared to summing their individual impacts.
+        </div>
+
+        <!-- Right Panel: Impact & Evaluation -->
+        <div class="panel">
+            <h2>📊 Sensitivity Outcome</h2>
+            <div class="panel-sub" id="outcomeSub">Select a target and proxy to evaluate model sensitivity.</div>
+
+            <div class="loading-spinner" id="loadingSpinner">
+                <div style="font-size:1.8rem; margin-bottom:0.5rem;">⚙️</div>
+                Computing scenario prediction...
+            </div>
+
+            <div id="resultsContent" style="display:none;">
+
+                <!-- Range Warnings Alert Box -->
+                <div class="warnings-card" id="warningsBox" style="display:none;">
+                    <strong>⚠️ Range Warning:</strong>
+                    <div id="warningsText"></div>
+                </div>
+
+                <!-- Single District Results View -->
+                <div id="singleResultsView">
+                    <div class="score-boxes">
+                        <div class="score-box">
+                            <div class="score-lbl">Baseline Estimate</div>
+                            <div class="score-val" id="singleOrigScore">--</div>
+                            <div style="margin-top:4px;"><span id="singleOrigCat" class="cat-pill">--</span></div>
+                            <div class="score-ci" id="singleOrigCI">80% Interval: --</div>
+                        </div>
+
+                        <div style="font-size:1.5rem; color:#cbd5e1; font-weight:700;">➔</div>
+
+                        <div class="score-box simulated">
+                            <div class="score-lbl">Scenario Estimate</div>
+                            <div class="score-val" id="singleScenScore">--</div>
+                            <div style="margin-top:4px;"><span id="singleScenCat" class="cat-pill">--</span></div>
+                            <div class="score-ci" id="singleScenCI">80% Interval: --</div>
+                        </div>
+                    </div>
+
+                    <div class="diff-row">
+                        <span id="singleDiffBadge" class="diff-badge diff-zero">Change: 0.000</span>
+                    </div>
+
+                    <!-- MAE Comparison Box (Requirement 4) -->
+                    <div class="mae-alert" id="singleMaeAlert">
+                        <div id="singleMaeText" style="font-weight:700;">--</div>
+                    </div>
+                </div>
+
+                <!-- Group (State / Cluster) Results View -->
+                <div id="groupResultsView" style="display:none;">
+                    <div class="group-metrics-grid">
+                        <div class="group-stat-card">
+                            <div class="group-stat-val" id="groupMeanVal">--</div>
+                            <div class="group-stat-lbl">Mean Score Change</div>
+                        </div>
+                        <div class="group-stat-card">
+                            <div class="group-stat-val" id="groupMedianVal">--</div>
+                            <div class="group-stat-lbl">Median Score Change</div>
+                        </div>
+                        <div class="group-stat-card">
+                            <div class="group-stat-val" id="groupCatShiftsVal">--</div>
+                            <div class="group-stat-lbl">Districts Changing Category</div>
+                        </div>
+                        <div class="group-stat-card">
+                            <div class="group-stat-val" id="groupShareMaeVal">--</div>
+                            <div class="group-stat-lbl">Share Change &lt; Model MAE</div>
+                        </div>
+                    </div>
+
+                    <div class="mae-alert below" id="groupMaeNote">
+                        <strong>Model Typical Error Reference:</strong>
+                        <span id="groupMaeText"></span>
+                    </div>
+
+                    <div style="font-size:0.85rem; font-weight:700; color:#334155; margin-top:1rem;">
+                        Districts in this Group (<span id="groupCountText">0</span>):
+                    </div>
+                    <div class="districts-table-wrap">
+                        <table class="districts-table">
+                            <thead>
+                                <tr>
+                                    <th>District</th>
+                                    <th>Baseline</th>
+                                    <th>Scenario</th>
+                                    <th>Change</th>
+                                    <th>&lt; MAE?</th>
+                                </tr>
+                            </thead>
+                            <tbody id="groupDistrictsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Persistent Note -->
+                <div style="margin-top:1.5rem; font-size:0.78rem; color:#64748b; border-top:1px solid #e2e8f0; padding-top:0.75rem; line-height:1.45;">
+                    <em><strong>Model Note:</strong> This shows how the model's estimate responds to changes in satellite-derived features. It is not a prediction of the effect of a policy or programme. Schooling, health, nutrition and infrastructure are not in the model.</em>
+                </div>
+
             </div>
         </div>
 
@@ -410,239 +588,380 @@
 
 {% block extra_scripts %}
 <script>
+let currentScope = 'district'; // 'district', 'state', 'cluster'
 let currentAreaId = null;
+let activePresetId = 'electrification_125';
+let presetsData = {};
+let targetsData = {};
 let baseFeatures = {};
-let modifiedFeatures = {};
-let baseScoreData = null;
+let customFeatures = {};
 
-// The logic for how policies affect features
-const POLICIES = {
-    'electrification': (f) => { f.nightlight_mean = Math.min(f.nightlight_mean + 2.5, 30.0); }, // Boost NTL
-    'healthcare': (f) => { f.hospital_distance_km = Math.max(f.hospital_distance_km * 0.4, 0.5); }, // Halve distance
-    'education': (f) => { f.school_distance_km = Math.max(f.school_distance_km * 0.4, 0.2); }, // Halve distance
-    'roads': (f) => { f.road_density_km_per_sqkm = f.road_density_km_per_sqkm * 1.5; } // 50% increase in road density
-};
-
-// Friendly names for display
-const FEAT_NAMES = {
+const FEATURE_NAMES = {
     'nightlight_mean': 'Nighttime Lights (nW/cm²/sr)',
     'ndvi_mean': 'Vegetation Index (NDVI)',
-    'builtup_pct': 'Built-up Area (%)',
-    'population_density': 'Population Density (/km²)',
-    'hospital_distance_km': 'Avg Distance to Hospital (km)',
-    'road_density_km_per_sqkm': 'Road Density (km/km²)',
-    'school_distance_km': 'Avg Distance to School (km)'
+    'builtup_pct': 'Built-up Land Share (%)',
+    'population_density': 'Population Density (/km²)'
 };
 
 async function init() {
-    const res = await fetch('/api/areas');
-    const areas = await res.json();
-    const select = document.getElementById('areaSelect');
-    select.innerHTML = '<option value="">-- Select a District to begin --</option>';
+    try {
+        const [pRes, tRes, aRes] = await Promise.all([
+            fetch('/api/scenario-presets').then(r => r.json()),
+            fetch('/api/scenario-targets').then(r => r.json()),
+            fetch('/api/areas').then(r => r.json())
+        ]);
+
+        presetsData = pRes;
+        targetsData = tRes;
+
+        renderPresetsUI();
+        renderTargetsUI(aRes, tRes);
+
+        // Pre-select first district
+        if (aRes && aRes.length > 0) {
+            currentAreaId = aRes[0].area_id;
+            document.getElementById('districtSelect').value = currentAreaId;
+            await onDistrictSelected(currentAreaId);
+        }
+
+    } catch (e) {
+        console.error('Initialization error:', e);
+    }
+}
+
+function renderPresetsUI() {
+    const grid = document.getElementById('presetsGrid');
+    grid.innerHTML = '';
+
+    for (let pid in presetsData) {
+        const p = presetsData[pid];
+        const card = document.createElement('div');
+        card.className = `preset-card ${pid === activePresetId ? 'active' : ''}`;
+        card.id = `preset_card_${pid}`;
+        card.onclick = () => selectPreset(pid);
+
+        let icon = '⚡';
+        if (pid.includes('urbanisation')) icon = '🏢';
+        if (pid.includes('greening')) icon = '🌿';
+        if (pid.includes('combined')) icon = '🌐';
+
+        card.innerHTML = `
+            <div>
+                <div class="preset-card-title">${icon} ${escapeHTML(p.name)}</div>
+                <div class="preset-card-desc">${escapeHTML(p.description)}</div>
+            </div>
+        `;
+        grid.appendChild(card);
+    }
+}
+
+function renderTargetsUI(areas, targets) {
+    // 1. Districts
+    const distSel = document.getElementById('districtSelect');
+    distSel.innerHTML = '<option value="">-- Choose a District --</option>';
     areas.forEach(a => {
         const opt = document.createElement('option');
         opt.value = a.area_id;
         opt.textContent = `${a.area_name}, ${a.state_name}`;
-        select.appendChild(opt);
+        distSel.appendChild(opt);
     });
 
-    select.addEventListener('change', async (e) => {
-        const areaId = e.target.value;
-        if (!areaId) {
-            document.getElementById('simGrid').style.display = 'none';
-            return;
-        }
-        await loadDistrictBaseline(areaId);
-    });
+    // 2. States
+    const stateSel = document.getElementById('stateSelect');
+    stateSel.innerHTML = '<option value="">-- Choose a State --</option>';
+    if (targets.states) {
+        targets.states.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s;
+            opt.textContent = s;
+            stateSel.appendChild(opt);
+        });
+    }
+
+    // 3. Clusters
+    const clusSel = document.getElementById('clusterSelect');
+    clusSel.innerHTML = '<option value="">-- Choose a Cluster --</option>';
+    if (targets.clusters) {
+        targets.clusters.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.cluster_id;
+            opt.textContent = c.label;
+            clusSel.appendChild(opt);
+        });
+    }
 }
 
-async function loadDistrictBaseline(areaId) {
-    currentAreaId = areaId;
-    document.getElementById('simGrid').style.display = 'grid';
-    document.getElementById('simLoading').style.display = 'flex';
-    
-    // Reset UI
-    document.querySelectorAll('.intervention-card').forEach(c => c.classList.remove('active'));
-    
-    try {
-        // Fetch base features
-        const fRes = await fetch(`/api/area-features/${areaId}`);
-        baseFeatures = await fRes.json();
-        
-        // Setup advanced sliders
-        setupAdvancedSliders(baseFeatures);
+function switchScope(scope) {
+    currentScope = scope;
+    ['btnScopeDistrict', 'btnScopeState', 'btnScopeCluster'].forEach(id => {
+        document.getElementById(id).classList.remove('active');
+    });
 
-        // Fetch initial prediction
-        modifiedFeatures = { ...baseFeatures };
-        await runSimulation();
-    } catch(e) {
-        alert("Error loading district data.");
+    document.getElementById('targetDistrictWrap').style.display = 'none';
+    document.getElementById('targetStateWrap').style.display = 'none';
+    document.getElementById('targetClusterWrap').style.display = 'none';
+    document.getElementById('customToggleWrap').style.display = (scope === 'district') ? 'block' : 'none';
+
+    if (scope === 'district') {
+        document.getElementById('btnScopeDistrict').classList.add('active');
+        document.getElementById('targetDistrictWrap').style.display = 'flex';
+    } else if (scope === 'state') {
+        document.getElementById('btnScopeState').classList.add('active');
+        document.getElementById('targetStateWrap').style.display = 'flex';
+        if (!document.getElementById('stateSelect').value && targetsData.states && targetsData.states.length > 0) {
+            document.getElementById('stateSelect').value = targetsData.states[0];
+        }
+    } else if (scope === 'cluster') {
+        document.getElementById('btnScopeCluster').classList.add('active');
+        document.getElementById('targetClusterWrap').style.display = 'flex';
+        if (!document.getElementById('clusterSelect').value && targetsData.clusters && targetsData.clusters.length > 0) {
+            document.getElementById('clusterSelect').value = targetsData.clusters[0].cluster_id;
+        }
+    }
+
+    runCurrentScenario();
+}
+
+async function onDistrictSelected(areaId) {
+    if (!areaId) return;
+    currentAreaId = parseInt(areaId, 10);
+    try {
+        const featRes = await fetch(`/api/area-features/${currentAreaId}`).then(r => r.json());
+        baseFeatures = featRes;
+        customFeatures = { ...baseFeatures };
+        renderCustomSliders(baseFeatures);
+        runCurrentScenario();
+    } catch (e) {
         console.error(e);
     }
 }
 
-function setupAdvancedSliders(features) {
-    const container = document.getElementById('manualSliders');
-    container.innerHTML = '';
-    
-    const editable = Object.keys(features).filter(k => FEAT_NAMES[k]); // Only interpretable features
-    
-    editable.forEach(key => {
-        const div = document.createElement('div');
-        div.className = 'slider-group';
-        
-        // Determine realistic max ranges for sliders
-        let max = features[key] * 3;
-        if(key === 'builtup_pct') max = 100;
-        if(key === 'ndvi_mean') max = 1.0;
-        if(key === 'nightlight_mean' && max < 10) max = 15;
-        
-        div.innerHTML = `
-            <label>
-                <span>${FEAT_NAMES[key]}</span>
-                <span id="val_${key}">${features[key].toFixed(2)}</span>
-            </label>
-            <input type="range" id="slider_${key}" min="0" max="${max}" step="0.01" value="${features[key]}">
+function selectPreset(presetId) {
+    activePresetId = presetId;
+    document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+    const activeCard = document.getElementById(`preset_card_${presetId}`);
+    if (activeCard) activeCard.classList.add('active');
+
+    // Close and reset custom sliders
+    customFeatures = { ...baseFeatures };
+    document.getElementById('customSlidersBox').style.display = 'none';
+
+    runCurrentScenario();
+}
+
+function toggleCustomSliders() {
+    const box = document.getElementById('customSlidersBox');
+    const isHidden = box.style.display === 'none' || !box.style.display;
+    box.style.display = isHidden ? 'block' : 'none';
+}
+
+function renderCustomSliders(features) {
+    const list = document.getElementById('slidersList');
+    list.innerHTML = '';
+
+    for (let k of ['nightlight_mean', 'ndvi_mean', 'builtup_pct', 'population_density']) {
+        if (features[k] === undefined) continue;
+        const val = features[k];
+
+        let min = 0, max = Math.max(val * 2.5, 20), step = 0.05;
+        if (k === 'ndvi_mean') { min = 0.0; max = 0.95; step = 0.01; }
+        if (k === 'builtup_pct') { min = 0.0; max = Math.max(val * 3, 50); step = 0.1; }
+        if (k === 'population_density') { min = 0.0; max = Math.max(val * 2.5, 1000); step = 1; }
+
+        const row = document.createElement('div');
+        row.className = 'slider-row';
+        row.innerHTML = `
+            <div class="slider-labels">
+                <span>${FEATURE_NAMES[k] || k}</span>
+                <span id="sliderVal_${k}">${val.toFixed(2)}</span>
+            </div>
+            <input type="range" id="inputSlider_${k}" min="${min}" max="${max}" step="${step}" value="${val}">
         `;
-        container.appendChild(div);
-        
-        document.getElementById(`slider_${key}`).addEventListener('input', (e) => {
-            const val = parseFloat(e.target.value);
-            document.getElementById(`val_${key}`).textContent = val.toFixed(2);
-            modifiedFeatures[key] = val;
-            
-            // Clear policy card highlights since user took manual control
-            document.querySelectorAll('.intervention-card').forEach(c => c.classList.remove('active'));
-            
-            debounceSimulation();
+        list.appendChild(row);
+
+        row.querySelector('input').addEventListener('input', (e) => {
+            const nVal = parseFloat(e.target.value);
+            document.getElementById(`sliderVal_${k}`).textContent = nVal.toFixed(2);
+            customFeatures[k] = nVal;
+            activePresetId = null;
+            document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+            debounceScenario();
         });
-    });
+    }
 }
 
-// Toggle policy cards
-function togglePolicy(card) {
-    card.classList.toggle('active');
-    
-    // Recompute modified features from baseline based on ALL active cards
-    modifiedFeatures = { ...baseFeatures };
-    
-    document.querySelectorAll('.intervention-card.active').forEach(c => {
-        const policy = c.dataset.policy;
-        if (POLICIES[policy]) {
-            POLICIES[policy](modifiedFeatures);
-        }
-    });
-    
-    // Update advanced sliders to match new modified features
-    Object.keys(FEAT_NAMES).forEach(k => {
-        const slider = document.getElementById(`slider_${k}`);
-        const valSpan = document.getElementById(`val_${k}`);
-        if(slider && modifiedFeatures[k] !== undefined) {
-            slider.value = modifiedFeatures[k];
-            valSpan.textContent = modifiedFeatures[k].toFixed(2);
-        }
-    });
-
-    runSimulation();
+let debounceTimer = null;
+function debounceScenario() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(runCurrentScenario, 350);
 }
 
-let simTimeout;
-function debounceSimulation() {
-    clearTimeout(simTimeout);
-    simTimeout = setTimeout(runSimulation, 400);
-}
+async function runCurrentScenario() {
+    const spinner = document.getElementById('loadingSpinner');
+    const resultsContent = document.getElementById('resultsContent');
+    spinner.style.display = 'block';
+    resultsContent.style.display = 'none';
 
-async function runSimulation() {
-    document.getElementById('simLoading').style.display = 'flex';
-    
+    let payload = {};
+    if (activePresetId) {
+        payload.preset_id = activePresetId;
+    } else {
+        payload.modified_features = customFeatures;
+    }
+
+    if (currentScope === 'district') {
+        if (!currentAreaId) { spinner.style.display = 'none'; return; }
+        payload.area_id = currentAreaId;
+    } else if (currentScope === 'state') {
+        const st = document.getElementById('stateSelect').value;
+        if (!st) { spinner.style.display = 'none'; return; }
+        payload.state_name = st;
+    } else if (currentScope === 'cluster') {
+        const cid = document.getElementById('clusterSelect').value;
+        if (cid === '') { spinner.style.display = 'none'; return; }
+        payload.cluster_id = parseInt(cid, 10);
+    }
+
     try {
-        const payload = {
-            area_id: parseInt(currentAreaId),
-            modified_features: modifiedFeatures
-        };
-        
         const res = await fetch('/api/scenario', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        
+
         const data = await res.json();
-        
-        if (res.ok) {
-            updateResultsUI(data);
+        spinner.style.display = 'none';
+
+        if (!res.ok) {
+            alert('Scenario execution failed: ' + (data.error || 'Server error'));
+            return;
+        }
+
+        resultsContent.style.display = 'block';
+        if (currentScope === 'district') {
+            renderSingleDistrictResults(data);
         } else {
-            console.error("Simulation error:", data.error);
+            renderGroupResults(data);
         }
-    } catch(e) {
-        console.error(e);
-    } finally {
-        document.getElementById('simLoading').style.display = 'none';
+
+    } catch (e) {
+        spinner.style.display = 'none';
+        alert('Network error while running scenario: ' + e.message);
     }
 }
 
-function updateResultsUI(data) {
-    // Original Score
-    document.getElementById('origScore').textContent = data.original_score.toFixed(3);
-    document.getElementById('origCat').textContent = data.original_category;
-    document.getElementById('origCat').style.color = getCategoryColor(data.original_category);
-    
-    // Simulated Score
-    document.getElementById('simScore').textContent = data.scenario_score.toFixed(3);
-    document.getElementById('simCat').textContent = data.scenario_category;
-    document.getElementById('simCat').style.color = getCategoryColor(data.scenario_category);
-    
-    // Diff
-    const diff = data.difference;
-    const diffEl = document.getElementById('simDiff');
-    const sign = diff > 0 ? '+' : '';
-    diffEl.textContent = `${sign}${diff.toFixed(3)}`;
-    
-    diffEl.className = 'diff-badge';
-    if (diff < -0.01) {
-        diffEl.classList.add('diff-negative');
-        diffEl.textContent += " (Improved)";
-    } else if (diff > 0.01) {
-        diffEl.classList.add('diff-positive');
-        diffEl.textContent += " (Worsened)";
+function renderSingleDistrictResults(data) {
+    document.getElementById('singleResultsView').style.display = 'block';
+    document.getElementById('groupResultsView').style.display = 'none';
+    document.getElementById('outcomeSub').textContent = `Target: ${data.area_name}, ${data.state_name}`;
+
+    // Warnings
+    const wBox = document.getElementById('warningsBox');
+    if (data.warnings && data.warnings.length > 0) {
+        document.getElementById('warningsText').textContent = data.warnings.join('; ');
+        wBox.style.display = 'block';
     } else {
-        diffEl.classList.add('diff-neutral');
-        diffEl.textContent += " (No Change)";
+        wBox.style.display = 'none';
     }
 
-    // Update feature shifts list
-    const list = document.getElementById('featureList');
-    list.innerHTML = '';
-    
-    let changesFound = false;
-    Object.keys(FEAT_NAMES).forEach(k => {
-        const oldV = baseFeatures[k];
-        const newV = modifiedFeatures[k];
-        if (oldV !== undefined && newV !== undefined && Math.abs(oldV - newV) > 0.001) {
-            changesFound = true;
-            list.innerHTML += `
-                <div class="feature-item">
-                    <div class="feat-name">${FEAT_NAMES[k]}</div>
-                    <div class="feat-vals">
-                        <span class="feat-old">${oldV.toFixed(2)}</span>
-                        <span class="feat-arrow">→</span>
-                        <span class="feat-new">${newV.toFixed(2)}</span>
-                    </div>
-                </div>
-            `;
-        }
-    });
-    
-    if (!changesFound) {
-        list.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; font-style:italic;">No changes applied yet. Baseline active.</div>';
+    // Baseline
+    document.getElementById('singleOrigScore').textContent = data.original_score.toFixed(4);
+    const origCat = document.getElementById('singleOrigCat');
+    origCat.textContent = data.original_category;
+    origCat.className = `cat-pill cat-${data.original_category.toLowerCase()}`;
+    if (data.original_interval_80) {
+        document.getElementById('singleOrigCI').textContent = `80% Interval: [${data.original_interval_80[0].toFixed(3)}, ${data.original_interval_80[1].toFixed(3)}]`;
+    }
+
+    // Scenario
+    document.getElementById('singleScenScore').textContent = data.scenario_score.toFixed(4);
+    const scenCat = document.getElementById('singleScenCat');
+    scenCat.textContent = data.scenario_category;
+    scenCat.className = `cat-pill cat-${data.scenario_category.toLowerCase()}`;
+    if (data.scenario_interval_80) {
+        document.getElementById('singleScenCI').textContent = `80% Interval: [${data.scenario_interval_80[0].toFixed(3)}, ${data.scenario_interval_80[1].toFixed(3)}]`;
+    }
+
+    // Difference
+    const diff = data.difference;
+    const diffBadge = document.getElementById('singleDiffBadge');
+    const sign = diff > 0 ? '+' : '';
+    diffBadge.textContent = `Score Change: ${sign}${diff.toFixed(4)}`;
+    if (diff < -0.005) {
+        diffBadge.className = 'diff-badge diff-neg';
+        diffBadge.textContent += ' (Reduced Deprivation)';
+    } else if (diff > 0.005) {
+        diffBadge.className = 'diff-badge diff-pos';
+        diffBadge.textContent += ' (Increased Deprivation)';
+    } else {
+        diffBadge.className = 'diff-badge diff-zero';
+        diffBadge.textContent += ' (Negligible)';
+    }
+
+    // MAE Alert (Requirement 4)
+    const maeAlert = document.getElementById('singleMaeAlert');
+    const maeText = document.getElementById('singleMaeText');
+    if (data.is_smaller_than_mae) {
+        maeAlert.className = 'mae-alert below';
+        maeText.textContent = `ℹ️ Smaller than the model's typical error (MAE ${data.model_mae.toFixed(4)})`;
+    } else {
+        maeAlert.className = 'mae-alert above';
+        maeText.textContent = `⚡ Exceeds the model's typical error (MAE ${data.model_mae.toFixed(4)})`;
     }
 }
 
-function getCategoryColor(cat) {
-    if(cat === 'Low') return '#166534';
-    if(cat === 'Medium') return '#92400e';
-    if(cat === 'High') return '#991b1b';
-    return '#475569';
+function renderGroupResults(data) {
+    document.getElementById('singleResultsView').style.display = 'none';
+    document.getElementById('groupResultsView').style.display = 'block';
+    document.getElementById('outcomeSub').textContent = `Group Target: ${data.target_name} (${data.total_districts} districts)`;
+
+    // Warnings
+    const wBox = document.getElementById('warningsBox');
+    if (data.warnings && data.warnings.length > 0) {
+        document.getElementById('warningsText').textContent = data.warnings.join('; ');
+        wBox.style.display = 'block';
+    } else {
+        wBox.style.display = 'none';
+    }
+
+    // 4 Key Metrics (Requirement 2)
+    const signMean = data.mean_change > 0 ? '+' : '';
+    const signMed = data.median_change > 0 ? '+' : '';
+    document.getElementById('groupMeanVal').textContent = `${signMean}${data.mean_change.toFixed(4)}`;
+    document.getElementById('groupMedianVal').textContent = `${signMed}${data.median_change.toFixed(4)}`;
+    document.getElementById('groupCatShiftsVal').textContent = `${data.category_changes_count} / ${data.total_districts}`;
+    document.getElementById('groupShareMaeVal').textContent = `${(data.share_smaller_than_mae * 100).toFixed(1)}%`;
+
+    document.getElementById('groupMaeText').textContent =
+        `The model's cross-validated leave-one-state-out MAE is ${data.model_mae.toFixed(4)}. ${(data.share_smaller_than_mae * 100).toFixed(1)}% of districts in this group experience a response smaller than this noise margin.`;
+
+    document.getElementById('groupCountText').textContent = data.districts ? data.districts.length : 0;
+
+    // Table rows
+    const tbody = document.getElementById('groupDistrictsBody');
+    tbody.innerHTML = '';
+    if (data.districts && data.districts.length > 0) {
+        data.districts.forEach(d => {
+            const tr = document.createElement('tr');
+            const signD = d.difference > 0 ? '+' : '';
+            const isSmall = d.is_smaller_than_mae;
+            tr.innerHTML = `
+                <td><strong>${escapeHTML(d.area_name)}</strong></td>
+                <td>${d.original_score.toFixed(3)} <span class="cat-pill cat-${d.original_category.toLowerCase()}">${d.original_category}</span></td>
+                <td>${d.scenario_score.toFixed(3)} <span class="cat-pill cat-${d.scenario_category.toLowerCase()}">${d.scenario_category}</span></td>
+                <td style="font-weight:700; color:${d.difference < 0 ? '#166534' : '#991b1b'};">${signD}${d.difference.toFixed(3)}</td>
+                <td><span style="font-size:0.75rem; color:${isSmall ? '#b45309' : '#047857'}; font-weight:600;">${isSmall ? 'Smaller than MAE' : 'Exceeds MAE'}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+}
+
+function escapeHTML(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[tag] || tag));
 }
 
 window.addEventListener('DOMContentLoaded', init);

@@ -4,7 +4,7 @@ An explainable, multimodal Geospatial Artificial Intelligence (GeoAI) platform f
 
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Framework-Flask%203.0-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/Tests-65%20Passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-101%20Passed-brightgreen.svg)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 [![GitHub Repo](https://img.shields.io/badge/GitHub-GeoPovertyAI-181717.svg?logo=github)](https://github.com/ditheshshettigar00-jpg/GeoPovertyAI)
 
@@ -74,7 +74,7 @@ GeoPovertyAI/
 │   ├── generate_results_doc.py # Dynamic results documentation generator
 │   ├── precompute_predictions.py # Offline LOSO prediction & SHAP precomputation
 │   └── refill_missing_features.py # Secondary Earth Engine extraction for large districts
-├── tests/                    # Automated testing suite (65 passing pytest tests)
+├── tests/                    # Automated testing suite (101 passing pytest tests)
 │   ├── conftest.py           # Shared test fixtures & test client setup
 │   ├── test_pipeline.py      # Core data pipelines, API endpoints, authentication
 │   ├── test_phase2.py        # Spatial cross-validation, pipelines, uncertainty
@@ -263,8 +263,12 @@ pytest -v
 ```
 
 **Test Results:**
-- **65 passed** in `61.01s` (100% pass rate) across:
+- **101 passed** (100% pass rate) across:
   - `tests/test_phase2.py`: Spatial cross-validation, IQR clipping, pipeline transformers (10 tests)
   - `tests/test_phase3.py`: Additive SHAP equality ($\le 10^{-4}$), Grad-CAM deactivation, satellite image safety (7 tests)
   - `tests/test_pipeline.py`: Feature fusion, API routes, authentication, district matching (26 tests)
   - `tests/test_security_hotspots.py`: CORS origin validation, session cookie flags, rate limiting, DBSCAN clustering (22 tests)
+  - `tests/test_report_page.py`: District report route, JSON data endpoints, and graceful fallbacks (11 tests)
+  - `tests/test_area_profile.py`: Grouped district profile schema, survey indicators, and empirical percentiles (8 tests)
+  - `tests/test_scenario_explorer.py`: Scenario presets, single & group aggregations, uncertainty, and disclaimer integrity (8 tests)
+  - `tests/test_indicator_service.py`: Real district indicators, NFHS-5 survey join, PDF tables & graceful fallbacks (9 tests)

@@ -186,23 +186,81 @@ def model_performance():
 @api_bp.route("/scenario", methods=["POST"])
 def scenario():
     body = request.get_json(silent=True)
-    if not body or "area_id" not in body or "modified_features" not in body:
+    if not body:
         return jsonify({
-            "error": "Request body must be JSON with 'area_id' and 'modified_features', "
-                     "e.g. {\"area_id\": 1, \"modified_features\": {\"builtup_pct\": 40}}"
+            "error": "Request body must be JSON, e.g. {\"area_id\": 1, \"modified_features\": {\"builtup_pct\": 40}}"
+        }), 400
+
+    area_id = body.get("area_id")
+    state_name = body.get("state_name")
+    cluster_id = body.get("cluster_id")
+    group_type = body.get("group_type")
+    group_id = body.get("group_id")
+    preset_id = body.get("preset_id") or body.get("preset")
+    modified_features = body.get("modified_features")
+
+    if area_id is None and not state_name and cluster_id is None and not group_type:
+        return jsonify({
+            "error": "Request body must contain 'area_id', 'state_name', 'cluster_id', or 'group_type'."
+        }), 400
+
+    if modified_features is None and not preset_id:
+        return jsonify({
+            "error": "Request body must specify either 'modified_features' or 'preset_id'."
         }), 400
 
     try:
-        area_id = int(body["area_id"])
-        result = model_service.predict_scenario(area_id, body["modified_features"])
+        # 1. Single district scenario
+        if area_id is not None:
+            aid = int(area_id)
+            result = model_service.predict_scenario(aid, modified_features=modified_features, preset_id=preset_id)
+            if result is None:
+                return jsonify({"error": f"area_id {aid} not found in feature table"}), 404
+            result["area_id"] = aid
+            return jsonify(result)
+
+        # 2. Group scenario (State / Cluster)
+        if state_name:
+            result = model_service.predict_group_scenario("state", state_name, modified_features=modified_features, preset_id=preset_id)
+        elif cluster_id is not None:
+            result = model_service.predict_group_scenario("cluster", cluster_id, modified_features=modified_features, preset_id=preset_id)
+        elif group_type:
+            result = model_service.predict_group_scenario(group_type, group_id, modified_features=modified_features, preset_id=preset_id)
+        else:
+            return jsonify({"error": "No valid scenario target provided"}), 400
+
+        return jsonify(result)
+
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Scenario execution failed: {str(e)}"}), 500
 
-    if result is None:
-        return jsonify({"error": f"area_id {area_id} not found in feature table"}), 404
 
-    result["area_id"] = area_id
-    return jsonify(result)
+@api_bp.route("/scenario-presets", methods=["GET"])
+def scenario_presets():
+    """Returns available sensitivity proxy presets."""
+    return jsonify(model_service.SCENARIO_PRESETS)
+
+
+@api_bp.route("/scenario-targets", methods=["GET"])
+def scenario_targets():
+    """Returns available targeting options: states, hotspot clusters, and presets."""
+    return jsonify(model_service.get_scenario_targets())
+
+
+@api_bp.route("/indicators/<int:area_id>", methods=["GET"])
+def get_indicators(area_id):
+    """
+    Returns complete real indicators (7 satellite, 5 survey) for the district.
+    Query param ?full=1 adds all ~104 NFHS indicators.
+    """
+    from backend.services import indicator_service
+    full = request.args.get("full") == "1"
+    data = indicator_service.get_district_indicators(area_id, full=full)
+    if data is None:
+        return jsonify({"error": f"District {area_id} not found"}), 404
+    return jsonify(data)
 
 
 @api_bp.route("/area-features/<int:area_id>", methods=["GET"])

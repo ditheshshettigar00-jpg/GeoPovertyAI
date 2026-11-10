@@ -17,7 +17,7 @@ from datetime import datetime
 from flask import Blueprint, jsonify, send_file, request, session
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from backend.services import db_service, model_service
+from backend.services import db_service, model_service, indicator_service
 from backend.api.auth import roles_required
 from config import SATELLITE_DIR
 
@@ -34,13 +34,10 @@ reports_bp = Blueprint("reports", __name__, url_prefix="/api/reports")
 CATEGORY_THRESHOLDS = {"Low": (0.0, 0.35), "Medium": (0.35, 0.60), "High": (0.60, 1.0)}
 
 FEATURE_LABELS = {
-    "nightlight_mean": "Nighttime Lights Radiance (VIIRS)",
-    "ndvi_mean": "Vegetation Index - NDVI (Sentinel-2)",
-    "builtup_pct": "Built-Up Settlement Density (GHSL)",
-    "population_density": "Population Density (GHSL, /km2)",
-    "road_density_km_per_sqkm": "Road Network Density (OSM, km/km2)",
-    "school_distance_km": "Distance to Nearest School (OSM, km)",
-    "hospital_distance_km": "Distance to Nearest Hospital (OSM, km)",
+    "nightlight_mean": "Nighttime Light Radiance (VIIRS, nW/cm2/sr)",
+    "ndvi_mean": "Normalized Difference Vegetation Index (NDVI, Sentinel-2)",
+    "builtup_pct": "Built-Up Surface Area (GHSL, % of land area)",
+    "population_density": "Population Density (GHSL, people per km2)",
 }
 
 # SHAP top-feature canonical explanations, ordered by typical importance rank
@@ -49,9 +46,6 @@ SHAP_FEATURE_NOTES = {
     "builtup_pct": "Built-up surface density reflects urbanisation. Sparse settlement patterns are associated with higher predicted deprivation.",
     "ndvi_mean": "High vegetation (NDVI) in a district with low nightlights may indicate rural, agrarian areas, which the model links to elevated deprivation.",
     "population_density": "Population density interacts with infrastructure availability. Sparse populations far from services tend to receive higher predicted scores.",
-    "road_density_km_per_sqkm": "Poor road connectivity limits access to markets, healthcare and schools, contributing positively to the deprivation score.",
-    "hospital_distance_km": "Greater distance to the nearest hospital is a direct infrastructure-access signal that raises the predicted score.",
-    "school_distance_km": "Greater distance to the nearest school signals limited educational access, a key dimension of area-level deprivation.",
 }
 
 DISCLAIMER = (
@@ -178,13 +172,13 @@ def district_report_data(area_id):
         "gradcam_url": f"/api/gradcam/{area_id}" if has_gradcam else None,
         "disclaimer": DISCLAIMER,
         "category_thresholds": CATEGORY_THRESHOLDS,
+        "satellite_indicators": indicator_service.get_satellite_indicators(area_id),
+        "survey_indicators": indicator_service.get_survey_indicators(area_id),
         "data_sources": {
             "satellite": "ESA Sentinel-2 MSI (Bands B4/B3/B2 - RGB, 10 m resolution)",
             "nighttime_light": "NOAA/NASA VIIRS DNB Nighttime Lights",
             "built_up": "European Commission Global Human Settlement Layer (GHSL)",
-            "road_osm": "OpenStreetMap (OSM) road network via OSMnx",
             "ground_truth": "National Family Health Survey 5 (NFHS-5), 2019-21",
-            "deep_features": "VGG-16 (pre-trained ImageNet) - spatial feature extraction from Sentinel-2 patches",
         },
     })
 
@@ -235,7 +229,7 @@ def generate_district_report_pdf(area_id):
     from reportlab.lib.units import cm
     from reportlab.platypus import (
         SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-        HRFlowable, Image as RLImage,
+        HRFlowable, Image as RLImage, PageBreak,
     )
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
 
@@ -300,8 +294,7 @@ def generate_district_report_pdf(area_id):
         ["Prediction Model", model_name],
         ["Satellite Image Source", "ESA Sentinel-2 MSI (RGB - Bands B4/B3/B2, 10 m)"],
         ["Ground Truth Source", "National Family Health Survey 5 (NFHS-5), 2019-21"],
-        ["Additional Features", "VIIRS Night-Time Lights + GHSL Built-Up/Population + OSM Roads/POI"],
-        ["Deep Feature Extractor", "VGG-16 (pre-trained on ImageNet) applied to Sentinel-2 patches"],
+        ["Satellite Telemetry Features", "VIIRS Nocturnal Radiance + Sentinel-2 NDVI + GHSL Settlement Grids"],
         ["Data Mode", area.get("data_mode", "real").upper()],
     ]
     info_table = Table(info_data, colWidths=[5 * cm, PAGE_W - 2 * MARGIN - 5 * cm])
@@ -392,8 +385,7 @@ def generate_district_report_pdf(area_id):
     story.append(Paragraph("4. Sentinel-2 Satellite Imagery", S_SECTION))
     story.append(Paragraph(
         "The following RGB composite was acquired from ESA Sentinel-2 MSI (Bands B4/B3/B2). "
-        "A cloud-free patch centred on the district centroid was processed at 10 m resolution. "
-        "VGG-16 spatial features were extracted from this patch prior to fusion with geospatial indicators.",
+        "A cloud-free patch centred on the district centroid was processed at 10 m resolution.",
         S_BODY_J
     ))
     if sat_path:
@@ -420,41 +412,110 @@ def generate_district_report_pdf(area_id):
         ))
     story.append(Spacer(1, 10))
 
-    # ------- Section 5 - Geospatial Indicators ------------------------------
-    story.append(Paragraph("5. Geospatial Indicator Values", S_SECTION))
+    # ------- Section 5 - Indicator Values (5A Satellite, 5B Survey) ----------
+    story.append(Paragraph("5. Geospatial & Socioeconomic Indicator Values", S_SECTION))
     story.append(Paragraph(
-        "The following indicator values were used as input features to the machine-learning model "
-        "for this district. Values are derived from VIIRS, GHSL, and OSM data sources.",
+        "This section details both the satellite-derived remote sensing telemetry used as inputs "
+        "to the machine learning model and the ground-truth survey indicators from NFHS-5 that form the deprivation score.",
         S_BODY_J
     ))
-    if features:
-        feat_rows = [["Indicator", "Value", "Data Source"]]
-        for k, v in features.items():
-            if k not in ("area_id", "data_mode") and v is not None:
-                label = FEATURE_LABELS.get(k, k.replace("_", " ").title())
-                parts = label.split(" (", 1)
-                clean_label = parts[0]
-                source = parts[1].rstrip(")") if len(parts) > 1 else "-"
-                feat_rows.append([clean_label, f"{float(v):.4f}", source])
-        feat_table = Table(
-            feat_rows,
-            colWidths=[5.5 * cm, 2.5 * cm, PAGE_W - 2 * MARGIN - 8 * cm]
+    story.append(Spacer(1, 6))
+
+    # 5A Satellite-derived indicators
+    story.append(Paragraph("<b>5A. Satellite-Derived Indicators</b>", S_SUBTITLE))
+    story.append(Spacer(1, 4))
+
+    sat_indicators = indicator_service.get_satellite_indicators(area_id)
+    if sat_indicators:
+        sat_rows = [["Indicator", "Value", "Unit", "Percentile of 564", "State Median", "India Median", "Source"]]
+        for s in sat_indicators:
+            val_str = s.get("formatted_value", str(s["value"])) if s["value"] is not None else "-"
+            unit_str = s.get("unit", "")
+            pct_str = f"{s['percentile']:.1f}%" if s.get("percentile") is not None else "-"
+            st_med_str = str(s["state_median"]) if s.get("state_median") is not None else "-"
+            nat_med_str = str(s["national_median"]) if s.get("national_median") is not None else "-"
+            source_str = s.get("source", "-")
+            sat_rows.append([
+                Paragraph(s["label"], S_BODY),
+                Paragraph(val_str, S_BODY),
+                Paragraph(unit_str, S_BODY),
+                Paragraph(pct_str, S_BODY),
+                Paragraph(st_med_str, S_BODY),
+                Paragraph(nat_med_str, S_BODY),
+                Paragraph(source_str, S_BODY),
+            ])
+        sat_table = Table(
+            sat_rows,
+            colWidths=[3.8 * cm, 1.8 * cm, 2.2 * cm, 2.2 * cm, 2.2 * cm, 2.2 * cm, 3.6 * cm]
         )
-        feat_table.setStyle(TableStyle([
+        sat_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2d6a4f")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f7f6f3"), colors.white]),
             ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e6e4de")),
-            ("TOPPADDING", (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-            ("LEFTPADDING", (0, 0), (-1, -1), 7),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ]))
-        story.append(feat_table)
+        story.append(sat_table)
     else:
-        story.append(Paragraph(
-            "<i>No feature data available for this district.</i>", S_BODY))
+        story.append(Paragraph("<i>No satellite telemetry data available for this district.</i>", S_BODY))
+
+    story.append(Spacer(1, 10))
+
+    # 5B Survey indicators
+    story.append(Paragraph("<b>5B. Survey Indicators (NFHS-5) that Form the Deprivation Score</b>", S_SUBTITLE))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(
+        "Electricity, sanitation and clean cooking fuel enter the score as 100 minus the value; stunting and anaemia enter directly.",
+        S_BODY_J
+    ))
+    story.append(Spacer(1, 4))
+
+    surv_indicators = indicator_service.get_survey_indicators(area_id)
+    if surv_indicators:
+        surv_rows = [["Indicator", "NFHS-5", "NFHS-4", "Change", "State Median", "India Median", "Note"]]
+        for sv in surv_indicators:
+            lbl = sv["label"]
+            v5_str = f"{sv['nfhs5']:.1f}%" if sv["nfhs5"] is not None else "Not shown"
+            v4_str = f"{sv['nfhs4']:.1f}%" if sv["nfhs4"] is not None else "-"
+            chg_str = f"{'+' if (sv['change'] or 0) > 0 else ''}{sv['change']:.1f}%" if sv["change"] is not None else "-"
+            st_med = f"{sv['state_median']:.1f}%" if sv.get("state_median") is not None else "-"
+            nat_med = f"{sv['national_median']:.1f}%" if sv.get("national_median") is not None else "-"
+            note = sv.get("flag_text") or "-"
+            surv_rows.append([
+                Paragraph(lbl, S_BODY),
+                Paragraph(v5_str, S_BODY),
+                Paragraph(v4_str, S_BODY),
+                Paragraph(chg_str, S_BODY),
+                Paragraph(st_med, S_BODY),
+                Paragraph(nat_med, S_BODY),
+                Paragraph(note, S_BODY),
+            ])
+        surv_table = Table(
+            surv_rows,
+            colWidths=[5.2 * cm, 1.8 * cm, 1.8 * cm, 1.8 * cm, 2.0 * cm, 2.0 * cm, 3.4 * cm]
+        )
+        surv_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2d6a4f")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f7f6f3"), colors.white]),
+            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e6e4de")),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ]))
+        story.append(surv_table)
+    else:
+        story.append(Paragraph("<i>No survey indicators available for this district.</i>", S_BODY))
     story.append(Spacer(1, 10))
 
     # ------- Section 6 - SHAP Explanation -----------------------------------
@@ -520,7 +581,7 @@ def generate_district_report_pdf(area_id):
     story.append(Paragraph(
         "Grad-CAM (Gradient-weighted Class Activation Mapping) generates a saliency heatmap "
         "that highlights which spatial regions of the Sentinel-2 satellite image most strongly "
-        "activated the VGG-16 visual feature extractor used in this pipeline. "
+        "activated the convolutional visual feature extractor. "
         "Warmer (red/yellow) regions indicate areas that contributed most to the extracted "
         "visual representation. This does not directly indicate poverty, but shows which "
         "visual patterns drove the CNN's output features.",
@@ -537,8 +598,8 @@ def generate_district_report_pdf(area_id):
             story.append(gc_img)
             story.append(Paragraph(
                 f"<i>Figure 2: Grad-CAM heatmap overlay for {area['area_name']}. "
-                "Red/yellow regions had the highest activation in the VGG-16 feature layer. "
-                "Generated using the final convolutional layer of the VGG-16 network.</i>",
+                "Red/yellow regions had the highest activation in the convolutional feature layer. "
+                "Generated using the final convolutional layer of the network.</i>",
                 S_SMALL
             ))
         except Exception:
@@ -567,6 +628,50 @@ def generate_district_report_pdf(area_id):
         f"Generated by GeoPoverty AI  |  {analysis_date}  |  MCA Final Year Project Prototype",
         S_FOOTER
     ))
+
+    # ------- Optional Appendix: All NFHS-5 Indicators -----------------------
+    if request.args.get("appendix") == "1":
+        story.append(PageBreak())
+        story.append(Paragraph("Appendix: All NFHS-5 Indicators for this District", S_SECTION))
+        story.append(Paragraph(
+            f"Complete survey indicators for {area['area_name']}, {area['state_name']} "
+            "from the National Family Health Survey (NFHS-5, 2019-21) and NFHS-4 (2015-16).",
+            S_BODY_J
+        ))
+        story.append(Spacer(1, 6))
+        all_indicators = indicator_service.get_all_survey_indicators(area_id)
+        if all_indicators:
+            app_rows = [["#", "Indicator", "NFHS-5", "NFHS-4", "Change", "Note / Flag"]]
+            for ind in all_indicators:
+                v5 = f"{ind['nfhs5']:.1f}" if ind["nfhs5"] is not None else "-"
+                v4 = f"{ind['nfhs4']:.1f}" if ind["nfhs4"] is not None else "-"
+                chg = f"{'+' if (ind['change'] or 0) > 0 else ''}{ind['change']:.1f}" if ind["change"] is not None else "-"
+                fl = ind.get("flag_text") or "-"
+                app_rows.append([
+                    Paragraph(str(ind["indicator_number"]), S_BODY),
+                    Paragraph(ind["label"], S_BODY),
+                    Paragraph(v5, S_BODY),
+                    Paragraph(v4, S_BODY),
+                    Paragraph(chg, S_BODY),
+                    Paragraph(fl, S_BODY),
+                ])
+            app_table = Table(
+                app_rows,
+                colWidths=[1.0 * cm, 8.5 * cm, 2.0 * cm, 2.0 * cm, 2.0 * cm, 2.5 * cm]
+            )
+            app_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2d6a4f")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f7f6f3"), colors.white]),
+                ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#e6e4de")),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LEFTPADDING", (0, 0), (-1, -1), 3),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+            ]))
+            story.append(app_table)
 
     # ------- Build & stream -------------------------------------------------
     doc.build(story)

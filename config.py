@@ -66,3 +66,68 @@ HOTSPOT_MIN_SAMPLES = 3
 for _dir in [RAW_DIR, PROCESSED_DIR, SATELLITE_DIR, GROUND_TRUTH_DIR, DEMO_DIR,
              MODELS_DIR, DATABASE_DIR, EXPLAIN_DIR]:
     os.makedirs(_dir, exist_ok=True)
+
+# --------------------------------------------------------------------------
+# Scenario Explorer presets (proxies for satellite-derived feature changes)
+# NOTE: These are sensitivity proxies, never policy interventions.
+# --------------------------------------------------------------------------
+SCENARIO_DISCLAIMER_NOTE = (
+    "This shows how the model's estimate responds to changes in satellite-derived features. "
+    "It is not a prediction of the effect of a policy or programme. "
+    "Schooling, health, nutrition and infrastructure are not in the model. "
+    "This is a model sensitivity exploration, not a causal simulation."
+)
+
+SCENARIO_PRESETS = {
+    "electrification_125": {
+        "id": "electrification_125",
+        "name": "Electrification proxy (x1.25)",
+        "feature": "nightlight_mean",
+        "op": "multiply",
+        "value": 1.25,
+        "description": "Electrification proxy: scales night-light radiance by 1.25x.",
+    },
+    "electrification_150": {
+        "id": "electrification_150",
+        "name": "Electrification proxy (x1.5)",
+        "feature": "nightlight_mean",
+        "op": "multiply",
+        "value": 1.5,
+        "description": "Electrification proxy: scales night-light radiance by 1.5x.",
+    },
+    "urbanisation_1pp": {
+        "id": "urbanisation_1pp",
+        "name": "Urbanisation proxy (+1 pp)",
+        "feature": "builtup_pct",
+        "op": "add",
+        "value": 1.0,
+        "description": "Urbanisation proxy: increases built-up land share by +1.0 percentage point.",
+    },
+    "urbanisation_2pp": {
+        "id": "urbanisation_2pp",
+        "name": "Urbanisation proxy (+2 pp)",
+        "feature": "builtup_pct",
+        "op": "add",
+        "value": 2.0,
+        "description": "Urbanisation proxy: increases built-up land share by +2.0 percentage points.",
+    },
+    "greening_005": {
+        "id": "greening_005",
+        "name": "Greening proxy (+0.05)",
+        "feature": "ndvi_mean",
+        "op": "add",
+        "value": 0.05,
+        "description": "Greening proxy: increases NDVI vegetation index by +0.05.",
+    },
+    "combined": {
+        "id": "combined",
+        "name": "Combined growth proxy",
+        "features": {
+            "nightlight_mean": {"op": "multiply", "value": 1.25},
+            "builtup_pct": {"op": "add", "value": 1.0},
+            "ndvi_mean": {"op": "add", "value": 0.05},
+        },
+        "description": "Combined proxy: night-light x1.25, built-up +1.0 pp, and NDVI +0.05.",
+    },
+}
+

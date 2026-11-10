@@ -387,39 +387,91 @@ function renderIndicatorsPanel(data) {
     // ── Section 1: Satellite & geospatial inputs (used by the model) ─────────
     const sec1 = createEl('details', 'di-section');
     sec1.open = true;
-    const sum1 = createEl('summary', 'di-summary', '1. Satellite and geospatial inputs (used by the model)');
+    const sum1 = createEl('summary', 'di-summary', '1. Satellite-derived indicators (7)');
     sec1.appendChild(sum1);
     const body1 = createEl('div', 'di-body');
 
-    (data.model_inputs || []).forEach(item => {
-        const row = createEl('div', 'di-row');
-        const header = createEl('div', 'di-row-header');
-        header.appendChild(createEl('span', 'di-label', item.label));
-        const valText = item.value !== null ? (item.value + ' ' + (item.unit || '')) : '—';
-        header.appendChild(createEl('span', 'di-value', valText));
-        row.appendChild(header);
+    const satList = data.satellite_indicators || [];
+    if (satList.length > 0) {
+        const tblWrap1 = createEl('div', 'di-table-wrap');
+        const tbl1 = createEl('table', 'di-table');
+        const thead1 = createEl('thead');
+        const trh1 = createEl('tr');
+        trh1.appendChild(createEl('th', null, 'Indicator'));
+        trh1.appendChild(createEl('th', null, 'Value'));
+        trh1.appendChild(createEl('th', null, 'Percentile (of 564)'));
+        trh1.appendChild(createEl('th', null, 'State Median'));
+        trh1.appendChild(createEl('th', null, 'India Median'));
+        thead1.appendChild(trh1);
+        tbl1.appendChild(thead1);
 
-        if (item.value !== null && item.dataset_min !== null && item.dataset_max !== null) {
-            const barCont = createEl('div', 'di-bar-container');
-            const span = (item.dataset_max - item.dataset_min) || 1.0;
-            const pct = Math.max(0, Math.min(100, ((item.value - item.dataset_min) / span) * 100));
-            const marker = createEl('div', 'di-bar-marker');
-            marker.style.left = pct.toFixed(1) + '%';
-            barCont.appendChild(marker);
-            row.appendChild(barCont);
+        const tbody1 = createEl('tbody');
+        satList.forEach(item => {
+            const tr = createEl('tr');
+            tr.appendChild(createEl('td', null, item.label));
+            
+            const tdVal = createEl('td');
+            const valStr = item.formatted_value || (item.value !== null ? item.value : '—');
+            tdVal.innerHTML = `<strong>${valStr}</strong> <span style="color:#64748b; font-size:0.75rem;">${item.unit || ''}</span>`;
+            tr.appendChild(tdVal);
 
-            const meta = createEl('div', 'di-bar-meta');
-            meta.appendChild(createEl('span', null, 'Min: ' + item.dataset_min));
-            meta.appendChild(createEl('span', null, 'higher than ' + item.percentile + '% of districts'));
-            meta.appendChild(createEl('span', null, 'Max: ' + item.dataset_max));
-            row.appendChild(meta);
-        }
+            const tdPct = createEl('td');
+            if (item.percentile !== null && item.percentile !== undefined) {
+                const pct = item.percentile;
+                tdPct.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:6px; min-width:90px;">
+                        <div style="flex:1; height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;">
+                            <div style="width:${Math.min(Math.max(pct, 0), 100)}%; height:100%; background:#1b4332;"></div>
+                        </div>
+                        <span style="font-size:0.78rem; font-weight:700;">${pct.toFixed(1)}%</span>
+                    </div>`;
+            } else {
+                tdPct.textContent = '—';
+            }
+            tr.appendChild(tdPct);
 
-        if (item.description) {
-            row.appendChild(createEl('div', 'di-desc', item.description));
-        }
-        body1.appendChild(row);
-    });
+            const tdStMed = createEl('td', null, item.state_median !== null && item.state_median !== undefined ? String(item.state_median) : '—');
+            tr.appendChild(tdStMed);
+
+            const tdNatMed = createEl('td', null, item.national_median !== null && item.national_median !== undefined ? String(item.national_median) : '—');
+            tr.appendChild(tdNatMed);
+
+            tbody1.appendChild(tr);
+        });
+        tbl1.appendChild(tbody1);
+        tblWrap1.appendChild(tbl1);
+        body1.appendChild(tblWrap1);
+    } else {
+        (data.model_inputs || []).forEach(item => {
+            const row = createEl('div', 'di-row');
+            const header = createEl('div', 'di-row-header');
+            header.appendChild(createEl('span', 'di-label', item.label));
+            const valText = item.value !== null ? (item.value + ' ' + (item.unit || '')) : '—';
+            header.appendChild(createEl('span', 'di-value', valText));
+            row.appendChild(header);
+
+            if (item.value !== null && item.dataset_min !== null && item.dataset_max !== null) {
+                const barCont = createEl('div', 'di-bar-container');
+                const span = (item.dataset_max - item.dataset_min) || 1.0;
+                const pct = Math.max(0, Math.min(100, ((item.value - item.dataset_min) / span) * 100));
+                const marker = createEl('div', 'di-bar-marker');
+                marker.style.left = pct.toFixed(1) + '%';
+                barCont.appendChild(marker);
+                row.appendChild(barCont);
+
+                const meta = createEl('div', 'di-bar-meta');
+                meta.appendChild(createEl('span', null, 'Min: ' + item.dataset_min));
+                meta.appendChild(createEl('span', null, 'higher than ' + item.percentile + '% of districts'));
+                meta.appendChild(createEl('span', null, 'Max: ' + item.dataset_max));
+                row.appendChild(meta);
+            }
+
+            if (item.description) {
+                row.appendChild(createEl('div', 'di-desc', item.description));
+            }
+            body1.appendChild(row);
+        });
+    }
     sec1.appendChild(body1);
     panelEl.appendChild(sec1);
 
@@ -528,7 +580,7 @@ function renderIndicatorsPanel(data) {
             body3.appendChild(row);
         });
     } else {
-        const naText = createEl('div', 'di-note-text', 'Not computed for this district (available for 29 districts only)');
+        const naText = createEl('div', 'di-note-text', 'Accessibility indicators not available for this district.');
         naText.style.fontStyle = 'italic';
         body3.appendChild(naText);
     }

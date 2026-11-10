@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from config import GROUND_TRUTH_DIR, PROCESSED_DIR
+from config import DATA_DIR, GROUND_TRUTH_DIR, PROCESSED_DIR
 from preprocessing.name_keys import clean_key, state_key
 
 _cache = None
@@ -178,30 +178,65 @@ def _load() -> Dict[str, Any]:
             "max": round(float(series.max()), 3),
         }
 
-    # 2. Load accessibility features (29 districts only)
+    # 2. Load accessibility features (using real measurements, never placeholder sample constants)
     acc_lookup = {}
+    exploratory_path = os.path.join(DATA_DIR, "exploratory", "original_table_with_visual_features.csv")
+
+    # Priority 1: Real measured accessibility features from the nationwide dataset (532 districts)
+    if os.path.exists(exploratory_path):
+        exp_df = pd.read_csv(exploratory_path)
+        exp_df["sk"] = exp_df["state_name"].map(state_key)
+        exp_df["area_dk"] = exp_df["area_name"].map(clean_key)
+        for _, row in exp_df.iterrows():
+            road_val = row.get("road_density_km_per_sqkm")
+            school_val = row.get("school_distance_km")
+            hosp_val = row.get("hospital_distance_km")
+            if pd.notna(road_val) or pd.notna(school_val) or pd.notna(hosp_val):
+                acc_lookup[(row["sk"], row["area_dk"])] = {
+                    "road_density_km_per_sqkm": (
+                        round(float(road_val), 3) if pd.notna(road_val) else None
+                    ),
+                    "school_distance_km": (
+                        round(float(school_val), 2) if pd.notna(school_val) else None
+                    ),
+                    "hospital_distance_km": (
+                        round(float(hosp_val), 2) if pd.notna(hosp_val) else None
+                    ),
+                }
+
+    # Priority 2: Fall back to real_accessibility_features.csv ONLY if it contains non-placeholder values
     if os.path.exists(acc_path):
         acc_df = pd.read_csv(acc_path)
-        acc_df["sk"] = acc_df["state_name"].map(state_key)
-        acc_df["dk"] = acc_df["area_name"].map(clean_key)
-        for _, row in acc_df.iterrows():
-            acc_lookup[(row["sk"], row["dk"])] = {
-                "road_density_km_per_sqkm": (
-                    round(float(row["road_density_km_per_sqkm"]), 3)
-                    if pd.notna(row.get("road_density_km_per_sqkm"))
-                    else None
-                ),
-                "school_distance_km": (
-                    round(float(row["school_distance_km"]), 2)
-                    if pd.notna(row.get("school_distance_km"))
-                    else None
-                ),
-                "hospital_distance_km": (
-                    round(float(row["hospital_distance_km"]), 2)
-                    if pd.notna(row.get("hospital_distance_km"))
-                    else None
-                ),
-            }
+        has_placeholders = False
+        for c in ["road_density_km_per_sqkm", "school_distance_km", "hospital_distance_km"]:
+            if c in acc_df.columns:
+                non_nulls = acc_df[c].dropna()
+                if len(non_nulls) > 3 and non_nulls.nunique() <= 1:
+                    has_placeholders = True
+                    break
+        if not has_placeholders:
+            acc_df["sk"] = acc_df["state_name"].map(state_key)
+            acc_df["dk"] = acc_df["area_name"].map(clean_key)
+            for _, row in acc_df.iterrows():
+                k = (row["sk"], row["dk"])
+                if k not in acc_lookup:
+                    acc_lookup[k] = {
+                        "road_density_km_per_sqkm": (
+                            round(float(row["road_density_km_per_sqkm"]), 3)
+                            if pd.notna(row.get("road_density_km_per_sqkm"))
+                            else None
+                        ),
+                        "school_distance_km": (
+                            round(float(row["school_distance_km"]), 2)
+                            if pd.notna(row.get("school_distance_km"))
+                            else None
+                        ),
+                        "hospital_distance_km": (
+                            round(float(row["hospital_distance_km"]), 2)
+                            if pd.notna(row.get("hospital_distance_km"))
+                            else None
+                        ),
+                    }
 
     # 3. Load & clean NFHS-5 raw indicators
     canonical_metadata = {}
@@ -366,6 +401,8 @@ def get_area_profile(area_id: int) -> Optional[Dict[str, Any]]:
     sk = row["sk"]
     area_dk = row["area_dk"]
     acc_data = acc_lookup.get((sk, area_dk))
+    if not acc_data and "dk" in row:
+        acc_data = acc_lookup.get((sk, row["dk"]))
 
     if acc_data and any(acc_data.values()):
         accessibility = {
@@ -455,12 +492,16 @@ def get_area_profile(area_id: int) -> Optional[Dict[str, Any]]:
                 "flag_text": rec.get("flag_text"),
             })
 
+    from backend.services import indicator_service
+    sat_inds = indicator_service.get_satellite_indicators(area_id)
+
     return {
         "area_id": int(row["area_id"]),
         "area_name": str(row["area_name"]),
         "state_name": str(row["state_name"]),
         "data_mode": str(row.get("data_mode", "real")),
         "model_inputs": model_inputs,
+        "satellite_indicators": sat_inds,
         "location_quality": location_quality,
         "survey_components": survey_components,
         "accessibility": accessibility,

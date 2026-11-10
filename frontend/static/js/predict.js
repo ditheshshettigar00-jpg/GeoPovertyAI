@@ -206,12 +206,18 @@ async function onDistrictChange(areaId) {
     }
 
     try {
-        const [predRes, featRes] = await Promise.all([
+        const [predRes, featRes, profRes] = await Promise.all([
             fetch(`/api/predict/${areaId}`).then(r => r.json()),
-            fetch(`/api/area-features/${areaId}`).then(r => r.json())
+            fetch(`/api/area-features/${areaId}`).then(r => r.json()),
+            fetch(`/api/area-profile/${areaId}`).then(r => r.ok ? r.json() : null).catch(() => null)
         ]);
 
-        selectedDistrictFeatures = featRes;
+        selectedDistrictFeatures = Object.assign({}, featRes);
+        if (profRes && profRes.accessibility && profRes.accessibility.available) {
+            profRes.accessibility.items.forEach(it => {
+                selectedDistrictFeatures[it.key] = it.value;
+            });
+        }
 
         document.getElementById('distNameText').textContent = predRes.area_name;
         document.getElementById('distStateText').textContent = predRes.state_name;
@@ -221,13 +227,36 @@ async function onDistrictChange(areaId) {
         catBadge.textContent = predRes.predicted_category;
         catBadge.className = `category-pill cat-${predRes.predicted_category.toLowerCase()}`;
 
-        document.getElementById('distNtlText').textContent = (featRes.nightlight_mean ? featRes.nightlight_mean.toFixed(2) : 'N/A') + ' nW';
-        document.getElementById('distNdviText').textContent = featRes.ndvi_mean ? featRes.ndvi_mean.toFixed(2) : 'N/A';
-        document.getElementById('distBuiltupText').textContent = featRes.builtup_pct ? featRes.builtup_pct.toFixed(1) : 'N/A';
-        document.getElementById('distHospText').textContent = featRes.hospital_distance_km ? featRes.hospital_distance_km.toFixed(2) + ' km' : 'N/A';
-        document.getElementById('distRoadText').textContent = featRes.road_density_km_per_sqkm ? featRes.road_density_km_per_sqkm.toFixed(2) + ' km/km²' : 'N/A';
-        document.getElementById('distSchoolText').textContent = featRes.school_distance_km ? featRes.school_distance_km.toFixed(2) + ' km' : 'N/A';
-        document.getElementById('distTexText').textContent = featRes.vgg_feat_1 ? featRes.vgg_feat_1.toFixed(2) : 'N/A';
+        // 4 Model Inputs
+        document.getElementById('distNtlText').textContent = (featRes.nightlight_mean != null ? featRes.nightlight_mean.toFixed(2) : 'N/A') + ' nW';
+        document.getElementById('distNdviText').textContent = featRes.ndvi_mean != null ? featRes.ndvi_mean.toFixed(2) : 'N/A';
+        document.getElementById('distBuiltupText').textContent = (featRes.builtup_pct != null ? featRes.builtup_pct.toFixed(1) : 'N/A') + '%';
+        if (document.getElementById('distPopText')) {
+            document.getElementById('distPopText').textContent = featRes.population_density != null ? Math.round(featRes.population_density) + ' /km²' : 'N/A';
+        }
+
+        // Accessibility Features (from profile service)
+        let hospVal = null, roadVal = null, schoolVal = null;
+        if (profRes && profRes.accessibility && profRes.accessibility.available) {
+            profRes.accessibility.items.forEach(it => {
+                if (it.key === 'hospital_distance_km') hospVal = it.value;
+                if (it.key === 'road_density_km_per_sqkm') roadVal = it.value;
+                if (it.key === 'school_distance_km') schoolVal = it.value;
+            });
+        }
+
+        const hospEl = document.getElementById('distHospText');
+        const roadEl = document.getElementById('distRoadText');
+        const schoolEl = document.getElementById('distSchoolText');
+
+        if (hospEl) hospEl.textContent = hospVal != null ? hospVal.toFixed(2) + ' km' : 'Not surveyed';
+        if (roadEl) roadEl.textContent = roadVal != null ? roadVal.toFixed(2) + ' km/km²' : 'Not surveyed';
+        if (schoolEl) schoolEl.textContent = schoolVal != null ? schoolVal.toFixed(2) + ' km' : 'Not surveyed';
+
+        const texEl = document.getElementById('distTexText');
+        if (texEl) {
+            texEl.textContent = featRes.vgg_feat_1 != null ? featRes.vgg_feat_1.toFixed(2) : 'N/A';
+        }
 
         // Satellite Image Preview
         const satContainer = document.getElementById('distSatContainer');
@@ -240,10 +269,11 @@ async function onDistrictChange(areaId) {
         }
 
         document.getElementById('distFullExplainLink').href = `/explanation?area_id=${areaId}`;
+        const pageLink = document.getElementById('distPageLink');
+        if (pageLink) pageLink.href = `/district/${areaId}`;
         const rptLink = document.getElementById('distReportLink');
         if (rptLink) rptLink.href = `/report/${areaId}`;
         document.getElementById('districtResultCard').style.display = 'block';
-
 
     } catch (e) {
         alert('Failed to load district details: ' + e.message);

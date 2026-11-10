@@ -446,6 +446,10 @@
                 <div style="font-size:1.3rem; font-weight:700;" id="distBuiltupText">--</div>
             </div>
             <div style="background:#f8fafc; padding:12px; border-radius:6px;">
+                <div style="font-size:0.8rem; color:var(--color-muted);">👥 Population Density</div>
+                <div style="font-size:1.3rem; font-weight:700;" id="distPopText">--</div>
+            </div>
+            <div style="background:#f8fafc; padding:12px; border-radius:6px;">
                 <div style="font-size:0.8rem; color:var(--color-muted);">🏥 Hospital Distance</div>
                 <div style="font-size:1.3rem; font-weight:700;" id="distHospText">--</div>
             </div>
@@ -456,10 +460,6 @@
             <div style="background:#f8fafc; padding:12px; border-radius:6px;">
                 <div style="font-size:0.8rem; color:var(--color-muted);">🏫 School Distance</div>
                 <div style="font-size:1.3rem; font-weight:700;" id="distSchoolText">--</div>
-            </div>
-            <div style="background:#f8fafc; padding:12px; border-radius:6px;">
-                <div style="font-size:0.8rem; color:var(--color-muted);">🎨 Visual Texture</div>
-                <div style="font-size:1.3rem; font-weight:700;" id="distTexText">--</div>
             </div>
         </div>
 
@@ -475,12 +475,15 @@
 
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:1rem;">
             <button type="button" style="background:#2d6a4f; color:white; font-weight:600;" onclick="loadDistrictIntoCustom()">
-                ⚡ Load into Live Predictor to Simulate Policy Changes
+                ⚡ Load into Live Predictor (Sensitivity Exploration)
             </button>
             <a id="distFullExplainLink" href="#" style="align-self:center; color:#2563eb; font-weight:600; text-decoration:none;">
                 → View Explainability (SHAP &amp; Grad-CAM)
             </a>
-            <a id="distReportLink" href="#"
+            <a id="distPageLink" href="#" style="align-self:center; color:#2d6a4f; font-weight:600; text-decoration:none;">
+                📍 View Full District Profile →
+            </a>
+            <a id="distReportLink" href="#" 
                style="display:inline-flex; align-items:center; gap:6px; align-self:center;
                       padding: 9px 20px;
                       background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
@@ -500,5 +503,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', filename='js/predict.js') }}"></script>
+<script src="{{ url_for('static', filename='js/predict.js') }}?v=2.2"></script>
 {% endblock %}
