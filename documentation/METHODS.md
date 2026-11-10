@@ -196,3 +196,41 @@ The 5 component indicators joined via `clean_key` across 100% of the 564 distric
 | **#84** | All women age 15-49 years who are anaemic (%) | `lower` | 57.2% | 14.9% | 93.5% | Indicator 84: Anaemia prevalence in reproductive-age women (< 11.0 g/dl) |
 
 > **Target Integration Rule:** In the composite deprivation score, electricity (#7), improved sanitation (#9), and clean cooking fuel (#10) enter as $100 - x$ (inverted so higher signifies greater deprivation), whereas child stunting (#73) and maternal anaemia (#84) enter directly. Each component is min-max normalized across all districts before unweighted averaging.
+
+
+---
+
+## 9. Hidden Gap Detector (Residual Atlas)
+
+The **Hidden Gap Detector** (`/hidden-gaps`, `/api/residual-atlas`) cross-examines the NFHS-5 survey deprivation score ($y_i$) of each district against the out-of-state satellite estimate ($\hat{y}_i^{\text{LOSO}}$) produced when the district's entire state was withheld during Leave-One-State-Out cross-validation.
+
+### 9.1 Formulation & Two-Stage Candidate Screening Criteria
+The residual gap and percentile-rank gap are defined as:
+$$\text{gap}_i = y_i - \hat{y}_i^{\text{LOSO}}$$
+$$\text{rank\_gap}_i = \text{rank}(y_i) - \text{rank}(\hat{y}_i^{\text{LOSO}}) \quad \in [-1, +1]$$
+
+Because model predictions compress toward the national mean, the raw residual gap is strongly correlated with the survey score ($r = 0.787$). Relying on residual magnitude or uncertainty bounds alone would label almost every severely deprived district as "hidden deprivation" and every least-deprived district as "resilient."
+
+To isolate structural discrepancies from mean compression, a district is classified as a **candidate** only when **BOTH** conditions hold simultaneously:
+1. **Uncertainty Interval Exceedance:** The survey score lies strictly outside the model's 80% out-of-state empirical prediction interval ($y_i < \text{low\_80}_i$ or $y_i > \text{high\_80}_i$).
+2. **Percentile-Rank Threshold:** The percentile-rank gap is at least 0.25 (25 percentile points) in the same direction:
+   - **Hidden-deprivation candidate:** $y_i > \text{high\_80}_i$ AND $\text{rank\_gap}_i \ge +0.25$ (district is ranked at least 25 percentile points higher in deprivation than satellite telemetry predicts).
+   - **Resilient candidate:** $y_i < \text{low\_80}_i$ AND $\text{rank\_gap}_i \le -0.25$ (district is ranked at least 25 percentile points lower in deprivation than satellite telemetry predicts).
+   - **Consistent:** All other districts (475 of 564, or 84.2%).
+
+### 9.2 Empirical Distribution Across India (564 Districts)
+- **Total evaluated districts ($N$):** 564
+- **Hidden-deprivation candidates:** 43
+- **Resilient candidates:** 46
+- **Consistent districts:** 475
+- **Districts outside 80% prediction interval:** 114 (20.21%)
+- **Residual gap standard deviation ($\sigma_{\text{gap}}$):** 0.1088
+- **Survey vs. prediction correlation ($r$):** 0.581
+- **Residual gap vs. survey correlation ($r$):** 0.787
+
+### 9.3 Methodological Limits & Screening Scope
+- **Screening Hint, Not Proof:** A candidate classification reflects statistical disagreement between remote sensing indicators and survey metrics. It is a screening hint for local administrative verification, not proof of hidden poverty or of a causal deficit.
+- **Uncaptured Socioeconomic Dimensions:** The satellite model strictly observes physical settlement proxies (nighttime luminosity, vegetation cover, built-up surfaces, and population density). Discrepancies often stem from socioeconomic factors that satellites cannot observe, such as nutritional programs, schooling access, primary healthcare delivery, or localized social schemes.
+- **Expected Statistical Variation:** For a calibrated model with an 80% interval, approximately 20% of districts naturally fall outside the bounds (here 20.21%). Interval exceedance alone is not anomalous.
+- **Small-State Reliability:** States with fewer than 5 districts (e.g., Goa with 2, Dadra & Nagar Haveli and Daman & Diu with 2, and Andaman & Nicobar Islands with 1) exhibit high Leave-One-State-Out error variance and are explicitly marked as unreliable in state-level systematic bias tables.
+- **Aggregate Level Only:** Analyses apply exclusively to administrative district aggregates. No household- or person-level inference is possible.

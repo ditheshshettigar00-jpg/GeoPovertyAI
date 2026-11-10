@@ -19,6 +19,9 @@ Socioeconomic census and demographic surveys in developing nations are expensive
 - **Leakage-Free Spatial Validation**: Employs rigorous **Leave-One-State-Out (LOSO)** cross-validation and repeated state-grouped 5-fold CV to prevent spatial autocorrelation leakage (Tobler's First Law), testing models strictly on entire unseen administrative states. Preprocessing imputation is handled via **training-fold median inside the pipeline**.
 - **Explainable AI (XAI)**: Provides game-theoretic additive TreeSHAP values for every prediction, decomposing displayed **out-of-state estimates** into intuitive directional contributions.
 - **Decision Support Tools**: Includes an interactive Leaflet choropleth map, live What-If simulation with training distribution bounds checking, spatial hotspot clustering using **Haversine DBSCAN with 150 km radius** (`min_samples=3`), and automated district report generation.
+- **Hidden Gap Detector** (`/hidden-gaps`, `/api/residual-atlas`): Compares the NFHS-5 survey score with the out-of-state satellite estimate; a district is a candidate only if the survey score is outside the 80% interval AND the percentile-rank gap is at least 0.25; screening hint, not proof of hidden poverty.
+- **Scenario Explorer** (the What-If page: `/scenario-explorer`, `/whatif`, `/api/scenario`): Preset changes to satellite-derived features, with before/after estimate, 80% range and the message when a change is smaller than the model's typical error; a sensitivity tool, not a prediction of policy effects.
+- **District Indicators Panel** (`/district/<id>`, `/api/indicators/<id>`): All 7 satellite indicators and the 5 NFHS-5 component indicators for each district, with percentile and state/India medians.
 
 > **Scope & Ethical Boundary:** This platform estimates deprivation at the aggregate administrative district level against survey-based benchmarks. It does **not** track, identify, or profile individual households or persons. Scores reflect statistical associations with satellite observations, not absolute measures or causal determinants.
 
@@ -30,7 +33,10 @@ Socioeconomic census and demographic surveys in developing nations are expensive
 GeoPovertyAI/
 ├── backend/                  # Flask REST API, routing, security & services
 │   ├── api/                  # Endpoints: auth, prediction, explainability, reports, hotspots
-│   ├── services/             # Database service, ML model service, DBSCAN hotspot service
+│   ├── services/             # Application services: database, ML inference, telemetry, residuals
+│   │   ├── indicator_service.py # Dynamic extraction of 7 satellite indicators & NFHS survey metrics
+│   │   ├── profile_service.py   # Grouped district profile, empirical percentiles & accessibility
+│   │   └── residual_service.py  # Hidden Gap Detector (NFHS-5 survey vs. out-of-state satellite residual atlas)
 │   └── app.py                # Application factory, session security, CORS configuration
 ├── config.py                 # Central configuration: paths, DBSCAN hyperparameters, secrets
 ├── database/                 # Database layer
@@ -76,10 +82,15 @@ GeoPovertyAI/
 │   └── refill_missing_features.py # Secondary Earth Engine extraction for large districts
 ├── tests/                    # Automated testing suite (101 passing pytest tests)
 │   ├── conftest.py           # Shared test fixtures & test client setup
-│   ├── test_pipeline.py      # Core data pipelines, API endpoints, authentication
-│   ├── test_phase2.py        # Spatial cross-validation, pipelines, uncertainty
-│   ├── test_phase3.py        # Additive SHAP, Grad-CAM deactivation, satellite safety
-│   └── test_security_hotspots.py # CORS, cookie security, rate limiting, DBSCAN
+│   ├── test_area_profile.py  # Grouped district profile schema, percentiles & survey flags (7 tests)
+│   ├── test_hidden_gaps.py   # Residual atlas, candidate criteria & screening limits (9 tests)
+│   ├── test_indicator_service.py # Real district indicators, NFHS join, PDF tables & fallbacks (9 tests)
+│   ├── test_phase2.py        # Spatial cross-validation, pipelines, uncertainty (10 tests)
+│   ├── test_phase3.py        # Additive SHAP, Grad-CAM deactivation, satellite safety (7 tests)
+│   ├── test_pipeline.py      # Core data pipelines, API endpoints, authentication (27 tests)
+│   ├── test_report_page.py   # District report preview route & JSON data endpoints (3 tests)
+│   ├── test_scenario_explorer.py # Scenario presets, group aggregation & error text (8 tests)
+│   └── test_security_hotspots.py # CORS, cookie security, rate limiting, DBSCAN (21 tests)
 ├── ui_prototype/             # Standalone UI wireframes and visual prototypes
 ├── requirements.txt          # Pinned Python package dependencies from pip freeze
 └── README.md                 # Project documentation and quick-start guide
@@ -87,7 +98,53 @@ GeoPovertyAI/
 
 ---
 
-## 3. Installation & Quick Start
+## 3. Web Pages & REST API Endpoints
+
+### Web Interface Pages
+- **`/`** — Home landing page and national overview dashboard.
+- **`/prediction`** — Live AI predictor with interactive input sliders and sensitivity exploration.
+- **`/map`** — Interactive Leaflet choropleth map of India with district-level deprivation overlays.
+- **`/explanation`** — Model explainability center with game-theoretic TreeSHAP feature attributions.
+- **`/performance`** — Empirical benchmark results, LOSO cross-validation, and ablation tables.
+- **`/district/<int:area_id>`** — District Indicators panel: complete profile, 7 satellite indicators, and NFHS-5 survey components.
+- **`/report/<int:area_id>`** — In-browser district executive report preview with PDF download.
+- **`/compare`** — Side-by-side comparative analysis between two districts.
+- **`/matchmaker`** — Multi-criteria district matching and peer comparison tool.
+- **`/hidden-gaps`** — Hidden Gap Detector: residual atlas comparing survey scores vs. out-of-state satellite estimates.
+- **`/hotspots`** — Spatial DBSCAN deprivation clusters (Haversine metric, 150 km radius, min 3 districts).
+- **`/scenario-explorer`** (also `/whatif`, `/scenarios`) — Scenario Explorer: policy sensitivity exploration under feature shifts.
+- **`/data-quality`** — Training data audit, GAUL boundary coverage, and feature range distributions.
+- **`/about`** — Project methodology, remote sensing data sources, and scientific disclaimers.
+- **`/admin`** — Administrative management portal with user management and audit logs (role-protected).
+- **`/login`**, **`/register`** — User registration, login, and session authentication.
+
+### REST API Endpoints
+- **`GET /api/areas`** — Retrieve all 564 districts with names, states, centroid coordinates, and predictions.
+- **`GET /api/predict/<int:area_id>`** — Predicted deprivation score, category, and 80% error interval for a district.
+- **`GET /api/area-profile/<int:area_id>`** — Full district profile including satellite features, percentiles, real accessibility, and NFHS components.
+- **`GET /api/indicators/<int:area_id>`** — 7 satellite indicators and 5 NFHS survey components (`?full=1` adds all 104 NFHS indicators).
+- **`GET /api/area-features/<int:area_id>`** — Raw 4 model features for a given district.
+- **`POST /api/predict-live`** — Live model prediction and real-time TreeSHAP attributions for custom user inputs.
+- **`POST /api/scenario`** — Scenario Explorer simulation for an individual district, an entire state, or a hotspot cluster.
+- **`GET /api/scenario-presets`** — Standardized sensitivity presets (electrification, urbanisation, greening, combined).
+- **`GET /api/scenario-targets`** — Selectable target options (districts, states, and hotspot clusters) for scenarios.
+- **`GET /api/residual-atlas`** — Hidden Gap Detector: candidate list filtered by direction (`?direction=hidden|resilient|all`).
+- **`GET /api/hotspots`** — Spatial DBSCAN clusters of contiguous high-deprivation districts.
+- **`GET /api/explain/<int:area_id>`** — Local TreeSHAP attribution waterfall for a district's out-of-state prediction.
+- **`GET /api/map`** — GeoJSON boundaries and deprivation classifications for the Leaflet map.
+- **`POST /api/compare`** — Compare multiple districts across features, scores, and survey indicators.
+- **`GET /api/similar-districts/<int:area_id>`** — Top 5 nearest neighbor districts in feature space.
+- **`GET /api/satellite-image/<int:area_id>`** — Cloud-free Sentinel-2 RGB composite satellite patch image.
+- **`GET /api/model-performance`** — Leave-One-State-Out validation metrics and benchmark comparison tables.
+- **`GET /api/reports/district-data/<int:area_id>`** — Structured JSON data payload for district executive reports.
+- **`GET /api/reports/district/<int:area_id>`** — Generate and download official district PDF report (`?appendix=1` for full NFHS table).
+- **`GET /api/data-quality`** — Data audit metrics, boundary coverage, and feature summary statistics.
+- **`POST /api/auth/register`**, **`POST /api/auth/login`**, **`POST /api/auth/logout`**, **`GET /api/auth/profile`** — Authentication and user session endpoints.
+- **`GET /api/admin/dashboard-stats`**, **`GET /api/admin/users`**, **`PUT /api/admin/users/<int:user_id>/role`**, **`GET /api/admin/audit-logs`** — Administrative management endpoints.
+
+---
+
+## 4. Installation & Quick Start
 
 ### Prerequisites
 - Python 3.10, 3.11, or 3.12 (64-bit recommended)
@@ -143,7 +200,7 @@ Open your browser and navigate to: **`http://localhost:5000`**
 
 ---
 
-## 4. How to Run the Pipeline in Order
+## 5. How to Run the Pipeline in Order
 
 To reproduce the end-to-end data processing, spatial modeling, and precomputations:
 
@@ -163,7 +220,7 @@ pytest -v
 
 ---
 
-## 5. Empirical Results & Benchmark Tables
+## 6. Empirical Results & Benchmark Tables
 
 <!-- RESULTS START -->
 
@@ -239,7 +296,7 @@ pytest -v
 
 ---
 
-## 6. Limitations & Scientific Disclaimers
+## 7. Limitations & Scientific Disclaimers
 
 1. **Moderate Predictive Accuracy & Mean Compression:** The model achieves a Leave-One-State-Out $R^2$ of **0.3360** (MAE **0.0883**). Predictions compress toward the mean: highly deprived districts are under-estimated, while the least deprived districts are over-estimated.
 2. **Tabular Satellite Features Only (4 Features):** The final model uses 4 features only: `nightlight_mean`, `ndvi_mean`, `builtup_pct`, and `population_density`, extracted from satellite data for 2019-11-01 to 2021-04-30 (GHSL epoch 2020). Deep visual features (VGG-16) and Grad-CAM are NOT part of the final model. Deep visual features (VGG-16) were evaluated only in an exploratory run on the original project dataset (data/exploratory/original_table_with_visual_features.csv; 2023 imagery). In that run, leave-one-state-out R2 was 0.3273 without the visual features (using 7 tabular features: 4 satellite + 3 accessibility columns, not the final 4-feature model) and 0.2879 with them, and visual features alone gave 0.0702 (models/exploratory_visual_ablation/ablation_results.csv). They were not re-evaluated on the final 2019-21 data, and the final model does not use them. The accessibility columns in the original dataset (road density, school and hospital distance) could not be traced to an extraction script and were almost perfectly correlated with each other (|r| about 0.96); removing the accessibility columns changed R2 by about 0.003 (0.288 to 0.291) when the visual features were present, so they were not used. An OSM extraction script is included for future work but was not run nationally.
@@ -254,7 +311,7 @@ For detailed technical specifications on data sources, dates, formulas, and matc
 
 ---
 
-## 7. Testing & Quality Assurance
+## 8. Testing & Quality Assurance
 
 The test suite validates data integrity, spatial cross-validation, additive SHAP guarantees, security configurations, and API endpoints:
 
@@ -264,11 +321,12 @@ pytest -v
 
 **Test Results:**
 - **101 passed** (100% pass rate) across:
+  - `tests/test_area_profile.py`: Grouped district profile schema, survey indicators, and empirical percentiles (7 tests)
+  - `tests/test_hidden_gaps.py`: Residual thresholding, candidate criteria, and screening limits (9 tests)
+  - `tests/test_indicator_service.py`: Real district indicators, NFHS-5 survey join, PDF tables, and graceful fallbacks (9 tests)
   - `tests/test_phase2.py`: Spatial cross-validation, IQR clipping, pipeline transformers (10 tests)
   - `tests/test_phase3.py`: Additive SHAP equality ($\le 10^{-4}$), Grad-CAM deactivation, satellite image safety (7 tests)
-  - `tests/test_pipeline.py`: Feature fusion, API routes, authentication, district matching (26 tests)
-  - `tests/test_security_hotspots.py`: CORS origin validation, session cookie flags, rate limiting, DBSCAN clustering (22 tests)
-  - `tests/test_report_page.py`: District report route, JSON data endpoints, and graceful fallbacks (11 tests)
-  - `tests/test_area_profile.py`: Grouped district profile schema, survey indicators, and empirical percentiles (8 tests)
+  - `tests/test_pipeline.py`: Feature fusion, API routes, authentication, district matching (27 tests)
+  - `tests/test_report_page.py`: District report preview route, JSON data endpoints, and graceful fallbacks (3 tests)
   - `tests/test_scenario_explorer.py`: Scenario presets, single & group aggregations, uncertainty, and disclaimer integrity (8 tests)
-  - `tests/test_indicator_service.py`: Real district indicators, NFHS-5 survey join, PDF tables & graceful fallbacks (9 tests)
+  - `tests/test_security_hotspots.py`: CORS origin validation, session cookie flags, rate limiting, DBSCAN clustering (21 tests)
