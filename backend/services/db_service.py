@@ -130,6 +130,7 @@ def create_user(name: str, email: str, password_hash: str, role: str = 'PUBLIC')
         conn.commit()
         user_id = cur.lastrowid
     except sqlite3.IntegrityError:
+        conn.rollback()
         user_id = None
     return user_id
 

@@ -655,23 +655,26 @@
                         <div class="gauge-track" id="gaugeTrack">
                             <div class="gauge-pointer" id="gaugePointer" style="left:0%"></div>
                         </div>
-                        <div class="gauge-labels"><span>0.0</span><span>0.35</span><span>0.60</span><span>1.0</span>
+                        <div class="gauge-labels">
+                            <span>0.0</span>
+                            <span id="lblLowMed">0.320</span>
+                            <span id="lblMedHigh">0.453</span>
+                            <span>1.0</span>
                         </div>
                     </div>
                 </div>
                 <div class="threshold-legend" style="margin-top:14px;">
                     <div class="thr-item">
-                        <div class="thr-dot" style="background:#52b788;"></div><span><b>Low:</b> Score &lt; 0.35</span>
+                        <div class="thr-dot" style="background:#52b788;"></div><span id="legLowText"><b>Low:</b> Score ≤ 0.320</span>
                     </div>
                     <div class="thr-item">
-                        <div class="thr-dot" style="background:#f4a261;"></div><span><b>Medium:</b> 0.35 ≤ Score &lt;
-                            0.60</span>
+                        <div class="thr-dot" style="background:#f4a261;"></div><span id="legMedText"><b>Medium:</b> 0.320 &lt; Score ≤ 0.453</span>
                     </div>
                     <div class="thr-item">
-                        <div class="thr-dot" style="background:#e76f51;"></div><span><b>High:</b> Score ≥ 0.60</span>
+                        <div class="thr-dot" style="background:#e76f51;"></div><span id="legHighText"><b>High:</b> Score &gt; 0.453</span>
                     </div>
                     <div style="font-size:0.78rem; color:#6b6b6b; margin-left:auto;">
-                        Thresholds derived from NFHS-5 empirical tertile distribution
+                        Thresholds derived as tertiles of the NFHS-5 deprivation scores of the 564 districts used for training
                     </div>
                 </div>
             </div>
@@ -680,9 +683,8 @@
             <div class="rpt-section">
                 <h2>3. Model Performance Metrics</h2>
                 <p style="font-size:0.84rem; color:#6b6b6b; margin:0 0 14px;">
-                    Metrics computed on the held-out test split during model training/evaluation.
-                    They reflect the model's generalisation to unseen districts and are sourced
-                    directly from the database.
+                    Metrics computed via leave-one-state-out validation: each state predicted by a model that never saw it.
+                    They reflect the model's generalisation to unseen states and are sourced directly from the evaluation benchmark.
                 </p>
                 <div class="perf-grid" id="perfGrid"></div>
                 <div id="perfExtra" style="font-size:0.82rem; color:#6b6b6b;"></div>
@@ -692,8 +694,7 @@
             <div class="rpt-section">
                 <h2>4. Sentinel-2 Satellite Imagery</h2>
                 <p style="font-size:0.84rem; color:#6b6b6b; margin:0 0 14px;">
-                    Cloud-free RGB composite (Bands B4/B3/B2) acquired from ESA Sentinel-2 MSI
-                    at 10 m resolution centred on the district centroid.
+                    True-colour Sentinel-2 composite, 2019-11-01 to 2021-04-30, for context only; the model uses satellite statistics, not image pixels.
                 </p>
                 <div id="satelliteContainer"></div>
             </div>
@@ -936,7 +937,6 @@
         tbl.appendChild(makeInfoRow('Prediction Model', d.model_name));
         tbl.appendChild(makeInfoRow('Satellite Image Source', (d.data_sources || {}).satellite || 'ESA Sentinel-2 MSI'));
         tbl.appendChild(makeInfoRow('Ground Truth Source', (d.data_sources || {}).ground_truth || 'NFHS-5, 2019–21'));
-        tbl.appendChild(makeInfoRow('Deep Feature Extractor', (d.data_sources || {}).deep_features || 'VGG-16'));
         tbl.appendChild(makeInfoRow('Prediction Timestamp', d.prediction_timestamp || 'N/A'));
         tbl.appendChild(makeInfoRow('Data Mode', (d.data_mode || 'real').toUpperCase()));
 
@@ -951,25 +951,46 @@
         const pct = Math.min(Math.max(score, 0), 1) * 100;
         el('gaugePointer').style.left = pct + '%';
 
+        // Update threshold labels and legend if provided
+        if (d.category_thresholds) {
+            const lowMed = d.category_thresholds.low_medium_boundary !== undefined
+                ? d.category_thresholds.low_medium_boundary
+                : (d.category_thresholds.Low ? d.category_thresholds.Low[1] : 0.320);
+            const medHigh = d.category_thresholds.medium_high_boundary !== undefined
+                ? d.category_thresholds.medium_high_boundary
+                : (d.category_thresholds.Medium ? d.category_thresholds.Medium[1] : 0.453);
+            const lmStr = Number(lowMed).toFixed(3);
+            const mhStr = Number(medHigh).toFixed(3);
+            if (el('lblLowMed')) el('lblLowMed').textContent = lmStr;
+            if (el('lblMedHigh')) el('lblMedHigh').textContent = mhStr;
+            if (el('legLowText')) el('legLowText').innerHTML = `<b>Low:</b> Score ≤ ${lmStr}`;
+            if (el('legMedText')) el('legMedText').innerHTML = `<b>Medium:</b> ${lmStr} &lt; Score ≤ ${mhStr}`;
+            if (el('legHighText')) el('legHighText').innerHTML = `<b>High:</b> Score &gt; ${mhStr}`;
+        }
+
         // ── Section 3: Model Performance ─────────────────────────────────────
         const mp = d.model_performance || {};
         const perfGrid = el('perfGrid');
+        perfGrid.innerHTML = '';
+        if (mp.r2 !== null && mp.r2 !== undefined) {
+            perfGrid.appendChild(makeMetricCard('R²', mp.r2.toFixed(4), 'Coefficient of Determination', 'Fraction of score variance explained by model'));
+        }
         if (mp.mae !== null && mp.mae !== undefined) {
             perfGrid.appendChild(makeMetricCard('MAE', mp.mae.toFixed(4), 'Mean Absolute Error', 'Average absolute prediction error (0–1 scale)'));
         }
         if (mp.rmse !== null && mp.rmse !== undefined) {
             perfGrid.appendChild(makeMetricCard('RMSE', mp.rmse.toFixed(4), 'Root Mean Squared Error', 'Penalises larger errors more than MAE'));
         }
-        if (mp.r2 !== null && mp.r2 !== undefined) {
-            perfGrid.appendChild(makeMetricCard('R²', mp.r2.toFixed(4), 'Coefficient of Determination', 'Fraction of score variance explained by model'));
+        if (mp.cat_accuracy !== null && mp.cat_accuracy !== undefined) {
+            perfGrid.appendChild(makeMetricCard('3-Class Accuracy', (mp.cat_accuracy * 100).toFixed(2) + '%', 'Categorical Accuracy', 'Accuracy classifying into Low/Medium/High'));
         }
-        if (Object.keys(mp).length === 0 || (mp.mae === null && mp.rmse === null && mp.r2 === null)) {
+        if (mp.baseline_mae !== null && mp.baseline_mae !== undefined) {
+            perfGrid.appendChild(makeMetricCard('Baseline MAE', mp.baseline_mae.toFixed(4), 'Mean Dummy Baseline', 'MAE predicting the training mean of other states'));
+        }
+        if (perfGrid.children.length === 0) {
             perfGrid.innerHTML = '<p style="color:#6b6b6b; font-size:0.85rem;"><em>Performance metrics not yet recorded. Run model evaluation to populate.</em></p>';
         }
-        const trainedOn = mp.trained_on;
-        if (trainedOn) {
-            el('perfExtra').textContent = `Model: ${mp.model_name || d.model_name} · Evaluated on dataset: ${trainedOn}`;
-        }
+        el('perfExtra').textContent = `Model: ${mp.model_name || d.model_name} · Validation scheme: leave-one-state-out validation: each state predicted by a model that never saw it`;
 
         // ── Section 4: Satellite Image ────────────────────────────────────────
         const satDiv = el('satelliteContainer');
@@ -980,8 +1001,7 @@
                 <div class="satellite-badge">🛰️ ESA Sentinel-2 RGB · Bands B4/B3/B2</div>
             </div>
             <p class="img-caption">
-                Figure 1: Cloud-free Sentinel-2 RGB composite patch for ${d.area_name}, ${d.state_name}.
-                Bands: B4 (Red), B3 (Green), B2 (Blue). Resolution: 10 m. Source: Google Earth Engine / ESA Copernicus.
+                Figure 1: True-colour Sentinel-2 composite, 2019-11-01 to 2021-04-30, for context only; the model uses satellite statistics, not image pixels (${d.area_name}, ${d.state_name}).
                 <a href="${d.satellite_url}" target="_blank" style="color:#2563eb; font-weight:600; margin-left:6px;">🔍 View full image</a>
             </p>
         `;

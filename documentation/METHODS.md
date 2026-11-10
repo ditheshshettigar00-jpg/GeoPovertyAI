@@ -17,14 +17,14 @@ All remote sensing telemetry is strictly anchored to the NFHS-5 survey period (*
 | Feature / Target | Source & Sensor | Temporal Window / Epoch | Native Resolution | Aggregation Metric |
 |---|---|---|---|---|
 | **Deprivation Ground Truth** | International Institute for Population Sciences (IIPS) NFHS-5 | 2019 – 2021 | District-level survey | 5-indicator composite |
-| **Vegetation Index (`ndvi_mean`)** | ESA Sentinel-2 MSI Surface Reflectance (Harmonized) | 2019-11-01 to 2021-04-30 | 10 m (scaled to 100 m / 250 m) | District spatial mean |
+| **Vegetation Index (`ndvi_mean`)** | ESA Sentinel-2 MSI Surface Reflectance (Harmonized) | 2019-11-01 to 2021-04-30 | Main scale 30 m (250 m for 48 refilled districts) | District spatial mean |
 | **Nocturnal Radiance (`nightlight_mean`)** | NOAA/NASA VIIRS Day/Night Band (DNB) Monthly Composites | 2019-11-01 to 2021-04-30 | 500 m | District spatial mean ($nW \cdot cm^{-2} \cdot sr^{-1}$) |
 | **Built-Up Percentage (`builtup_pct`)** | JRC Global Human Settlement Layer (GHSL GHS-BUILT-S R2023A) | Epoch 2020 | 100 m | Percentage of district surface area (%) |
 | **Population Density (`population_density`)** | JRC Global Human Settlement Layer (GHSL GHS-POP R2023A) | Epoch 2020 | 100 m | Spatial density ($\text{people} / km^2$) |
 
 ### Remote Sensing Resolution & NDVI Scale
-- **Default Sentinel-2 Processing Scale:** District-wide median composites are computed via Google Earth Engine at a **100 m** resolution using Cloud Probability masking and Scene Classification Layer (SCL) filters (retaining only vegetation, bare soil, and water; rejecting clouds, cirrus, and shadows).
-- **Refilled Districts Scale:** For districts requiring feature recovery via `scripts/refill_missing_features.py`, an export scale of **250 m** was used to resolve Earth Engine server-side user memory quota and timeout limits over extensive district polygons while preserving regional vegetative gradients.
+- **Default Sentinel-2 Processing Scale:** District-wide median composites are computed via Google Earth Engine at a main scale of **30 m**. Scenes with 20% or more cloudy pixels are dropped, then the SCL band keeps classes 4 to 7.
+- **Refilled Districts Scale:** An export scale of **250 m** was used only for the 48 districts refilled by `scripts/refill_missing_features.py` to resolve Earth Engine server-side user memory quota and timeout limits over extensive district polygons while preserving regional vegetative gradients.
 
 ### Explored Feature Extensions
 - **Visual Features (VGG-16) & Grad-CAM:** Deep visual features (VGG-16) were evaluated only in an exploratory run on the original project dataset (data/exploratory/original_table_with_visual_features.csv; 2023 imagery). In that run, leave-one-state-out R2 was 0.3273 without the visual features (using 7 tabular features: 4 satellite + 3 accessibility columns, not the final 4-feature model) and 0.2879 with them, and visual features alone gave 0.0702 (models/exploratory_visual_ablation/ablation_results.csv). They were not re-evaluated on the final 2019-21 data, and the final model does not use them.

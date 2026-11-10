@@ -4,7 +4,7 @@ An explainable, multimodal Geospatial Artificial Intelligence (GeoAI) platform f
 
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Framework-Flask%203.0-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/Tests-101%20Passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-102%20Passed-brightgreen.svg)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 [![GitHub Repo](https://img.shields.io/badge/GitHub-GeoPovertyAI-181717.svg?logo=github)](https://github.com/ditheshshettigar00-jpg/GeoPovertyAI)
 
@@ -320,13 +320,13 @@ pytest -v
 ```
 
 **Test Results:**
-- **101 passed** (100% pass rate) across:
+- **102 passed** (100% pass rate) across:
   - `tests/test_area_profile.py`: Grouped district profile schema, survey indicators, and empirical percentiles (7 tests)
   - `tests/test_hidden_gaps.py`: Residual thresholding, candidate criteria, and screening limits (9 tests)
   - `tests/test_indicator_service.py`: Real district indicators, NFHS-5 survey join, PDF tables, and graceful fallbacks (9 tests)
   - `tests/test_phase2.py`: Spatial cross-validation, IQR clipping, pipeline transformers (10 tests)
   - `tests/test_phase3.py`: Additive SHAP equality ($\le 10^{-4}$), Grad-CAM deactivation, satellite image safety (7 tests)
-  - `tests/test_pipeline.py`: Feature fusion, API routes, authentication, district matching (27 tests)
-  - `tests/test_report_page.py`: District report preview route, JSON data endpoints, and graceful fallbacks (3 tests)
+  - `tests/test_pipeline.py`: Feature fusion, API routes, authentication, district matching (26 tests)
+  - `tests/test_report_page.py`: District report preview route, dynamic tertile category thresholds JSON & PDF verification (4 tests)
   - `tests/test_scenario_explorer.py`: Scenario presets, single & group aggregations, uncertainty, and disclaimer integrity (8 tests)
-  - `tests/test_security_hotspots.py`: CORS origin validation, session cookie flags, rate limiting, DBSCAN clustering (21 tests)
+  - `tests/test_security_hotspots.py`: CORS origin validation, session cookie flags, rate limiting, DBSCAN clustering (22 tests)

@@ -25,7 +25,7 @@
 * **Explainability (XAI):** SHAP 0.45.1 (TreeExplainer for tree ensembles and pipelines)
 * **Geospatial & Remote Sensing:** GeoPandas 0.14.4, Rasterio 1.3.10, Shapely 2.0.4, OSMnx 1.9.3, EarthEngine-API 0.1.408, Geemap 0.32.1, PyProj 3.7.2
 * **Visualization & Report Generation:** ReportLab 5.0.1, Pillow 10.4.0, Matplotlib 3.9.0
-* **Testing & Quality Assurance:** PyTest 8.2.2 (**65 passed** tests in automated test suite)
+* **Testing & Quality Assurance:** PyTest 8.2.2 (**102 passed** tests in automated test suite)
 * **Explored Deep Learning Extension:** TensorFlow 2.16.1 (CPU build, preserved for experimental VGG-16 feature extraction)
 
 ### 2.2 Frontend Stack

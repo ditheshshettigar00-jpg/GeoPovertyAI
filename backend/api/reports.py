@@ -10,28 +10,86 @@ Endpoints:
 """
 
 import io
+import json
+import logging
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, send_file, request, session
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from backend.services import db_service, model_service, indicator_service
 from backend.api.auth import roles_required
-from config import SATELLITE_DIR
+from config import SATELLITE_DIR, MODELS_DIR
+
+logger = logging.getLogger(__name__)
 
 reports_bp = Blueprint("reports", __name__, url_prefix="/api/reports")
 
-# ---------------------------------------------------------------------------
-# Deprivation category thresholds (aligned with NFHS-5 training distribution)
-# Low  : score < 0.35   — better-off districts
-# Medium: 0.35 <= score < 0.60 — moderately deprived
-# High : score >= 0.60   — highly deprived
-# These thresholds were derived from the empirical tertile distribution of the
-# NFHS-5 district-level composite deprivation scores used as the target variable.
-# ---------------------------------------------------------------------------
-CATEGORY_THRESHOLDS = {"Low": (0.0, 0.35), "Medium": (0.35, 0.60), "High": (0.60, 1.0)}
+
+def _load_category_thresholds():
+    """
+    Load dynamic tertile category thresholds from models/category_thresholds.json.
+    Falls back to (0.35, 0.60) only if the file is missing or invalid, logging a warning.
+    """
+    path = os.path.join(MODELS_DIR, "category_thresholds.json")
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return float(data["low_medium_boundary"]), float(data["medium_high_boundary"])
+        except Exception as exc:
+            logger.warning("Could not read category thresholds from %s: %s", path, exc)
+    else:
+        logger.warning("category_thresholds.json not found at %s; falling back to (0.35, 0.60)", path)
+    return 0.35, 0.60
+
+
+_low_med_thresh, _med_high_thresh = _load_category_thresholds()
+CATEGORY_THRESHOLDS = {
+    "Low": (0.0, _low_med_thresh),
+    "Medium": (_low_med_thresh, _med_high_thresh),
+    "High": (_med_high_thresh, 1.0),
+    "low_medium_boundary": _low_med_thresh,
+    "medium_high_boundary": _med_high_thresh,
+}
+
+
+def _load_model_comparison_metrics():
+    """
+    Load model performance metrics evaluated via leave-one-state-out cross-validation
+    from models/model_comparison_results.csv.
+    """
+    path = os.path.join(MODELS_DIR, "model_comparison_results.csv")
+    metrics = {
+        "model_name": "RandomForest",
+        "r2": 0.3360,
+        "mae": 0.0883,
+        "rmse": 0.1087,
+        "cat_accuracy": 0.5461,
+        "baseline_mae": 0.1142,
+        "validation_scheme": "leave-one-state-out validation: each state predicted by a model that never saw it",
+    }
+    if os.path.exists(path):
+        try:
+            import pandas as pd
+            df = pd.read_csv(path)
+            rf_row = df[df["model"] == "RandomForest"]
+            dummy_row = df[df["model"] == "Dummy"]
+            if not rf_row.empty:
+                r = rf_row.iloc[0]
+                metrics["r2"] = round(float(r["r2"]), 4)
+                metrics["mae"] = round(float(r["mae"]), 4)
+                metrics["rmse"] = round(float(r["rmse"]), 4)
+                if "cat_accuracy" in r and pd.notna(r["cat_accuracy"]):
+                    metrics["cat_accuracy"] = round(float(r["cat_accuracy"]), 4)
+            if not dummy_row.empty:
+                d = dummy_row.iloc[0]
+                metrics["baseline_mae"] = round(float(d["mae"]), 4)
+        except Exception as exc:
+            logger.warning("Could not read model comparison metrics from %s: %s", path, exc)
+    return metrics
 
 FEATURE_LABELS = {
     "nightlight_mean": "Nighttime Light Radiance (VIIRS, nW/cm2/sr)",
@@ -59,24 +117,21 @@ DISCLAIMER = (
 )
 
 
-def _find_satellite_image(area_id: int, data_mode: str = "real"):
+def _find_satellite_image(area_id: int):
     candidates = [
         os.path.join(SATELLITE_DIR, f"district_{area_id:03d}_rgb.png"),
         os.path.join(SATELLITE_DIR, f"district_{area_id:03d}_rgb.tif"),
         os.path.join(SATELLITE_DIR, f"district_{area_id}_rgb.png"),
     ]
-    if data_mode == "demo":
-        candidates.append(
-            os.path.join(SATELLITE_DIR, "demo", f"district_{area_id:03d}_DEMO.png")
-        )
     return next((p for p in candidates if os.path.exists(p)), None)
 
 
 def _score_to_category(score: float) -> str:
     """Return the deprivation category for a given numeric score."""
-    if score < 0.35:
+    low_med, med_high = _load_category_thresholds()
+    if score <= low_med:
         return "Low"
-    elif score < 0.60:
+    elif score <= med_high:
         return "Medium"
     return "High"
 
@@ -118,7 +173,7 @@ def district_report_data(area_id):
     shap_data = explanation["shap_json"] if explanation and explanation.get("shap_json") else None
 
     # Satellite image
-    sat_path = _find_satellite_image(area_id, area.get("data_mode", "real"))
+    sat_path = _find_satellite_image(area_id)
     has_sat = bool(sat_path)
 
     # Build clean feature dict for display
@@ -146,22 +201,28 @@ def district_report_data(area_id):
     predicted_score = float(prediction["predicted_score"])
     predicted_category = prediction.get("predicted_category") or _score_to_category(predicted_score)
 
+    comp_metrics = _load_model_comparison_metrics()
+    low_med, med_high = _load_category_thresholds()
+
     return jsonify({
         "area_id": area_id,
         "area_name": area["area_name"],
         "state_name": area["state_name"],
-        "analysis_date": datetime.utcnow().strftime("%d %B %Y"),
+        "analysis_date": datetime.now(timezone.utc).strftime("%d %B %Y") if hasattr(timezone, "utc") else datetime.utcnow().strftime("%d %B %Y"),
         "data_mode": area.get("data_mode", "real"),
         "predicted_score": predicted_score,
         "predicted_category": predicted_category,
         "model_name": model_name,
         "prediction_timestamp": prediction.get("prediction_timestamp", "N/A"),
         "model_performance": {
-            "model_name": model_perf["model_name"] if model_perf else model_name,
-            "mae": round(float(model_perf["mae"]), 4) if model_perf and model_perf.get("mae") is not None else None,
-            "rmse": round(float(model_perf["rmse"]), 4) if model_perf and model_perf.get("rmse") is not None else None,
-            "r2": round(float(model_perf["r2"]), 4) if model_perf and model_perf.get("r2") is not None else None,
-            "trained_on": model_perf.get("trained_on") if model_perf else None,
+            "model_name": comp_metrics["model_name"],
+            "mae": comp_metrics["mae"],
+            "rmse": comp_metrics["rmse"],
+            "r2": comp_metrics["r2"],
+            "cat_accuracy": comp_metrics.get("cat_accuracy"),
+            "baseline_mae": comp_metrics.get("baseline_mae"),
+            "validation_scheme": comp_metrics["validation_scheme"],
+            "trained_on": comp_metrics["validation_scheme"],
         },
         "features": display_features,
         "shap_contributions": shap_contributions,
@@ -171,11 +232,17 @@ def district_report_data(area_id):
         "has_gradcam": has_gradcam,
         "gradcam_url": f"/api/gradcam/{area_id}" if has_gradcam else None,
         "disclaimer": DISCLAIMER,
-        "category_thresholds": CATEGORY_THRESHOLDS,
+        "category_thresholds": {
+            "low_medium_boundary": low_med,
+            "medium_high_boundary": med_high,
+            "Low": (0.0, low_med),
+            "Medium": (low_med, med_high),
+            "High": (med_high, 1.0),
+        },
         "satellite_indicators": indicator_service.get_satellite_indicators(area_id),
         "survey_indicators": indicator_service.get_survey_indicators(area_id),
         "data_sources": {
-            "satellite": "ESA Sentinel-2 MSI (Bands B4/B3/B2 - RGB, 10 m resolution)",
+            "satellite": "true-colour Sentinel-2 composite, 2019-11-01 to 2021-04-30, for context only; the model uses satellite statistics, not image pixels",
             "nighttime_light": "NOAA/NASA VIIRS DNB Nighttime Lights",
             "built_up": "European Commission Global Human Settlement Layer (GHSL)",
             "ground_truth": "National Family Health Survey 5 (NFHS-5), 2019-21",
@@ -217,7 +284,7 @@ def generate_district_report_pdf(area_id):
         os.path.exists(explanation["gradcam_image_path"])
     )
     shap_data = explanation["shap_json"] if explanation and explanation.get("shap_json") else None
-    sat_path = _find_satellite_image(area_id, area.get("data_mode", "real"))
+    sat_path = _find_satellite_image(area_id)
 
     predicted_score = float(prediction["predicted_score"])
     predicted_category = prediction.get("predicted_category") or _score_to_category(predicted_score)
@@ -244,6 +311,7 @@ def generate_district_report_pdf(area_id):
         topMargin=MARGIN, bottomMargin=MARGIN,
         title=f"GeoPoverty AI - District Report: {area['area_name']}",
         author="GeoPoverty AI System",
+        pageCompression=0,
     )
 
     base_styles = getSampleStyleSheet()
@@ -277,7 +345,7 @@ def generate_district_report_pdf(area_id):
     }
     cat_color = CAT_COLORS.get(predicted_category, colors.grey)
 
-    analysis_date = datetime.utcnow().strftime("%d %B %Y")
+    analysis_date = datetime.now(timezone.utc).strftime("%d %B %Y") if hasattr(timezone, "utc") else datetime.utcnow().strftime("%d %B %Y")
     story = []
 
     # ------- Cover / Title block -------------------------------------------
@@ -292,7 +360,7 @@ def generate_district_report_pdf(area_id):
         ["State", area["state_name"]],
         ["Analysis Date", analysis_date],
         ["Prediction Model", model_name],
-        ["Satellite Image Source", "ESA Sentinel-2 MSI (RGB - Bands B4/B3/B2, 10 m)"],
+        ["Satellite Image Source", "true-colour Sentinel-2 composite, 2019-11-01 to 2021-04-30, for context only; the model uses satellite statistics, not image pixels"],
         ["Ground Truth Source", "National Family Health Survey 5 (NFHS-5), 2019-21"],
         ["Satellite Telemetry Features", "VIIRS Nocturnal Radiance + Sentinel-2 NDVI + GHSL Settlement Grids"],
         ["Data Mode", area.get("data_mode", "real").upper()],
@@ -332,10 +400,11 @@ def generate_district_report_pdf(area_id):
     ]))
     story.append(score_table)
     story.append(Spacer(1, 6))
+    low_med, med_high = _load_category_thresholds()
     story.append(Paragraph(
-        "<b>Category Thresholds</b> (derived from NFHS-5 empirical tertile distribution): "
-        "Low &lt; 0.35 | Medium 0.35-0.60 | High &gt;= 0.60    "
-        "<i>Scale: 0.0 (Least Deprived) to 1.0 (Most Deprived)</i>",
+        f"<b>Category Thresholds</b> (derived as tertiles of the NFHS-5 deprivation scores of the 564 districts used for training): "
+        f"Low &lt;= {low_med:.4f} | Medium {low_med:.4f}–{med_high:.4f} | High &gt; {med_high:.4f}    "
+        f"<i>Scale: 0.0 (Least Deprived) to 1.0 (Most Deprived)</i>",
         S_SMALL
     ))
     story.append(Spacer(1, 10))
@@ -343,49 +412,43 @@ def generate_district_report_pdf(area_id):
     # ------- Section 3 - Model Performance ----------------------------------
     story.append(Paragraph("3. Model Performance Metrics", S_SECTION))
     story.append(Paragraph(
-        "The following metrics were computed on the held-out test split during model evaluation. "
-        "They reflect the model's generalisation to unseen districts.",
+        "The following metrics were computed via leave-one-state-out validation: each state predicted by a model that never saw it. "
+        "They reflect the model's generalisation to unseen states.",
         S_BODY_J
     ))
-    if model_perf:
-        mae_str = f"{model_perf['mae']:.4f}" if model_perf.get("mae") is not None else "N/A"
-        rmse_str = f"{model_perf['rmse']:.4f}" if model_perf.get("rmse") is not None else "N/A"
-        r2_str = f"{model_perf['r2']:.4f}" if model_perf.get("r2") is not None else "N/A"
-        trained_on = model_perf.get("trained_on") or "N/A"
-        perf_data = [
-            ["Metric", "Value", "Interpretation"],
-            ["Model Algorithm", model_perf["model_name"], "Ensemble / gradient-boosted tree"],
-            ["MAE (Mean Absolute Error)", mae_str, "Average absolute error on deprivation score (0-1)"],
-            ["RMSE (Root Mean Squared Error)", rmse_str, "Penalises large errors more strongly than MAE"],
-            ["R2 (Coefficient of Determination)", r2_str, "Fraction of variance in scores explained by model"],
-            ["Training Dataset", trained_on, "Evaluated on held-out test split"],
-        ]
-        perf_table = Table(
-            perf_data,
-            colWidths=[5.5 * cm, 3 * cm, PAGE_W - 2 * MARGIN - 8.5 * cm]
-        )
-        perf_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1b4332")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f7f6f3"), colors.white]),
-            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e6e4de")),
-            ("TOPPADDING", (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-            ("LEFTPADDING", (0, 0), (-1, -1), 7),
-        ]))
-        story.append(perf_table)
-    else:
-        story.append(Paragraph(
-            "<i>Model performance metrics not yet recorded in the database.</i>", S_BODY))
+    comp_metrics = _load_model_comparison_metrics()
+    perf_data = [
+        ["Metric", "Value", "Interpretation"],
+        ["Model Algorithm", comp_metrics["model_name"], "Ensemble / gradient-boosted tree"],
+        ["R2 (Coefficient of Determination)", f"{comp_metrics['r2']:.4f}", "Fraction of variance in scores explained by model"],
+        ["MAE (Mean Absolute Error)", f"{comp_metrics['mae']:.4f}", "Average absolute error on deprivation score (0-1)"],
+        ["RMSE (Root Mean Squared Error)", f"{comp_metrics['rmse']:.4f}", "Penalises large errors more strongly than MAE"],
+        ["3-Class Accuracy", f"{comp_metrics['cat_accuracy'] * 100:.2f}%" if comp_metrics.get("cat_accuracy") is not None else "N/A", "Accuracy classifying districts into Low/Medium/High"],
+        ["Baseline MAE (Dummy Model)", f"{comp_metrics['baseline_mae']:.4f}" if comp_metrics.get("baseline_mae") is not None else "N/A", "Mean baseline predicting the training mean of other states"],
+        ["Validation Scheme", "Leave-One-State-Out", comp_metrics["validation_scheme"]],
+    ]
+    perf_table = Table(
+        perf_data,
+        colWidths=[5.5 * cm, 3 * cm, PAGE_W - 2 * MARGIN - 8.5 * cm]
+    )
+    perf_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1b4332")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f7f6f3"), colors.white]),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e6e4de")),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 7),
+    ]))
+    story.append(perf_table)
     story.append(Spacer(1, 10))
 
     # ------- Section 4 - Satellite Image ------------------------------------
     story.append(Paragraph("4. Sentinel-2 Satellite Imagery", S_SECTION))
     story.append(Paragraph(
-        "The following RGB composite was acquired from ESA Sentinel-2 MSI (Bands B4/B3/B2). "
-        "A cloud-free patch centred on the district centroid was processed at 10 m resolution.",
+        "The following image is a true-colour Sentinel-2 composite, 2019-11-01 to 2021-04-30, for context only; the model uses satellite statistics, not image pixels.",
         S_BODY_J
     ))
     if sat_path:
@@ -394,9 +457,8 @@ def generate_district_report_pdf(area_id):
             img = RLImage(sat_path, width=MAX_IMG_W, height=MAX_IMG_W * 0.55)
             story.append(img)
             story.append(Paragraph(
-                f"<i>Figure 1: ESA Sentinel-2 RGB composite patch for {area['area_name']}, "
-                f"{area['state_name']}. Bands: B4 (Red), B3 (Green), B2 (Blue). "
-                "Source: Google Earth Engine / ESA Copernicus.</i>",
+                f"<i>Figure 1: True-colour Sentinel-2 composite, 2019-11-01 to 2021-04-30, for context only; the model uses satellite statistics, not image pixels "
+                f"({area['area_name']}, {area['state_name']}).</i>",
                 S_SMALL
             ))
         except Exception:
