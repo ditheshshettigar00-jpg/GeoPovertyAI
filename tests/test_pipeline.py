@@ -140,20 +140,7 @@ def test_get_feature_columns_excludes_identifiers_and_target():
 # gracefully if that setup hasn't been run yet, rather than failing confusingly)
 # ---------------------------------------------------------------------------
 
-def _artifacts_available():
-    from config import DB_PATH, MODELS_DIR
-    return os.path.exists(DB_PATH) and os.path.exists(os.path.join(MODELS_DIR, "best_model.pkl"))
-
-
-@pytest.fixture
-def client():
-    if not _artifacts_available():
-        pytest.skip("Run database/init_db.py, training/train_models.py, and "
-                     "scripts/precompute_predictions.py before running API tests.")
-    from backend.app import create_app
-    app = create_app()
-    app.config["TESTING"] = True
-    return app.test_client()
+# The `client` fixture (logged in as a RESEARCHER) lives in tests/conftest.py.
 
 
 def test_home_page_loads(client):
@@ -286,7 +273,8 @@ def test_auth_register_and_login(client):
     assert r_prof_fail.status_code == 401
 
 
-def test_admin_route_protection(client):
+def test_admin_route_protection(anon_client):
+    client = anon_client
     # Unauthenticated access to HTML route
     r = client.get("/admin")
     assert r.status_code == 302 # Redirect to login
@@ -296,7 +284,8 @@ def test_admin_route_protection(client):
     assert r_api.status_code == 401
 
 
-def test_report_generation_protection(client):
+def test_report_generation_protection(anon_client):
+    client = anon_client
     # Need researcher/admin role
     areas = client.get("/api/areas").get_json()
     if areas:

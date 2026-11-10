@@ -16,6 +16,10 @@
             <label for="password" style="display: block; margin-bottom: 5px;">Password</label>
             <input type="password" id="password" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
         </div>
+        <label style="display:flex; gap:8px; align-items:flex-start; font-size:.92rem;">
+            <input type="checkbox" id="request-researcher" {% if want_researcher %}checked{% endif %} style="margin-top:3px;">
+            <span>I am a researcher and request full access. An administrator must approve this; until then I have public access.</span>
+        </label>
         <div id="error-message" style="color: red; display: none;"></div>
         <div id="success-message" style="color: green; display: none;"></div>
         <button type="submit" style="padding: 10px; background-color: #2c3e50; color: white; border: none; border-radius: 4px; cursor: pointer;">Register</button>
@@ -41,13 +45,13 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ name, email, password })
+            body: JSON.stringify({ name, email, password, request_researcher: document.getElementById('request-researcher').checked })
         });
         
         const data = await response.json();
         
         if (response.ok) {
-            successDiv.textContent = 'Registration successful! Redirecting to login...';
+            successDiv.textContent = data.message + ' Redirecting to login...';
             successDiv.style.display = 'block';
             setTimeout(() => {
                 window.location.href = '/login';

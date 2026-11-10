@@ -140,6 +140,7 @@ def _score_to_category(score: float) -> str:
 # JSON endpoint — supplies data to the in-browser HTML report preview
 # ---------------------------------------------------------------------------
 @reports_bp.route("/district-data/<int:area_id>", methods=["GET"])
+@roles_required("RESEARCHER", "ADMIN")
 def district_report_data(area_id):
     """
     Returns all report data as JSON.

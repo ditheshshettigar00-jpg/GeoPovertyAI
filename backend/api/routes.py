@@ -20,6 +20,7 @@ from flask import Blueprint, jsonify, request, send_file
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from config import SATELLITE_DIR
+from backend.api.auth import roles_required
 from backend.services import db_service, model_service, hotspot_service, residual_service, profile_service
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -125,6 +126,7 @@ def map_data():
 
 
 @api_bp.route("/explain/<int:area_id>", methods=["GET"])
+@roles_required("RESEARCHER", "ADMIN")
 def explain(area_id):
     area = db_service.get_area(area_id)
     if area is None:
@@ -174,16 +176,19 @@ def satellite_image(area_id):
 
 
 @api_bp.route("/gradcam/<int:area_id>", methods=["GET"])
+@roles_required("RESEARCHER", "ADMIN")
 def gradcam_image(area_id):
     return jsonify({"error": "Grad-CAM not available: The current model uses satellite statistics only, not image features."}), 404
 
 
 @api_bp.route("/model-performance", methods=["GET"])
+@roles_required("RESEARCHER", "ADMIN")
 def model_performance():
     return jsonify(db_service.get_model_performance())
 
 
 @api_bp.route("/scenario", methods=["POST"])
+@roles_required("RESEARCHER", "ADMIN")
 def scenario():
     body = request.get_json(silent=True)
     if not body:
@@ -238,12 +243,14 @@ def scenario():
 
 
 @api_bp.route("/scenario-presets", methods=["GET"])
+@roles_required("RESEARCHER", "ADMIN")
 def scenario_presets():
     """Returns available sensitivity proxy presets."""
     return jsonify(model_service.SCENARIO_PRESETS)
 
 
 @api_bp.route("/scenario-targets", methods=["GET"])
+@roles_required("RESEARCHER", "ADMIN")
 def scenario_targets():
     """Returns available targeting options: states, hotspot clusters, and presets."""
     return jsonify(model_service.get_scenario_targets())
@@ -264,6 +271,7 @@ def get_indicators(area_id):
 
 
 @api_bp.route("/area-features/<int:area_id>", methods=["GET"])
+@roles_required("RESEARCHER", "ADMIN")
 def area_features(area_id):
     """Returns the current feature vector for an area -- used by the
     what-if frontend page to pre-populate editable sliders/inputs."""
@@ -274,6 +282,7 @@ def area_features(area_id):
 
 
 @api_bp.route("/compare", methods=["POST"])
+@roles_required("RESEARCHER", "ADMIN")
 def compare_districts():
     body = request.get_json(silent=True)
     if not body or "area_ids" not in body or not isinstance(body["area_ids"], list):
@@ -304,16 +313,19 @@ def compare_districts():
     return jsonify(results)
 
 @api_bp.route("/hotspots", methods=["GET"])
+@roles_required("RESEARCHER", "ADMIN")
 def hotspots():
     clusters = hotspot_service.identify_hotspots()
     return jsonify(clusters)
 
 @api_bp.route("/data-quality", methods=["GET"])
+@roles_required("RESEARCHER", "ADMIN")
 def data_quality():
     return jsonify(db_service.get_data_quality_stats())
 
 
 @api_bp.route("/predict-live", methods=["POST"])
+@roles_required("RESEARCHER", "ADMIN")
 def predict_live():
     """Takes user-supplied feature values, runs the trained ML model, and returns
     predicted score, category, and live SHAP feature attributions."""
@@ -325,6 +337,7 @@ def predict_live():
         return jsonify({"error": str(e)}), 400
 
 @api_bp.route("/similar-districts/<int:area_id>", methods=["GET"])
+@roles_required("RESEARCHER", "ADMIN")
 def similar_districts(area_id):
     """Finds the top 5 most similar districts mathematically based on AI features."""
     try:
@@ -355,6 +368,7 @@ def similar_districts(area_id):
 
 
 @api_bp.route("/residual-atlas", methods=["GET"])
+@roles_required("RESEARCHER", "ADMIN")
 def residual_atlas():
     """Hidden Gap Detector: districts where survey and satellite-only prediction disagree."""
     try:

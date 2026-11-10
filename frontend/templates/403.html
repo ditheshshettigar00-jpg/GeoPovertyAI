@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Access denied - GeoPoverty AI{% endblock %}
+{% block content %}
+<div style="max-width: 560px; margin: 60px auto; padding: 28px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
+    <h2>Access denied (403)</h2>
+    <p>Your account does not have permission to open this page.</p>
+    {% if user and user.requested_role == 'RESEARCHER' %}
+    <p>Your researcher access request is <strong>pending admin approval</strong>.</p>
+    {% elif user and user.role == 'PUBLIC' %}
+    <p>This feature is for approved researchers. You can
+       <a href="/register?as=researcher">request researcher access</a> when you register, or ask an administrator.</p>
+    {% endif %}
+    <p style="margin-top: 20px;"><a href="/map">Go to the interactive map</a></p>
+</div>
+{% endblock %}

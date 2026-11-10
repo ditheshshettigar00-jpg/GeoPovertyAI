@@ -19,6 +19,10 @@ DB_PATH = os.path.join(BASE_DIR, "geopoverty.db")
 def migrate_db(conn: sqlite3.Connection) -> None:
     """Safe migration: adds predicted_low, predicted_high, and prediction_type to predictions if missing."""
     cur = conn.cursor()
+    cur.execute("PRAGMA table_info(users);")
+    user_cols = [row[1] for row in cur.fetchall()]
+    if user_cols and "requested_role" not in user_cols:
+        cur.execute("ALTER TABLE users ADD COLUMN requested_role TEXT;")
     cur.execute("PRAGMA table_info(predictions);")
     existing_cols = [row[1] for row in cur.fetchall()]
     if existing_cols:

@@ -14,12 +14,12 @@ Then open http://127.0.0.1:5000/ in a browser.
 import os
 import sys
 
-from flask import Flask, render_template, session, redirect, url_for
+from flask import Flask, render_template, session, redirect, request
 from flask_cors import CORS
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backend.api.routes import api_bp
-from backend.api.auth import auth_bp
+from backend.api.auth import auth_bp, roles_required, safe_next, landing_for_role
 from backend.api.reports import reports_bp
 from backend.api.admin import admin_bp
 from backend.services import db_service, model_service
@@ -64,12 +64,32 @@ def create_app():
     app.register_blueprint(reports_bp)
     app.register_blueprint(admin_bp)
 
+    @app.context_processor
+    def inject_current_user():
+        """Expose the logged-in user (role read from the DB) to every template.
+        Used only to hide menu items; the real checks are the server-side decorators."""
+        user = None
+        if "user_id" in session:
+            u = db_service.get_user_by_id(session["user_id"])
+            if u and u.get("status") == "active":
+                user = {"name": u["name"], "role": u["role"],
+                        "pending": u.get("requested_role") == "RESEARCHER"}
+        return {"current_user": user}
+
     @app.teardown_appcontext
     def teardown_db(exception):
         db_service.close_connection(exception)
 
+    RESEARCHER = ("RESEARCHER", "ADMIN")
+
     @app.route("/")
     def home():
+        """Landing page: role cards are only shortcuts, they never grant a role."""
+        return render_template("landing.html")
+
+    @app.route("/overview")
+    @roles_required(*RESEARCHER)
+    def overview_page():
         return render_template("home.html")
 
     @app.route("/about")
@@ -77,6 +97,7 @@ def create_app():
         return render_template("about.html")
 
     @app.route("/prediction")
+    @roles_required(*RESEARCHER)
     def prediction_page():
         return render_template("prediction.html")
 
@@ -85,10 +106,12 @@ def create_app():
         return render_template("map.html")
 
     @app.route("/explanation")
+    @roles_required(*RESEARCHER)
     def explanation_page():
         return render_template("explanation.html")
 
     @app.route("/performance")
+    @roles_required(*RESEARCHER)
     def performance_page():
         return render_template("performance.html")
 
@@ -97,56 +120,66 @@ def create_app():
         return render_template("district.html", area_id=area_id)
 
     @app.route("/report/<int:area_id>")
+    @roles_required(*RESEARCHER)
     def report_page(area_id):
         """In-browser HTML report preview page for a district."""
         return render_template("report.html", area_id=area_id)
 
     @app.route("/compare")
+    @roles_required(*RESEARCHER)
     def compare_page():
         return render_template("compare.html")
 
     @app.route("/matchmaker")
+    @roles_required(*RESEARCHER)
     def matchmaker_page():
         return render_template("matchmaker.html")
 
 
 
     @app.route("/hidden-gaps")
+    @roles_required(*RESEARCHER)
     def hidden_gaps_page():
         return render_template("hidden_gaps.html")
 
     @app.route("/hotspots")
+    @roles_required(*RESEARCHER)
     def hotspots_page():
         return render_template("hotspots.html")
 
     @app.route("/data-quality")
+    @roles_required(*RESEARCHER)
     def data_quality_page():
-        if "user_id" not in session:
-            return redirect(url_for("login_page"))
         return render_template("data_quality.html")
 
     @app.route("/admin")
+    @roles_required("ADMIN")
     def admin_page():
-        if "user_id" not in session:
-            return redirect(url_for("login_page"))
-        user = db_service.get_user_by_id(session["user_id"])
-        if not user or user["role"] != "ADMIN":
-            return redirect(url_for("home"))
         return render_template("admin_dashboard.html")
 
     @app.route("/scenarios")
     @app.route("/scenario-explorer")
     @app.route("/whatif")
+    @roles_required(*RESEARCHER)
     def scenarios_page():
         return render_template("whatif.html")
 
     @app.route("/login")
     def login_page():
-        return render_template("login.html")
+        next_url = safe_next(request.args.get("next"))
+        if "user_id" in session:
+            user = db_service.get_user_by_id(session["user_id"])
+            if user and user.get("status") == "active":
+                return redirect(next_url or landing_for_role(user["role"]))
+        intent = request.args.get("as", "")
+        if intent not in ("researcher", "admin"):
+            intent = ""
+        return render_template("login.html", next_url=next_url or "", intent=intent)
 
     @app.route("/register")
     def register_page():
-        return render_template("register.html")
+        want = request.args.get("as") == "researcher"
+        return render_template("register.html", want_researcher=want)
 
     @app.errorhandler(404)
     def not_found(e):

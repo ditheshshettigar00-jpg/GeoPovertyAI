@@ -30,6 +30,7 @@
     <div class="sidebar">
         <ul>
             <li class="active" id="nav-overview">Overview</li>
+            <li id="nav-pending">Pending Researchers <span id="pending-badge"></span></li>
             <li id="nav-users">User Management</li>
             <li id="nav-logs">Audit Logs</li>
         </ul>
@@ -45,6 +46,11 @@
 
 {% block extra_scripts %}
 <script>
+// Escape anything coming from the database before putting it into innerHTML.
+function esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 async function checkAdmin() {
     const res = await fetch('/api/auth/profile');
     if (!res.ok) { window.location.href = '/login'; return; }
@@ -53,6 +59,7 @@ async function checkAdmin() {
         document.body.innerHTML = "<h2 style='text-align:center;margin-top:50px;'>Forbidden: Administrators only.</h2>";
     } else {
         loadOverview();
+        fetch('/api/admin/pending-researchers').then(r => r.json()).then(rows => refreshPendingBadge(rows.length)).catch(() => {});
     }
 }
 
@@ -66,6 +73,7 @@ async function loadOverview() {
         <div class="stats-grid">
             <div class="stat-card"><h3>Total Users</h3><p>${stats.total_users}</p></div>
             <div class="stat-card"><h3>Researchers</h3><p>${stats.researchers}</p></div>
+            <div class="stat-card"><h3>Pending Requests</h3><p>${stats.pending_requests}</p></div>
             <div class="stat-card"><h3>Active Users</h3><p>${stats.active_users}</p></div>
             <div class="stat-card"><h3>Total Districts</h3><p>${stats.total_districts}</p></div>
             <div class="stat-card"><h3>Available Datasets</h3><p>${stats.available_datasets}</p></div>
@@ -89,9 +97,9 @@ async function loadUsers() {
     users.forEach(u => {
         html += `
             <tr>
-                <td>${u.user_id}</td>
-                <td>${u.name}</td>
-                <td>${u.email}</td>
+                <td>${Number(u.user_id)}</td>
+                <td>${esc(u.name)}</td>
+                <td>${esc(u.email)}</td>
                 <td>
                     <select onchange="updateRole(${u.user_id}, this.value)">
                         <option value="PUBLIC" ${u.role === 'PUBLIC' ? 'selected' : ''}>PUBLIC</option>
@@ -99,8 +107,10 @@ async function loadUsers() {
                         <option value="ADMIN" ${u.role === 'ADMIN' ? 'selected' : ''}>ADMIN</option>
                     </select>
                 </td>
-                <td>${u.status}</td>
-                <td>-</td>
+                <td>${esc(u.status)}</td>
+                <td><button class="btn-action" style="background:${u.status === 'active' ? '#c0392b' : '#27ae60'}"
+                    onclick="updateStatus(${Number(u.user_id)}, '${u.status === 'active' ? 'inactive' : 'active'}')">
+                    ${u.status === 'active' ? 'Deactivate' : 'Activate'}</button></td>
             </tr>
         `;
     });
@@ -114,7 +124,60 @@ async function updateRole(userId, newRole) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole })
     });
-    if(!res.ok) alert("Failed to update role");
+    if(!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to update role");
+    }
+    loadUsers();
+}
+
+async function updateStatus(userId, newStatus) {
+    const res = await fetch(`/api/admin/users/${userId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+    });
+    if(!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to update status");
+    }
+    loadUsers();
+}
+
+async function loadPending() {
+    setActiveNav('nav-pending');
+    const res = await fetch('/api/admin/pending-researchers');
+    const rows = await res.json();
+    let html = `<h2>Pending Researcher Requests</h2>`;
+    if (!rows.length) {
+        html += `<p>No pending requests.</p>`;
+    } else {
+        html += `<table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Registered</th><th>Actions</th></tr></thead><tbody>`;
+        rows.forEach(u => {
+            html += `<tr>
+                <td>${Number(u.user_id)}</td><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(u.created_at)}</td>
+                <td>
+                    <button class="btn-action" style="background:#27ae60" onclick="resolveRequest(${Number(u.user_id)}, 'approve')">Approve</button>
+                    <button class="btn-action" style="background:#c0392b" onclick="resolveRequest(${Number(u.user_id)}, 'reject')">Reject</button>
+                </td></tr>`;
+        });
+        html += `</tbody></table>`;
+    }
+    document.getElementById('content-area').innerHTML = html;
+    refreshPendingBadge(rows.length);
+}
+
+async function resolveRequest(userId, action) {
+    const res = await fetch(`/api/admin/users/${userId}/${action}-researcher`, { method: 'POST' });
+    if(!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Action failed");
+    }
+    loadPending();
+}
+
+function refreshPendingBadge(n) {
+    document.getElementById('pending-badge').textContent = n ? `(${n})` : '';
 }
 
 async function loadLogs() {
@@ -133,11 +196,11 @@ async function loadLogs() {
     logs.forEach(l => {
         html += `
             <tr>
-                <td>${l.id}</td>
+                <td>${Number(l.id)}</td>
                 <td>${new Date(l.timestamp).toLocaleString()}</td>
-                <td>${l.name ? l.name + ' ('+l.email+')' : 'Unknown'}</td>
-                <td><strong>${l.action}</strong></td>
-                <td>${l.details || ''}</td>
+                <td>${l.name ? esc(l.name) + ' ('+esc(l.email)+')' : 'Unknown'}</td>
+                <td><strong>${esc(l.action)}</strong></td>
+                <td>${esc(l.details || '')}</td>
             </tr>
         `;
     });
@@ -151,6 +214,7 @@ function setActiveNav(id) {
 }
 
 document.getElementById('nav-overview').addEventListener('click', loadOverview);
+document.getElementById('nav-pending').addEventListener('click', loadPending);
 document.getElementById('nav-users').addEventListener('click', loadUsers);
 document.getElementById('nav-logs').addEventListener('click', loadLogs);
 

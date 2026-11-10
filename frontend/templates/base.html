@@ -22,12 +22,15 @@
         <div class="navbar-brand">GeoPoverty AI</div>
         <div class="navbar-links">
             <a href="/">Home</a>
-            
+            <a href="/map">Interactive Map</a>
+
+            {% if current_user and current_user.role in ('RESEARCHER', 'ADMIN') %}
+            <a href="/overview">Overview</a>
+
             <div class="dropdown">
                 <a class="dropbtn" href="javascript:void(0)" role="button" aria-haspopup="true" aria-expanded="false">Dashboard ▾</a>
                 <div class="dropdown-content">
                     <a href="/prediction">District Prediction</a>
-                    <a href="/map">Interactive Map</a>
                     <a href="/data-quality">Data Quality Monitor</a>
                 </div>
             </div>
@@ -35,6 +38,7 @@
             <div class="dropdown">
                 <a class="dropbtn" href="javascript:void(0)" role="button" aria-haspopup="true" aria-expanded="false">Analytics ▾</a>
                 <div class="dropdown-content">
+                    <a href="/compare">Compare Districts</a>
                     <a href="/matchmaker">AI District Matchmaker 🤖</a>
                     <a href="/hotspots">Hotspot Detection</a>
                     <a href="/hidden-gaps">Hidden Gap Detector</a>
@@ -49,12 +53,21 @@
                     <a href="/performance">Model Performance</a>
                 </div>
             </div>
+            {% endif %}
 
             <a href="/about">About</a>
 
             <span id="auth-links" style="margin-left: auto;">
-                <a href="/login">Login</a>
-                <a href="/register">Register</a>
+                {% if current_user %}
+                    {% if current_user.role == 'ADMIN' %}
+                    <a href="/admin" style="margin-right:15px; color:#f39c12; font-weight:bold;">Admin Dashboard</a>
+                    {% endif %}
+                    <span style="color: white; margin-right: 10px;">Welcome, {{ current_user.name }} ({{ current_user.role }}{% if current_user.pending %}, researcher request pending{% endif %})</span>
+                    <a href="#" id="logout-btn">Logout</a>
+                {% else %}
+                    <a href="/login">Login</a>
+                    <a href="/register">Register</a>
+                {% endif %}
             </span>
         </div>
     </nav>
@@ -71,34 +84,15 @@
     <script src="{{ url_for('static', filename='js/formatters.js') }}"></script>
     {% block extra_scripts %}{% endblock %}
     <script>
-        // Check authentication state
-        fetch('/api/auth/profile')
-            .then(res => {
-                if(res.ok) {
-                    return res.json();
-                }
-                throw new Error('Not logged in');
-            })
-            .then(user => {
-                let adminLink = '';
-                if(user.role === 'ADMIN') {
-                    adminLink = '<a href="/admin" style="margin-right:15px; color:#f39c12; font-weight:bold;">Admin Dashboard</a>';
-                }
-                
-                document.getElementById('auth-links').innerHTML = `
-                    ${adminLink}
-                    <span style="color: white; margin-right: 10px;">Welcome, ${user.name} (${user.role})</span>
-                    <a href="#" id="logout-btn">Logout</a>
-                `;
-                document.getElementById('logout-btn').addEventListener('click', (e) => {
-                    e.preventDefault();
-                    fetch('/api/auth/logout', { method: 'POST' })
-                        .then(() => window.location.href = '/');
-                });
-            })
-            .catch(() => {
-                // Not logged in, leave default login/register links
+        // Logout (menu content is rendered server-side from the user's role)
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                fetch('/api/auth/logout', { method: 'POST' })
+                    .then(() => window.location.href = '/');
             });
+        }
     </script>
     <script>
         // Dropdown Click & Touch Support for Navigation Bar

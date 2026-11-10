@@ -2,7 +2,8 @@
 
 {% block content %}
 <div class="auth-container" style="max-width: 400px; margin: 40px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-    <h2>Login to GeoPovertyAI</h2>
+    <h2>{% if intent == 'admin' %}Administrator login{% elif intent == 'researcher' %}Researcher login{% else %}Login to GeoPovertyAI{% endif %}</h2>
+    {% if intent %}<p style="color:#64748b; font-size:.9rem;">Your access level comes from your account, not from this page.</p>{% endif %}
     <form id="login-form" style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
         <div>
             <label for="email" style="display: block; margin-bottom: 5px;">Email</label>
@@ -15,7 +16,7 @@
         <div id="error-message" style="color: red; display: none;"></div>
         <button type="submit" style="padding: 10px; background-color: #2c3e50; color: white; border: none; border-radius: 4px; cursor: pointer;">Login</button>
     </form>
-    <p style="margin-top: 15px; text-align: center;">Don't have an account? <a href="/register">Register here</a></p>
+    <p style="margin-top: 15px; text-align: center;">Don't have an account? <a href="/register{% if intent == 'researcher' %}?as=researcher{% endif %}">Register here</a></p>
 </div>
 
 <script>
@@ -31,13 +32,13 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password, next: {{ next_url|tojson }} })
         });
         
         const data = await response.json();
         
         if (response.ok) {
-            window.location.href = '/'; // redirect to home on success
+            window.location.href = data.redirect || '/map'; // server decides by role
         } else {
             errorDiv.textContent = data.error || 'Login failed';
             errorDiv.style.display = 'block';

@@ -120,12 +120,14 @@ def get_user_by_id(user_id: int):
     return dict(row) if row else None
 
 
-def create_user(name: str, email: str, password_hash: str, role: str = 'PUBLIC'):
+def create_user(name: str, email: str, password_hash: str, role: str = 'PUBLIC',
+                requested_role: str = None):
     conn = get_connection()
     try:
         cur = conn.execute(
-            "INSERT INTO users (name, email, password_hash, role, status) VALUES (?, ?, ?, ?, 'active')",
-            (name, email, password_hash, role)
+            "INSERT INTO users (name, email, password_hash, role, status, requested_role) "
+            "VALUES (?, ?, ?, ?, 'active', ?)",
+            (name, email, password_hash, role, requested_role)
         )
         conn.commit()
         user_id = cur.lastrowid
@@ -135,13 +137,42 @@ def create_user(name: str, email: str, password_hash: str, role: str = 'PUBLIC')
     return user_id
 
 
+def count_active_admins() -> int:
+    conn = get_connection()
+    return conn.execute(
+        "SELECT COUNT(*) FROM users WHERE role = 'ADMIN' AND status = 'active'"
+    ).fetchone()[0]
+
+
+def update_user_fields(user_id: int, **fields) -> bool:
+    """Update role / status / requested_role for one user. Rolls back on any failure."""
+    allowed = {"role", "status", "requested_role"}
+    cols = [k for k in fields if k in allowed]
+    if not cols:
+        return False
+    conn = get_connection()
+    try:
+        conn.execute(
+            "UPDATE users SET " + ", ".join(f"{c} = ?" for c in cols) + " WHERE user_id = ?",
+            [fields[c] for c in cols] + [user_id],
+        )
+        conn.commit()
+        return True
+    except sqlite3.Error:
+        conn.rollback()
+        return False
+
+
 def log_audit_action(user_id: int, action: str, details: str = None):
     conn = get_connection()
-    conn.execute(
-        "INSERT INTO audit_logs (user_id, action, details) VALUES (?, ?, ?)",
-        (user_id, action, details)
-    )
-    conn.commit()
+    try:
+        conn.execute(
+            "INSERT INTO audit_logs (user_id, action, details) VALUES (?, ?, ?)",
+            (user_id, action, details)
+        )
+        conn.commit()
+    except sqlite3.Error:
+        conn.rollback()
 
 def get_data_quality_stats():
     conn = get_connection()

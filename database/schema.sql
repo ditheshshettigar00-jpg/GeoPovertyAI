@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     role          TEXT NOT NULL DEFAULT 'PUBLIC',   -- 'PUBLIC', 'RESEARCHER', 'ADMIN'
     status        TEXT NOT NULL DEFAULT 'active',   -- 'active' or 'inactive'
+    requested_role TEXT,                            -- 'RESEARCHER' while an admin approval is pending, else NULL
     created_at    TEXT DEFAULT CURRENT_TIMESTAMP
 );
 

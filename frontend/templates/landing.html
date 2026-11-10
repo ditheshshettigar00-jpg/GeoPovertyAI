@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}GeoPoverty AI{% endblock %}
+{% block extra_head %}
+<style>
+.landing-hero { text-align: center; padding: 2.5rem 1rem 1rem; }
+.landing-hero h1 { margin: 0 0 .5rem; font-size: 2.3rem; font-weight: 800; }
+.landing-hero p { max-width: 680px; margin: 0 auto; opacity: .85; }
+.role-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+.role-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.6rem; box-shadow: 0 4px 6px rgba(0,0,0,.03); display: flex; flex-direction: column; gap: .6rem; }
+.role-card h3 { margin: 0; }
+.role-card p { margin: 0; flex: 1; font-size: .95rem; color: #475569; }
+.role-card a.btn { display: inline-block; text-align: center; padding: 10px 18px; border-radius: 8px; background: #2c3e50; color: white; text-decoration: none; font-weight: 600; }
+.role-card a.btn.secondary { background: #e2e8f0; color: #1e293b; }
+.admin-link { text-align: center; font-size: .9rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="landing-hero">
+    <h1>GeoPoverty AI</h1>
+    <p>Explainable, satellite-based estimates of area-level deprivation for Indian districts. Choose how you want to use the platform.</p>
+</div>
+
+{% if current_user %}
+<p style="text-align:center;">You are signed in as <strong>{{ current_user.name }}</strong> ({{ current_user.role }}).
+   <a href="{% if current_user.role == 'ADMIN' %}/admin{% elif current_user.role == 'RESEARCHER' %}/overview{% else %}/map{% endif %}">Continue</a></p>
+{% endif %}
+
+<div class="role-grid">
+    <div class="role-card">
+        <h3>🌍 Public / Student</h3>
+        <p>Explore the interactive map and see how deprived each district is. No account needed.</p>
+        <a class="btn" href="/map">Explore the map</a>
+        <a class="btn secondary" href="/register">Create a free account</a>
+    </div>
+    <div class="role-card">
+        <h3>🔬 Researcher</h3>
+        <p>Full analysis tools: compare districts, hotspots, hidden gaps, scenario explorer, SHAP explanations and PDF reports. Access is approved by an administrator.</p>
+        <a class="btn" href="/login?as=researcher">Researcher login</a>
+        <a class="btn secondary" href="/register?as=researcher">Request researcher access</a>
+    </div>
+</div>
+<p class="admin-link"><a href="/login?as=admin">Administrator login</a></p>
+{% endblock %}
