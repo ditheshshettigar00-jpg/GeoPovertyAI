@@ -4,7 +4,7 @@ An explainable, multimodal Geospatial Artificial Intelligence (GeoAI) platform f
 
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Framework-Flask%203.0-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/Tests-264%20Passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-270%20Passed-brightgreen.svg)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 [![GitHub Repo](https://img.shields.io/badge/GitHub-GeoPovertyAI-181717.svg?logo=github)](https://github.com/ditheshshettigar00-jpg/GeoPovertyAI)
 
@@ -53,6 +53,7 @@ GeoPovertyAI/
 │   ├── PROJECT_BLUEPRINT.md  # Master project blueprint, task specifications & milestones
 │   ├── PIPELINE_HISTORY.md   # Historical development logs (Phase 1 & Phase 2)
 │   ├── SYSTEM_ARCHITECTURE.md# Architecture diagrams and system component specifications
+│   ├── SECURITY_NOTES.md     # Security architecture, hardening specifications & vulnerability audit notes
 │   └── screenshots/          # Application walkthrough captures
 ├── explainability/           # Explainable AI framework
 │   ├── shap_explain.py       # Scikit-Learn Pipeline TreeExplainer & local SHAP attributions
@@ -81,7 +82,7 @@ GeoPovertyAI/
 │   ├── generate_results_doc.py # Dynamic results documentation generator
 │   ├── precompute_predictions.py # Offline LOSO prediction & SHAP precomputation
 │   └── refill_missing_features.py # Secondary Earth Engine extraction for large districts
-├── tests/                    # Automated testing suite (264 passing pytest tests)
+├── tests/                    # Automated testing suite (270 passing pytest tests)
 │   ├── conftest.py           # Shared test fixtures & test client setup
 │   ├── test_access_control.py # Role-based access control route matrix, parameter validation, self/last-admin protection (162 tests)
 │   ├── test_area_profile.py  # Grouped district profile schema, percentiles & survey flags (7 tests)
@@ -92,7 +93,7 @@ GeoPovertyAI/
 │   ├── test_pipeline.py      # Core data pipelines, API endpoints, authentication (26 tests)
 │   ├── test_report_page.py   # District report preview route & JSON data endpoints (4 tests)
 │   ├── test_scenario_explorer.py # Scenario presets, group aggregation & error text (8 tests)
-│   └── test_security_hotspots.py # CORS, cookie security, rate limiting, DBSCAN (22 tests)
+│   └── test_security_hotspots.py # CORS, cookie security, rate limiting, DBSCAN, SQL injection & XSS defense (28 tests)
 ├── requirements.txt          # Pinned Python package dependencies from pip freeze
 └── README.md                 # Project documentation and quick-start guide
 ```
@@ -416,7 +417,7 @@ pytest -v
 ```
 
 **Test Results:**
-- **264 passed** (100% pass rate) across:
+- **270 passed** (100% pass rate) across:
   - `tests/test_access_control.py`: Role-based access control route matrix, parameter validation, self/last-admin protection (162 tests)
   - `tests/test_area_profile.py`: Grouped district profile schema, survey indicators, and empirical percentiles (7 tests)
   - `tests/test_hidden_gaps.py`: Residual thresholding, candidate criteria, and screening limits (9 tests)
@@ -426,4 +427,4 @@ pytest -v
   - `tests/test_pipeline.py`: Feature fusion, API routes, authentication, district matching (26 tests)
   - `tests/test_report_page.py`: District report preview route, dynamic tertile category thresholds JSON & PDF verification (4 tests)
   - `tests/test_scenario_explorer.py`: Scenario presets, single & group aggregations, uncertainty, and disclaimer integrity (8 tests)
-  - `tests/test_security_hotspots.py`: CORS origin validation, session cookie flags, rate limiting, DBSCAN clustering (22 tests)
+  - `tests/test_security_hotspots.py`: CORS origin validation, session cookie flags, rate limiting, DBSCAN clustering, SQL injection & XSS defense (28 tests)

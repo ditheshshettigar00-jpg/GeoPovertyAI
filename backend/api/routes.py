@@ -168,7 +168,7 @@ def satellite_image(area_id):
     path, is_demo = _find_satellite_image(
         area_id, area.get("area_name"), area.get("state_name"), area.get("data_mode", "real")
     )
-    if not path:
+    if not path or not os.path.abspath(path).startswith(os.path.abspath(SATELLITE_DIR)):
         return jsonify({"error": "No satellite image available for this district"}), 404
     resp = send_file(path, mimetype="image/png")
     resp.headers["X-Image-Is-Demo"] = "true" if is_demo else "false"

@@ -16,6 +16,7 @@ Tests covering:
 import os
 import sys
 import time
+import uuid
 import pytest
 import numpy as np
 
@@ -337,4 +338,119 @@ def test_hotspot_service_identifies_clusters_for_high_category_districts(client)
     assert api_res.status_code == 200
     api_clusters = api_res.get_json()
     assert len(api_clusters) == len(clusters)
+
+
+# ---------------------------------------------------------------------------
+# 10. Security Hardening & Edge Cases (Task 3)
+# ---------------------------------------------------------------------------
+
+def test_login_rate_limit_not_bypassed_by_spoofed_x_forwarded_for(client, monkeypatch):
+    """Verifies that an attacker cannot bypass the 5-attempt login rate limit by
+    spoofing X-Forwarded-For headers when TRUST_PROXY is not enabled."""
+    monkeypatch.delenv("TRUST_PROXY", raising=False)
+    test_email = f"ratelimit_spoof_{uuid.uuid4().hex[:8]}@example.com"
+
+    # Send 5 failed login attempts with differing spoofed client IPs
+    for i in range(5):
+        res = client.post(
+            "/api/auth/login",
+            json={"email": test_email, "password": "WrongPassword1!"},
+            headers={"X-Forwarded-For": f"198.51.100.{i+1}"}
+        )
+        assert res.status_code == 401
+
+    # 6th attempt with yet another spoofed IP must be rate-limited (HTTP 429)
+    res6 = client.post(
+        "/api/auth/login",
+        json={"email": test_email, "password": "WrongPassword1!"},
+        headers={"X-Forwarded-For": "203.0.113.99"}
+    )
+    assert res6.status_code == 429
+    assert "Too many failed login attempts" in res6.get_json()["error"]
+
+
+def test_login_rate_limit_respects_proxy_when_trust_proxy_enabled(monkeypatch):
+    """Verifies _get_client_ip returns X-Forwarded-For when TRUST_PROXY=1."""
+    from backend.api.auth import _get_client_ip
+    from flask import Flask
+
+    app = Flask(__name__)
+    with app.test_request_context("/", headers={"X-Forwarded-For": "203.0.113.50, 10.0.0.1"}):
+        # Default: untrusted -> uses remote_addr
+        monkeypatch.delenv("TRUST_PROXY", raising=False)
+        assert _get_client_ip() != "203.0.113.50"
+
+        # Explicit trust: TRUST_PROXY=1 -> uses first IP from header
+        monkeypatch.setenv("TRUST_PROXY", "1")
+        assert _get_client_ip() == "203.0.113.50"
+
+
+def test_session_cookie_secure_in_production(monkeypatch):
+    """Verifies SESSION_COOKIE_SECURE is True when FLASK_ENV != 'development'."""
+    monkeypatch.setenv("FLASK_ENV", "production")
+    monkeypatch.setenv("FLASK_SECRET_KEY", "test_production_secret_key_1234567890")
+    from backend.app import create_app
+    prod_app = create_app()
+    assert prod_app.config["SESSION_COOKIE_SECURE"] is True
+    assert prod_app.config["SESSION_COOKIE_HTTPONLY"] is True
+    assert prod_app.config["SESSION_COOKIE_SAMESITE"] == "Lax"
+
+
+def test_path_traversal_on_images_rejected(client):
+    """Verifies that directory traversal payloads on satellite and gradcam routes fail safely."""
+    # Routing rejection of non-integer paths
+    assert client.get("/api/satellite-image/..%2F..%2Fconfig.py").status_code == 404
+    assert client.get("/api/gradcam/..%2F..%2Fconfig.py").status_code == 404
+
+    # Non-existent integer area_id returns 404 safely
+    assert client.get("/api/satellite-image/999999").status_code == 404
+
+    # Grad-CAM endpoint safely deactivated for all districts
+    gradcam_res = client.get("/api/gradcam/1")
+    assert gradcam_res.status_code == 404
+    assert "Grad-CAM not available" in gradcam_res.get_json()["error"]
+
+
+def test_database_parameterized_queries_prevent_sql_injection():
+    """Verifies parameterized query safety against SQL injection payloads."""
+    from backend.services import db_service
+    sqli_payload = "' OR '1'='1' --"
+
+    # User lookup
+    assert db_service.get_user_by_email(sqli_payload) is None
+
+    # Area lookup
+    assert db_service.get_area(sqli_payload) is None
+
+    # Prediction lookup
+    assert db_service.get_latest_prediction(sqli_payload) is None
+
+
+def test_jinja_templates_autoescape_user_supplied_content(anon_client):
+    """Verifies user-supplied content (e.g. name with HTML/JS tags) is auto-escaped by Jinja."""
+    xss_name = "Attacker <script>alert('xss')</script>"
+    xss_email = f"xss_{uuid.uuid4().hex[:8]}@example.com"
+
+    reg = anon_client.post("/api/auth/register", json={
+        "name": xss_name,
+        "email": xss_email,
+        "password": "Password123!"
+    })
+    assert reg.status_code == 201
+
+    login = anon_client.post("/api/auth/login", json={
+        "email": xss_email,
+        "password": "Password123!"
+    })
+    assert login.status_code == 200
+
+    # View map page which renders current_user.name in the navbar
+    map_page = anon_client.get("/map")
+    assert map_page.status_code == 200
+    html = map_page.get_data(as_text=True)
+
+    # Raw script tags must NOT appear; must be HTML escaped
+    assert "<script>alert('xss')</script>" not in html
+    assert "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;" in html or "&lt;script&gt;alert('xss')&lt;/script&gt;" in html
+
 

@@ -55,6 +55,7 @@ def create_app():
     # Session cookie hardening
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_SECURE"] = (flask_env != "development")
 
     # FLASK_DEBUG defaults to False
     app.config["DEBUG"] = os.environ.get("FLASK_DEBUG", "False").lower() in ["true", "1", "yes"]

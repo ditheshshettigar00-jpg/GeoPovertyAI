@@ -20,9 +20,10 @@ RATE_LIMIT_WINDOW_SECONDS = 15 * 60  # 15 minutes
 MAX_FAILED_ATTEMPTS = 5
 
 def _get_client_ip():
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    if os.environ.get("TRUST_PROXY") == "1":
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
     return request.remote_addr or "127.0.0.1"
 
 def is_login_rate_limited(email: str, ip: str) -> bool:
