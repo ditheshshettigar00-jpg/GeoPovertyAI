@@ -179,9 +179,8 @@ def test_district_with_missing_survey_value_gets_not_shown_text():
 
 def test_report_pdf_generation_starts_with_pdf(client):
     """Verifies /api/reports/district/<id> returns a valid PDF beginning with %PDF."""
-    with client.session_transaction() as sess:
-        sess["user_id"] = 2  # Admin user from database
-        sess["role"] = "ADMIN"
+    from tests.conftest import make_user, login_session
+    login_session(client, make_user("ADMIN"))
 
     # Standard PDF
     res = client.get("/api/reports/district/182")

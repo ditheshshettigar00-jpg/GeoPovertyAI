@@ -79,17 +79,19 @@ flowchart TB
 
     subgraph S5["Tier 5: Database & Application Backend"]
         direction TB
-        DB[("Relational SQLite / DB Service<br/>(Areas, Predictions, SHAP, Audit Logs)")]
+        DB[("Relational SQLite / DB Service<br/>(Areas, Predictions, SHAP, Users, Audit Logs)")]
+        AUTH["Security & RBAC Enforcement<br/>(@roles_required, Rate Limiting, Live DB Checks)"]
         APP["Flask Application Core<br/>(REST API Controllers, Session Security, CORS)"]
         REP["ReportLab PDF Engine<br/>(Automated District Dossier)"]
     end
 
     subgraph S6["Tier 6: Web Presentation & Policy Dashboard"]
         direction TB
-        UI1["Interactive Leaflet Map<br/>(GeoJSON Choropleth & Hotspots)"]
-        UI2["District Drilldown & XAI<br/>(Out-of-State Score + Plain-Language SHAP)"]
-        UI3["What-If Scenario Simulator<br/>(Live 4-Feature Policy Sensitivity)"]
-        UI4["District Comparison & Admin<br/>(Multi-District Radar, User Management)"]
+        LAND["Landing Page ('/')<br/>(Role Entry Gateways: Public, Researcher, Admin)"]
+        UI1["Interactive Leaflet Map & District Drilldown<br/>(Public Tier: GeoJSON Choropleth, Statistics)"]
+        UI2["Analytical Decision Suite<br/>(Researcher Tier: Compare, XAI, Hotspots, Hidden Gaps)"]
+        UI3["Scenario Explorer<br/>(Researcher Tier: Policy Sensitivity Simulator)"]
+        UI4["Governance & Admin Console<br/>(Admin Tier: User Approval/Rejection, Audit Logs)"]
     end
 
     %% Data flow connections
@@ -103,9 +105,10 @@ flowchart TB
     M3 --> M5
     M5 --> X1 & X2
     M5 & X1 & X2 --> DB
-    DB <--> APP
+    DB <--> AUTH
+    AUTH <--> APP
     APP --> REP
-    APP <--> UI1 & UI2 & UI3 & UI4
+    APP <--> LAND & UI1 & UI2 & UI3 & UI4
 ```
 
 ---
@@ -158,6 +161,52 @@ flowchart TB
 * **District Intelligence Dashboard:** Visualizes out-of-state prediction score with 80% uncertainty bounds, Sentinel-2 image, and horizontal SHAP contribution bars with plain-language explanations.
 * **What-If Scenario Simulator:** Interactive interface allowing policymakers to adjust the 4 satellite indicators and inspect predicted shifts in deprivation.
 * **Role-Based Access Control (RBAC):** Tiered authorization (`PUBLIC`, `RESEARCHER`, `ADMIN`) with memory-based rate limiting (5 failed login attempts per 15 minutes).
+
+### Layer 7: Role-Based Access Control & Security Architecture
+* **User Roles & Authorization:**
+  - **`PUBLIC` (Anonymous / Student):** Access to the landing page (`/`), about page (`/about`), national choropleth map (`/map`), district drilldown (`/district/<id>`), and public read APIs (`/api/areas`, `/api/map`, `/api/predict/<id>`, `/api/indicators/<id>`, `/api/area-profile/<id>`). No authentication or registration required.
+  - **`RESEARCHER`:** Access to advanced decision-support and analytical tools: Live AI Predictor (`/prediction`), Model Explainability (`/explanation`), Performance Benchmarks (`/performance`), District Executive Reports (`/report/<id>`), Compare Districts (`/compare`), Matchmaker (`/matchmaker`), Hidden Gap Detector (`/hidden-gaps`), Deprivation Hotspots (`/hotspots`), Scenario Explorer (`/scenarios`, `/whatif`), and Data Quality Audit (`/data-quality`), plus corresponding `/api/*` analytical endpoints. Requires user registration; self-registration defaults to `PUBLIC` with a pending researcher request flag, requiring explicit administrator approval.
+  - **`ADMIN`:** Full administrative governance over user accounts, researcher approval/rejection, user activation/deactivation, and security audit log inspection (`/admin`, `/api/admin/*`). Administrative accounts cannot self-register; they can only be bootstrapped via the interactive CLI script (`scripts/create_admin.py`) or promoted by another active administrator.
+* **Authentication & Guardrail Flow:**
+  - **Unified Enforcement Decorator (`@roles_required(*roles)`):** Live database verification on every request via `db_service.get_user_by_id(session['user_id'])`. Role information is never cached in client sessions or trusted from HTTP payloads.
+  - **Redirection & Error Responses:**
+    - Unauthenticated page requests redirect to `/login?next=<encoded_path>` with open-redirect protection (`safe_next`).
+    - Authenticated users with insufficient privileges receive a dedicated HTTP 403 Forbidden page (`403.html`).
+    - API endpoints return structured JSON `{"error": "Unauthorized"}` (HTTP 401) or `{"error": "Forbidden: insufficient permissions"}` (HTTP 403).
+  - **Safety Invariants:** `_guard_admin_change` prevents administrators from demoting or deactivating their own accounts and blocks any action that would leave the system without at least one active administrator.
+  - **Session & Header Security:** Enforces `SESSION_COOKIE_HTTPONLY=True`, `SESSION_COOKIE_SAMESITE='Lax'`, deny-by-default CORS policy via `CORS_ORIGINS`, and failed login rate limiting (5 failed attempts per 15 minutes per IP/email pair).
+
+* **Researcher Approval Lifecycle:**
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as User (Applicant)
+    participant Auth as Auth API (/register, /login)
+    participant DB as SQLite (users, audit_logs)
+    actor A as Administrator
+    participant Admin as Admin API (/api/admin/*)
+
+    U->>Auth: POST /register (wants_researcher=true)
+    Auth->>DB: INSERT user (role='PUBLIC', requested_role='RESEARCHER', status='active')
+    Note over U,Auth: User can immediately login with PUBLIC privileges
+    A->>Admin: GET /api/admin/pending-researchers
+    Admin->>DB: SELECT * FROM users WHERE requested_role='RESEARCHER'
+    DB-->>Admin: List of pending applicants
+    alt Admin Approves Request
+        A->>Admin: POST /api/admin/users/<id>/approve-researcher
+        Admin->>DB: UPDATE users SET role='RESEARCHER', requested_role=NULL
+        Admin->>DB: INSERT audit_log (APPROVE_RESEARCHER)
+        Admin-->>A: HTTP 200 OK
+        Note over U: Next request promoted to RESEARCHER tier
+    else Admin Rejects Request
+        A->>Admin: POST /api/admin/users/<id>/reject-researcher
+        Admin->>DB: UPDATE users SET requested_role=NULL
+        Admin->>DB: INSERT audit_log (REJECT_RESEARCHER)
+        Admin-->>A: HTTP 200 OK
+        Note over U: Remains PUBLIC user
+    end
+```
 
 ---
 

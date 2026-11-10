@@ -4,7 +4,7 @@ An explainable, multimodal Geospatial Artificial Intelligence (GeoAI) platform f
 
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Framework-Flask%203.0-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/Tests-102%20Passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-264%20Passed-brightgreen.svg)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 [![GitHub Repo](https://img.shields.io/badge/GitHub-GeoPovertyAI-181717.svg?logo=github)](https://github.com/ditheshshettigar00-jpg/GeoPovertyAI)
 
@@ -50,7 +50,8 @@ GeoPovertyAI/
 ├── documentation/            # Technical specifications, architecture, and reports
 │   ├── METHODS.md            # Detailed methodology, formulas, matching logic & limitations
 │   ├── RESULTS.md            # Generated benchmark and evaluation tables
-│   ├── PROJECT_PROMPT.md     # Project specification & phase prompts
+│   ├── PROJECT_BLUEPRINT.md  # Master project blueprint, task specifications & milestones
+│   ├── PIPELINE_HISTORY.md   # Historical development logs (Phase 1 & Phase 2)
 │   ├── SYSTEM_ARCHITECTURE.md# Architecture diagrams and system component specifications
 │   └── screenshots/          # Application walkthrough captures
 ├── explainability/           # Explainable AI framework
@@ -80,17 +81,18 @@ GeoPovertyAI/
 │   ├── generate_results_doc.py # Dynamic results documentation generator
 │   ├── precompute_predictions.py # Offline LOSO prediction & SHAP precomputation
 │   └── refill_missing_features.py # Secondary Earth Engine extraction for large districts
-├── tests/                    # Automated testing suite (101 passing pytest tests)
+├── tests/                    # Automated testing suite (264 passing pytest tests)
 │   ├── conftest.py           # Shared test fixtures & test client setup
+│   ├── test_access_control.py # Role-based access control route matrix, parameter validation, self/last-admin protection (162 tests)
 │   ├── test_area_profile.py  # Grouped district profile schema, percentiles & survey flags (7 tests)
 │   ├── test_hidden_gaps.py   # Residual atlas, candidate criteria & screening limits (9 tests)
 │   ├── test_indicator_service.py # Real district indicators, NFHS join, PDF tables & fallbacks (9 tests)
 │   ├── test_phase2.py        # Spatial cross-validation, pipelines, uncertainty (10 tests)
 │   ├── test_phase3.py        # Additive SHAP, Grad-CAM deactivation, satellite safety (7 tests)
-│   ├── test_pipeline.py      # Core data pipelines, API endpoints, authentication (27 tests)
-│   ├── test_report_page.py   # District report preview route & JSON data endpoints (3 tests)
+│   ├── test_pipeline.py      # Core data pipelines, API endpoints, authentication (26 tests)
+│   ├── test_report_page.py   # District report preview route & JSON data endpoints (4 tests)
 │   ├── test_scenario_explorer.py # Scenario presets, group aggregation & error text (8 tests)
-│   └── test_security_hotspots.py # CORS, cookie security, rate limiting, DBSCAN (21 tests)
+│   └── test_security_hotspots.py # CORS, cookie security, rate limiting, DBSCAN (22 tests)
 ├── ui_prototype/             # Standalone UI wireframes and visual prototypes
 ├── requirements.txt          # Pinned Python package dependencies from pip freeze
 └── README.md                 # Project documentation and quick-start guide
@@ -140,67 +142,162 @@ GeoPovertyAI/
 - **`GET /api/reports/district/<int:area_id>`** — Generate and download official district PDF report (`?appendix=1` for full NFHS table).
 - **`GET /api/data-quality`** — Data audit metrics, boundary coverage, and feature summary statistics.
 - **`POST /api/auth/register`**, **`POST /api/auth/login`**, **`POST /api/auth/logout`**, **`GET /api/auth/profile`** — Authentication and user session endpoints.
-- **`GET /api/admin/dashboard-stats`**, **`GET /api/admin/users`**, **`PUT /api/admin/users/<int:user_id>/role`**, **`GET /api/admin/audit-logs`** — Administrative management endpoints.
+- **`GET /api/admin/dashboard-stats`**, **`GET /api/admin/users`**, **`GET /api/admin/pending-researchers`**, **`GET /api/admin/audit-logs`** — Administrative management and audit logging endpoints.
+- **`PUT /api/admin/users/<int:user_id>/role`**, **`PUT /api/admin/users/<int:user_id>/status`**, **`POST /api/admin/users/<int:user_id>/approve-researcher`**, **`POST /api/admin/users/<int:user_id>/reject-researcher`** — Administrative governance and role moderation endpoints.
 
 ---
 
-## 4. Installation & Quick Start
+## 4. Access Control & User Roles
 
-### Prerequisites
-- Python 3.10, 3.11, or 3.12 (64-bit recommended)
-- Git
+GeoPoverty AI implements a multi-tiered Role-Based Access Control (RBAC) architecture enforced directly at the server level for all HTML pages and REST API routes.
 
-### Clone the Repository
-```bash
+### Role Hierarchy & Responsibilities
+
+1. **`PUBLIC` (Public / Student / Anonymous Browsing):**
+   - **No login required:** Anonymous visitors can freely view the Landing Page (`/`), About Page (`/about`), National Choropleth Map (`/map`), and District Drilldown (`/district/<id>`).
+   - Public read APIs (`/api/areas`, `/api/map`, `/api/predict/<id>`, `/api/indicators/<id>`, `/api/area-profile/<id>`, `/api/satellite-image/<id>`) are open without authentication to support public data transparency and student exploration.
+   - Standard registered users receive the `PUBLIC` role by default.
+
+2. **`RESEARCHER` (Analytical Decision-Support Suite):**
+   - Access to advanced modeling, explainability, sensitivity, and reporting tools:
+     - Live AI Predictor (`/prediction`, `POST /api/predict-live`)
+     - Model Explainability (`/explanation`, `GET /api/explain/<id>`)
+     - Performance Benchmarks (`/performance`, `GET /api/model-performance`)
+     - District Executive Reports & PDF Dossiers (`/report/<id>`, `GET /api/reports/district/<id>`)
+     - Comparative Analysis & Matching (`/compare`, `/matchmaker`, `POST /api/compare`, `GET /api/similar-districts/<id>`)
+     - Spatial Clusters & Hotspots (`/hotspots`, `GET /api/hotspots`)
+     - Hidden Gap Residual Atlas (`/hidden-gaps`, `GET /api/residual-atlas`)
+     - Scenario Explorer Simulator (`/scenario-explorer`, `/whatif`, `/scenarios`, `POST /api/scenario`, `GET /api/scenario-presets`, `GET /api/scenario-targets`)
+     - Data Quality Audit (`/data-quality`, `GET /api/data-quality`)
+   - **Approval Workflow:** Users requesting researcher access register via `/register` with "Request researcher access" checked. The account is created as `role='PUBLIC'` with `requested_role='RESEARCHER'`. The user can immediately log in with public privileges while their researcher request awaits administrator review.
+
+3. **`ADMIN` (System Governance & Auditing):**
+   - Full administrative dashboard (`/admin`) and backend management APIs.
+   - Capabilities: Review and approve/reject pending researcher requests, update user roles, toggle account active/inactive status, and inspect immutable security audit logs (`audit_logs` table).
+   - **Administrator Security Policy:** Administrative accounts **cannot** be registered through the web UI or public endpoints. They can only be bootstrapped via the interactive command-line utility (`python scripts/create_admin.py`) or promoted by an existing active administrator.
+   - **Safety Invariants:** The system enforces server-side safeguards (`_guard_admin_change`):
+     - An administrator cannot demote or deactivate their own active account.
+     - An administrator cannot demote or deactivate the last remaining active administrator in the system.
+
+### Access Control Matrix
+
+| Route / Endpoint | Method | Anonymous | `PUBLIC` | `RESEARCHER` | `ADMIN` |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| `/` (Landing Page) | `GET` | Allowed | Allowed | Allowed | Allowed |
+| `/about` | `GET` | Allowed | Allowed | Allowed | Allowed |
+| `/map` | `GET` | Allowed | Allowed | Allowed | Allowed |
+| `/district/<id>` | `GET` | Allowed | Allowed | Allowed | Allowed |
+| `/login`, `/register` | `GET` | Allowed | Allowed | Allowed | Allowed |
+| `/overview` | `GET` | Redirect to Login | 403 Forbidden | Allowed | Allowed |
+| `/prediction` | `GET` | Redirect to Login | 403 Forbidden | Allowed | Allowed |
+| `/explanation` | `GET` | Redirect to Login | 403 Forbidden | Allowed | Allowed |
+| `/performance` | `GET` | Redirect to Login | 403 Forbidden | Allowed | Allowed |
+| `/report/<id>` | `GET` | Redirect to Login | 403 Forbidden | Allowed | Allowed |
+| `/compare` | `GET` | Redirect to Login | 403 Forbidden | Allowed | Allowed |
+| `/matchmaker` | `GET` | Redirect to Login | 403 Forbidden | Allowed | Allowed |
+| `/hidden-gaps` | `GET` | Redirect to Login | 403 Forbidden | Allowed | Allowed |
+| `/hotspots` | `GET` | Redirect to Login | 403 Forbidden | Allowed | Allowed |
+| `/data-quality` | `GET` | Redirect to Login | 403 Forbidden | Allowed | Allowed |
+| `/scenario-explorer` (`/scenarios`, `/whatif`) | `GET` | Redirect to Login | 403 Forbidden | Allowed | Allowed |
+| `/admin` | `GET` | Redirect to Login | 403 Forbidden | 403 Forbidden | Allowed |
+| `/api/areas`, `/api/map` | `GET` | 200 OK | 200 OK | 200 OK | 200 OK |
+| `/api/predict/<id>`, `/api/indicators/<id>` | `GET` | 200 OK | 200 OK | 200 OK | 200 OK |
+| `/api/area-profile/<id>`, `/api/satellite-image/<id>` | `GET` | 200 OK | 200 OK | 200 OK | 200 OK |
+| `/api/explain/<id>`, `/api/model-performance` | `GET` | 401 Unauthorized | 403 Forbidden | 200 OK | 200 OK |
+| `/api/scenario-presets`, `/api/scenario-targets` | `GET` | 401 Unauthorized | 403 Forbidden | 200 OK | 200 OK |
+| `/api/area-features/<id>`, `/api/hotspots`, `/api/data-quality` | `GET` | 401 Unauthorized | 403 Forbidden | 200 OK | 200 OK |
+| `/api/similar-districts/<id>`, `/api/residual-atlas` | `GET` | 401 Unauthorized | 403 Forbidden | 200 OK | 200 OK |
+| `/api/reports/district-data/<id>`, `/api/reports/district/<id>` | `GET` | 401 Unauthorized | 403 Forbidden | 200 OK | 200 OK |
+| `/api/compare`, `/api/scenario`, `/api/predict-live` | `POST` | 401 Unauthorized | 403 Forbidden | 200 OK | 200 OK |
+| `/api/auth/register`, `/api/auth/login` | `POST` | 200 OK | 200 OK | 200 OK | 200 OK |
+| `/api/auth/logout`, `/api/auth/profile` | `POST`/`GET` | 401 Unauthorized | 200 OK | 200 OK | 200 OK |
+| `/api/admin/*` (All admin endpoints) | `GET`/`POST`/`PUT` | 401 Unauthorized | 403 Forbidden | 403 Forbidden | 200 OK |
+
+### HTTP Status Code & Redirection Behavior
+
+- **Unauthenticated Page Access:** When an unauthenticated visitor requests a protected page, the server issues an HTTP 302 redirect to `/login?next=<encoded_path>`. The `safe_next` validator ensures only relative same-origin paths are honored, blocking open-redirect exploits.
+- **Unauthenticated API Access:** When an unauthenticated client requests a protected API endpoint, the server returns structured JSON `{"error": "Unauthorized"}` with HTTP status **401 Unauthorized**.
+- **Forbidden Page Access:** When an authenticated user lacks the required role for a page, the server returns a styled `403.html` template with HTTP status **403 Forbidden**.
+- **Forbidden API Access:** When an authenticated user lacks the required role for an API, the server returns structured JSON `{"error": "Forbidden: insufficient permissions"}` with HTTP status **403 Forbidden**.
+
+---
+
+## 5. Quick Start (Fresh Clone)
+
+### Important Database Note
+> **Database Exclusion:** The SQLite database file (`geopoverty.db`) and its write-ahead logs (`*.db-wal`, `*.db-shm`) are excluded from Git version control. On any fresh clone, you **must** run `python database/init_db.py` to create the database schema, followed by `python scripts/precompute_predictions.py` to populate district features, out-of-state Leave-One-State-Out predictions, and additive SHAP explanations before running the web application or pytest suite.
+
+### Setup for Windows PowerShell
+
+```powershell
+# 1. Clone the repository and enter the directory
 git clone https://github.com/ditheshshettigar00-jpg/GeoPovertyAI.git
 cd GeoPovertyAI
-```
 
-### Virtual Environment Setup
-```bash
+# 2. Create and activate a Python virtual environment (Python 3.10, 3.11, or 3.12)
 python -m venv venv
-
-# Windows (PowerShell):
 .\venv\Scripts\Activate.ps1
 
-# Linux / macOS:
-source venv/bin/activate
-```
-
-### Install Dependencies
-```bash
+# 3. Install pinned dependencies
 pip install -r requirements.txt
-```
 
-### Security & Environment Configuration
-Set the Flask environment mode. For development and testing:
-```bash
-# Windows PowerShell:
-$env:FLASK_ENV = "development"
-
-# Linux / macOS:
-export FLASK_ENV=development
-```
-*Note: In production environments, omit `FLASK_ENV=development` and set a strong, random key via `FLASK_SECRET_KEY`.*
-
-### Database Initialization & Admin Setup
-```bash
-# 1. Initialize SQLite schema and apply migrations
+# 4. Initialize SQLite database schema and migrations
 python database/init_db.py
 
-# 2. Interactively create the administrative user (no hardcoded credentials)
+# 5. Precompute out-of-state Leave-One-State-Out predictions & SHAP explanations
+python scripts/precompute_predictions.py
+
+# 6. Interactively create the initial administrator user (no hardcoded passwords)
 python scripts/create_admin.py
+
+# 7. Set development environment variable
+$env:FLASK_ENV = "development"
+
+# 8. Start the Flask application
+python backend/app.py
+
+# 9. Verify the installation by running the test suite (in a separate terminal with venv activated)
+pytest -q
 ```
 
-### Start the Web Application
+### Setup for Linux / macOS
+
 ```bash
+# 1. Clone the repository and enter the directory
+git clone https://github.com/ditheshshettigar00-jpg/GeoPovertyAI.git
+cd GeoPovertyAI
+
+# 2. Create and activate a Python virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# 3. Install pinned dependencies
+pip install -r requirements.txt
+
+# 4. Initialize SQLite database schema and migrations
+python database/init_db.py
+
+# 5. Precompute out-of-state Leave-One-State-Out predictions & SHAP explanations
+python scripts/precompute_predictions.py
+
+# 6. Interactively create the initial administrator user
+python scripts/create_admin.py
+
+# 7. Set development environment variable
+export FLASK_ENV=development
+
+# 8. Start the Flask application
 python backend/app.py
+
+# 9. Verify the installation by running the test suite
+pytest -q
 ```
+
 Open your browser and navigate to: **`http://localhost:5000`**
 
 ---
 
-## 5. How to Run the Pipeline in Order
+## 6. How to Run the Pipeline in Order
 
 To reproduce the end-to-end data processing, spatial modeling, and precomputations:
 
@@ -220,7 +317,7 @@ pytest -v
 
 ---
 
-## 6. Empirical Results & Benchmark Tables
+## 7. Empirical Results & Benchmark Tables
 
 <!-- RESULTS START -->
 
@@ -296,7 +393,7 @@ pytest -v
 
 ---
 
-## 7. Limitations & Scientific Disclaimers
+## 8. Limitations & Scientific Disclaimers
 
 1. **Moderate Predictive Accuracy & Mean Compression:** The model achieves a Leave-One-State-Out $R^2$ of **0.3360** (MAE **0.0883**). Predictions compress toward the mean: highly deprived districts are under-estimated, while the least deprived districts are over-estimated.
 2. **Tabular Satellite Features Only (4 Features):** The final model uses 4 features only: `nightlight_mean`, `ndvi_mean`, `builtup_pct`, and `population_density`, extracted from satellite data for 2019-11-01 to 2021-04-30 (GHSL epoch 2020). Deep visual features (VGG-16) and Grad-CAM are NOT part of the final model. Deep visual features (VGG-16) were evaluated only in an exploratory run on the original project dataset (data/exploratory/original_table_with_visual_features.csv; 2023 imagery). In that run, leave-one-state-out R2 was 0.3273 without the visual features (using 7 tabular features: 4 satellite + 3 accessibility columns, not the final 4-feature model) and 0.2879 with them, and visual features alone gave 0.0702 (models/exploratory_visual_ablation/ablation_results.csv). They were not re-evaluated on the final 2019-21 data, and the final model does not use them. The accessibility columns in the original dataset (road density, school and hospital distance) could not be traced to an extraction script and were almost perfectly correlated with each other (|r| about 0.96); removing the accessibility columns changed R2 by about 0.003 (0.288 to 0.291) when the visual features were present, so they were not used. An OSM extraction script is included for future work but was not run nationally.
@@ -311,16 +408,17 @@ For detailed technical specifications on data sources, dates, formulas, and matc
 
 ---
 
-## 8. Testing & Quality Assurance
+## 9. Testing & Quality Assurance
 
-The test suite validates data integrity, spatial cross-validation, additive SHAP guarantees, security configurations, and API endpoints:
+The test suite validates data integrity, spatial cross-validation, additive SHAP guarantees, security configurations, role-based access control, and API endpoints:
 
 ```bash
 pytest -v
 ```
 
 **Test Results:**
-- **102 passed** (100% pass rate) across:
+- **264 passed** (100% pass rate) across:
+  - `tests/test_access_control.py`: Role-based access control route matrix, parameter validation, self/last-admin protection (162 tests)
   - `tests/test_area_profile.py`: Grouped district profile schema, survey indicators, and empirical percentiles (7 tests)
   - `tests/test_hidden_gaps.py`: Residual thresholding, candidate criteria, and screening limits (9 tests)
   - `tests/test_indicator_service.py`: Real district indicators, NFHS-5 survey join, PDF tables, and graceful fallbacks (9 tests)
