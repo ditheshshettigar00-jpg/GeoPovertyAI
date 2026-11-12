@@ -1,0 +1,19 @@
+# Extra-feature experiment (experimental, not production)
+
+Model: RandomForest. Leave-one-state-out plus repeated state-grouped 5-fold (5 repeats).
+
+Rule fixed in advance: adopt only if LOSO and repeated-CV R2 each gain >= 0.02 and >= 55% of states improve.
+
+```
+                    feature_set  n_features  loso_r2  loso_mae  loso_spearman  loso_top20_recall  repeated_r2_mean  repeated_r2_std  d_loso_r2  d_repeated_r2  states_improved
+          baseline (4 features)           4   0.3360    0.0883         0.5745             0.4602            0.2984           0.0216     0.0000         0.0000           0.0000
+           baseline + ALL extra          10   0.4217    0.0817         0.6716             0.4513            0.3543           0.0696     0.0857         0.0559           0.6452
+    baseline + elevation_mean_m           5   0.3786    0.0848         0.6118             0.4779            0.3404           0.0196     0.0426         0.0420           0.5806
+      baseline + slope_mean_deg           5   0.3401    0.0887         0.5798             0.4336            0.3034           0.0278     0.0040         0.0049           0.5161
+    baseline + rainfall_mm_year           5   0.2907    0.0909         0.5435             0.4336            0.2576           0.0147    -0.0454        -0.0408           0.3871
+           baseline + lst_day_c           5   0.3985    0.0843         0.6348             0.4513            0.3553           0.0332     0.0625         0.0568           0.5484
+        baseline + cropland_pct           5   0.3496    0.0875         0.5808             0.4690            0.3169           0.0356     0.0135         0.0184           0.5806
+baseline + travel_time_city_min           5   0.3421    0.0887         0.5871             0.4425            0.3132           0.0251     0.0060         0.0148           0.5161
+```
+
+**Verdict:** ADOPT
