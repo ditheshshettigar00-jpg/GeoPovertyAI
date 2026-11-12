@@ -26,7 +26,7 @@ The interface adheres to a standardized three-tier structure:
 - **Purpose:** Introduces the GeoPoverty AI decision-support platform, summarizes national coverage metrics, and guides users to analytical tools.
 - **Key UI Components:**
   - **Hero Banner:** Displays system value proposition with quick-action CTA buttons (`Live Predictor` and `Interactive Map`).
-  - **Executive Stat Badges:** Real-time counters showing total geographic areas analyzed (**564 Districts Analyzed** across **31 States**), ground telemetry points, and active algorithm backbones (`RandomForest / XGBoost Trained Models`).
+  - **Executive Stat Badges:** Real-time counters showing total geographic areas analyzed (**564 Districts Analyzed** across **31 States**), ground telemetry points, and active algorithm backbones (`XGBoost / RandomForest Trained Models`).
   - **Capability Feature Cards:** Direct navigational cards highlighting Explainable AI (SHAP Feature Contributions), Scenario Simulation, and Hotspot Detection (**Haversine DBSCAN with 150 km radius**).
 - **User Interactions:** Single-click routing to map exploration, model diagnostics, or district prediction search.
 
@@ -56,7 +56,7 @@ The interface adheres to a standardized three-tier structure:
 - **Key UI Components:**
   - **District Selector Card:** Centered administrative dropdown for selecting the baseline target district.
   - **Left Panel (Policy Intervention Controls):**
-    - Sliders for continuous feature overrides across the 4 core satellite statistics: nightlight luminosity, vegetation index (NDVI), built-up surface percentage, and population density.
+    - Sliders for continuous feature overrides across all 10 satellite and geospatial model inputs (nightlight luminosity, vegetation index NDVI, built-up surface percentage, population density, terrain elevation, slope, rainfall, land surface temperature, cropland %, and city travel time).
   - **Right Panel (Impact Analysis & Live Sensitivity):**
     - High-visibility comparison cards: **Current Baseline Score** vs. **Simulated Outcome Score**.
     - Real-time status shift badge indicating whether deprivation category transitioned (e.g., *High $\to$ Medium*).
@@ -72,8 +72,8 @@ The interface adheres to a standardized three-tier structure:
 - **Purpose:** Provides complete transparency and explainability for a district's predicted score, establishing algorithmic trust through empirical feature contributions and satellite imagery inspection.
 - **Key UI Components:**
   - **Header & Action Bar:** District identity, state jurisdiction, and an automated ReportLab PDF download button (`Generate District Report`).
-  - **Deprivation Scorecard (Top-Left):** Prominent continuous prediction gauge displaying the **out-of-state estimate** with empirical 80% range (e.g., $[0.291 - 0.571]$), categorical classification badge (`Medium Deprivation`), model provenance (`RandomForest`), and audit timestamp.
-  - **Comprehensive Geospatial Feature Table (Top-Right):** Tabulates raw environmental and settlement telemetry for the 4 core satellite statistics: `nightlight_mean`, `ndvi_mean`, `builtup_pct`, and `population_density`.
+  - **Deprivation Scorecard (Top-Left):** Prominent continuous prediction gauge displaying the **out-of-state estimate** with empirical 80% range (e.g., `[0.3731 - 0.6181]`), categorical classification badge (`High Deprivation` for Pashchim Singhbhum), model provenance (`XGBoost`), and audit timestamp.
+  - **Comprehensive Geospatial Feature Table (Top-Right):** Tabulates raw environmental, climate, terrain, and settlement telemetry across the 13 satellite & geospatial indicators (`nightlight_mean`, `ndvi_mean`, `builtup_pct`, `population_density`, `elevation_mean_m`, `slope_mean_deg`, `rainfall_mm_year`, `lst_day_c`, `cropland_pct`, `travel_time_city_min`, plus `s2_image_count`, `latitude`, `longitude`).
   - **Local SHAP Feature Importance Bars (Bottom-Left):** Horizontal contribution bars displaying game-theoretic Shapley contributions with plain-language directional explanations (e.g., *higher vegetation lowers the estimated deprivation*). Includes the note: *"Contributions show what drove this estimate; they describe the model, not causes."*
   - **Sentinel-2 Satellite Image Preview (Bottom-Right):** Optical imagery patch showing true-color surface reflectance. Shows *"No satellite image available"* when a real patch is not cached, and labels synthetic demo images as *"Illustrative demo image"* (never served for real districts). Grad-CAM is marked as *"Not available: The current model uses satellite statistics only, not image features."*
 - **User Interactions:** Hovering over SHAP bars shows exact marginal contributions; clicking the satellite thumbnail opens high-resolution inspection.

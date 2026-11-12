@@ -46,10 +46,10 @@
 
 ## 1.1 Architectural Design
 
-GeoPoverty AI is designed as a **6-Tier Modular Geospatial AI Platform**. It ingests multi-source satellite telemetry (Sentinel-2, VIIRS nocturnal luminosity, and Global Human Settlement Layer built-up/population grids for 2019-11-01 to 2021-04-30, GHSL epoch 2020), extracts 4 key tabular features (`nightlight_mean`, `ndvi_mean`, `builtup_pct`, `population_density`), trains spatial regression models free of spatial autocorrelation leakage using state-grouped partitions, provides model interpretability via TreeSHAP, and serves decisions via a responsive Flask web interface.
+GeoPoverty AI is designed as a **6-Tier Modular Geospatial AI Platform**. It ingests multi-source Earth Engine telemetry across **10 features** (`nightlight_mean`, `ndvi_mean`, `builtup_pct`, `population_density`, `elevation_mean_m`, `slope_mean_deg`, `rainfall_mm_year`, `lst_day_c`, `cropland_pct`, `travel_time_city_min`), trains spatial regression models free of spatial autocorrelation leakage using state-grouped partitions (`XGBoost` best model at LOSO $R^2 = 0.4884$), provides model interpretability via TreeSHAP, and serves decisions via a responsive Flask web interface.
 
 > [!NOTE]
-> **Explored Deep Vision and Accessibility Extensions:** Deep visual features (VGG-16) were evaluated only in an exploratory run on the original project dataset (data/exploratory/original_table_with_visual_features.csv; 2023 imagery). In that run, leave-one-state-out R2 was 0.3273 without the visual features (using 7 tabular features: 4 satellite + 3 accessibility columns, not the final 4-feature model) and 0.2879 with them, and visual features alone gave 0.0702 (models/exploratory_visual_ablation/ablation_results.csv). They were not re-evaluated on the final 2019-21 data, and the final model does not use them. The accessibility columns in the original dataset (road density, school and hospital distance) could not be traced to an extraction script and were almost perfectly correlated with each other (|r| about 0.96); removing the accessibility columns changed R2 by about 0.003 (0.288 to 0.291) when the visual features were present, so they were not used. An OSM extraction script is included for future work but was not run nationally. Consequently, VGG-16 features and Grad-CAM are **NOT** part of the final model, and accessibility features were not used in the final model.
+> **Explored Deep Vision and Legacy Accessibility Exclusions:** Deep visual features (VGG-16) were evaluated only in an exploratory run on the original project dataset (`data/exploratory/original_table_with_visual_features.csv`; 2023 imagery), where Leave-One-State-Out $R^2$ dropped from `0.3273` (7 exploratory tabular features) to `0.2879` with VGG-16 (`0.0702` alone; `models/exploratory_visual_ablation/ablation_results.csv`). Legacy untraceable OSM accessibility columns (`|r| \approx 0.96`) were likewise excluded, and replaced by reproducible Earth Engine terrain, climate, cropland, and 2015 Oxford/MAP travel-time features in the adopted 10-feature production pipeline.
 
 ### 1.1.1 System Context Diagram
 The System Context Diagram illustrates how primary external actors interact with the GeoPoverty AI application boundaries and external data providers.
@@ -65,7 +65,7 @@ flowchart TB
 
     subgraph Core_Application["GeoPoverty AI Platform Boundary"]
         APP["Web Presentation & Application Tier<br/>(Leaflet.js, Flask 3.0.3, REST API)"]
-        ENG["ML Inference & XAI Engine<br/>(RandomForest / XGBoost, TreeSHAP, Haversine DBSCAN)"]
+        ENG["ML Inference & XAI Engine<br/>(XGBoost / RandomForest, TreeSHAP, Haversine DBSCAN)"]
         DB[("Relational & Artifact Storage<br/>(SQLite 3, Serialized Pipelines, Cached Out-of-State Scores)")]
         APP <--> ENG
         ENG <--> DB
@@ -149,7 +149,7 @@ The project strictly respects open data licenses, scientific reproducibility, an
 - **Ethical Boundary:** Data is strictly processed and reported at the administrative district level (564 districts across 31 states). Household or individual-level profiling is prohibited by architectural design.
 
 ### 2.1.2 Dataset Schema and Data Dictionary
-The production tabular dataset strictly consists of **4 satellite/geospatial features** alongside administrative metadata and ground truth labels:
+The production tabular dataset strictly consists of **10 Google Earth Engine features** (4 core satellite features + 6 adopted terrain, climate, cropland, and travel-time features) alongside administrative metadata and ground truth labels:
 
 | Field Name | Type | Meaning / Unit | Permissible Range | Missingness Strategy | Sensitivity |
 |---|---|---|---|---|---|
@@ -161,11 +161,17 @@ The production tabular dataset strictly consists of **4 satellite/geospatial fea
 | `nightlight_mean` | `FLOAT` | VIIRS nocturnal radiance ($nW \cdot cm^{-2} \cdot sr^{-1}$) | `0.0` to `150.0` | Training-fold median inside the pipeline | Non-sensitive |
 | `ndvi_mean` | `FLOAT` | Sentinel-2 vegetation index ($(NIR-Red)/(NIR+Red)$) | `[-1.0, 1.0]` | Training-fold median inside the pipeline | Non-sensitive |
 | `builtup_pct` | `FLOAT` | GHSL human-modified surface coverage (%) | `[0.0, 100.0]` | Training-fold median inside the pipeline | Non-sensitive |
-| `population_density`| `FLOAT` | GHSL settlement density ($persons / km^2$) | `0.0` to `40000.0` | Training-fold median inside the pipeline | Non-sensitive |
+| `population_density`| `FLOAT` | GHSL settlement density ($persons / km^2$) | `0.0` to `50000.0` | Training-fold median inside the pipeline | Non-sensitive |
+| `elevation_mean_m` | `FLOAT` | SRTM 30 m mean elevation (m) | `[-50.0, 6000.0]` | Training-fold median inside the pipeline | Non-sensitive |
+| `slope_mean_deg` | `FLOAT` | SRTM mean terrain slope (degrees) | `[0.0, 60.0]` | Training-fold median inside the pipeline | Non-sensitive |
+| `rainfall_mm_year` | `FLOAT` | CHIRPS annualized precipitation (mm/yr) | `[0.0, 10000.0]` | Training-fold median inside the pipeline | Non-sensitive |
+| `lst_day_c` | `FLOAT` | MODIS daytime land surface temp (°C) | `[-20.0, 55.0]` | Training-fold median inside the pipeline | Non-sensitive |
+| `cropland_pct` | `FLOAT` | ESA WorldCover v200 cropland share (%) | `[0.0, 100.0]` | Training-fold median inside the pipeline | Non-sensitive |
+| `travel_time_city_min`| `FLOAT` | Oxford/MAP 2015 travel time to city (min; 2015 baseline) | `[0.0, 1500.0]` | Training-fold median inside the pipeline | Non-sensitive |
 | `deprivation_score`| `FLOAT` | Target: Multidimensional deprivation index | `[0.0, 1.0]` | Label column (Ground truth) | Public aggregate |
 
 > [!IMPORTANT]
-> **Explored Features Evaluated in Ablation:** Deep visual features (VGG-16) were evaluated only in an exploratory run on the original project dataset (data/exploratory/original_table_with_visual_features.csv; 2023 imagery). In that run, leave-one-state-out R2 was 0.3273 without the visual features (using 7 tabular features: 4 satellite + 3 accessibility columns, not the final 4-feature model) and 0.2879 with them, and visual features alone gave 0.0702 (models/exploratory_visual_ablation/ablation_results.csv). They were not re-evaluated on the final 2019-21 data, and the final model does not use them. The accessibility columns in the original dataset (road density, school and hospital distance) could not be traced to an extraction script and were almost perfectly correlated with each other (|r| about 0.96); removing the accessibility columns changed R2 by about 0.003 (0.288 to 0.291) when the visual features were present, so they were not used. An OSM extraction script is included for future work but was not run nationally.
+> **Feature Selection Summary:** Deep visual features (VGG-16) and untraceable legacy OSM accessibility columns (`|r| \approx 0.96`) were excluded after ablation (`0.3273` vs `0.2879` with VGG-16; `models/exploratory_visual_ablation/ablation_results.csv`). Six reproducible Earth Engine terrain/climate/land-cover/travel-time features subsequently passed our pre-registered Leave-One-State-Out adoption gate and are included in the 10-feature pipeline. Note that `travel_time_city_min` uses `Oxford/MAP/accessibility_to_cities_2015_v1_0` (static 2015 baseline, deprecated in Earth Engine).
 
 ### 2.1.3 Target / Label Definition
 - **Continuous Target ($Y$):** `deprivation_score` $\in [0.0, 1.0]$. A value of `0.0` indicates minimal deprivation (high affluence/infrastructure), while `1.0` indicates extreme deprivation.
@@ -175,7 +181,7 @@ The production tabular dataset strictly consists of **4 satellite/geospatial fea
 - **Categorical Presentation Target:** Discretized into three non-overlapping tertiles (`Low`, `Medium`, `High`) derived strictly from empirical training percentiles (33.3% and 66.7%).
 
 ### 2.1.4 Partitioning and Leakage Prevention
-- **Spatial Autocorrelation Vulnerability:** In geospatial problems, standard random cross-validation produces severe optimistic bias due to Tobler's First Law of Geography (neighboring districts share unobserved spatial characteristics). As proven in [`models/leaky_random_kfold_results.csv`](../models/leaky_random_kfold_results.csv) and [`documentation/RESULTS.md`](RESULTS.md), random splits artificially inflate $R^2$ by **+0.1268** (+37.7%).
+- **Spatial Autocorrelation Vulnerability:** In geospatial problems, standard random cross-validation produces severe optimistic bias due to Tobler's First Law of Geography (neighboring districts share unobserved spatial characteristics). As proven in [`models/leaky_random_kfold_results.csv`](../models/leaky_random_kfold_results.csv) and [`documentation/RESULTS.md`](RESULTS.md), random splits artificially inflate XGBoost $R^2$ by **+0.1722** (+35.3%, from `0.4884` to `0.6606`).
 - **Enforced Strategy:** **Leave-One-State-Out (LOSO)** and **Repeated State-Grouped 5-Fold (`GroupKFold`)**. Whole states are held out exclusively in either training or testing folds. Zero geographic overlap exists between training and validation/test folds.
 - **Displayed District Scores:** District scores displayed throughout the web application are **out-of-state estimates** from `models/loso_predictions.csv` (each prediction is generated by a model that never saw that district's state during training).
 - **Coordinates Exclusion:** `centroid_lat` and `centroid_lon` are strictly excluded from the feature matrix $\mathbf{X}$ to prevent models from memorizing geographical locations.
@@ -190,29 +196,29 @@ The production tabular dataset strictly consists of **4 satellite/geospatial fea
 - **Satellite Filtering:** Sentinel-2 optical scenes with $> 10\%$ cloud cover are filtered out. Scene Classification Layer (SCL) masks non-ground pixels.
 
 ### 2.2.2 Feature Selection and Extraction
-- **Final Model Feature Matrix:** The final model relies strictly on **4 tabular satellite features**:
-  $$\mathbf{X} \in \mathbb{R}^{N \times 4} = [\mathbf{x}_{\text{nightlight}}, \mathbf{x}_{\text{ndvi}}, \mathbf{x}_{\text{builtup}}, \mathbf{x}_{\text{pop\_density}}]$$
-  extracted from satellite data for the window 2019-11-01 to 2021-04-30 (GHSL epoch 2020).
-- **Explored Deep Learning & Accessibility Extensions:**
-  - Deep visual features (VGG-16) were evaluated only in an exploratory run on the original project dataset (data/exploratory/original_table_with_visual_features.csv; 2023 imagery). In that run, leave-one-state-out R2 was 0.3273 without the visual features (using 7 tabular features: 4 satellite + 3 accessibility columns, not the final 4-feature model) and 0.2879 with them, and visual features alone gave 0.0702 (models/exploratory_visual_ablation/ablation_results.csv). They were not re-evaluated on the final 2019-21 data, and the final model does not use them.
-  - The accessibility columns in the original dataset (road density, school and hospital distance) could not be traced to an extraction script and were almost perfectly correlated with each other (|r| about 0.96); removing the accessibility columns changed R2 by about 0.003 (0.288 to 0.291) when the visual features were present, so they were not used. An OSM extraction script is included for future work but was not run nationally.
+- **Final Model Feature Matrix:** The final model relies on **10 tabular satellite and geospatial features**:
+  $$\mathbf{X} \in \mathbb{R}^{N \times 10} = [\mathbf{x}_{\text{nightlight}}, \mathbf{x}_{\text{ndvi}}, \mathbf{x}_{\text{builtup}}, \mathbf{x}_{\text{pop}}, \mathbf{x}_{\text{elev}}, \mathbf{x}_{\text{slope}}, \mathbf{x}_{\text{rain}}, \mathbf{x}_{\text{lst}}, \mathbf{x}_{\text{crop}}, \mathbf{x}_{\text{travel}}]$$
+  anchored to 2019-11-01 to 2021-04-30 (with GHSL 2020, WorldCover v200 2021, static SRTM, and MAP 2015).
+- **Explored & Excluded Extensions:**
+  - Deep visual features (VGG-16) degraded LOSO $R^2$ (`0.3273` to `0.2879`; `0.0702` alone) on exploratory 2023 imagery and are excluded (`models/exploratory_visual_ablation/ablation_results.csv`).
+  - Untraceable collinear OSM accessibility columns (`|r| \approx 0.96`) were excluded and replaced by reproducible Earth Engine travel time in the adopted 10-feature dataset.
 
 ---
 
 ## 2.3 Model Design
 
 ### 2.3.1 Baseline and Candidate Models
-All models are evaluated under strict Leave-One-State-Out validation. Performance benchmarks are detailed in [`documentation/RESULTS.md`](RESULTS.md):
-1. **Baseline Regressor:** Dummy Regressor (predicting training mean), producing a baseline MAE of 0.1142.
-2. **Parametric Linear Regressor:** Ridge Regression ($L_2$ regularization), achieving LOSO $R^2 = 0.2700$, MAE = 0.0914.
-3. **Primary Production Regressor:** Random Forest Regressor (`RandomForestRegressor`), achieving the best overall performance with **LOSO $R^2 = 0.3360$**, **MAE = 0.0883**, beating the baseline by **22.7%**.
-4. **Gradient Boosted Ensembles:** Gradient Boosting Regressor (LOSO $R^2 = 0.2951$) and XGBoost Regressor (LOSO $R^2 = 0.3074$).
+All 10-feature models are evaluated under strict Leave-One-State-Out validation (`564` districts, `31` states; [`documentation/RESULTS.md`](RESULTS.md)):
+1. **Baseline Regressor:** Dummy Regressor (predicting training mean), producing a baseline MAE of `0.1142` ($R^2 = -0.0565$).
+2. **Parametric Linear Regressor:** Ridge Regression ($L_2$ regularization), achieving LOSO $R^2 = 0.3742$, MAE $= 0.0846$.
+3. **Tree Bagging Ensemble:** Random Forest Regressor (`RandomForestRegressor`), achieving LOSO $R^2 = 0.4217$, MAE $= 0.0817$ (up from `0.3360` with 4 features).
+4. **Primary Production Regressor (`XGBoost`):** XGBoost Regressor achieving the best overall performance with **LOSO $R^2 = 0.4884$**, **MAE $= 0.0752$**, beating the baseline by **34.2%**, followed closely by GradientBoostingRegressor (LOSO $R^2 = 0.4665$, MAE $= 0.0771$).
 
 ### 2.3.2 Model Architecture and Hyperparameters
 - **Pipeline Architecture:** Scikit-learn Pipeline encapsulating:
-  1. `SimpleImputer(strategy='median')`: Training-fold median imputation.
-  2. `OutlierClipper(iqr_multiplier=3.0)`: Dynamic quantile-based clipping.
-  3. `RandomForestRegressor(n_estimators=100, max_depth=10, min_samples_split=5, random_state=42)`: Primary regressor.
+  1. `IQRClipper(factor=3.0)`: Training-fold quantile-based clipping.
+  2. `SimpleImputer(strategy='median')`: Training-fold median imputation.
+  3. `XGBRegressor(n_estimators=300, max_depth=3, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8, reg_lambda=2.0, random_state=42)`: Primary regressor.
 - **Uncertainty Interval:** Empirical 80% error bounds ($[\text{predicted\_low}, \text{predicted\_high}]$) derived from out-of-state Leave-One-State-Out residuals:
   $$[\hat{y} + q_{0.10}(e_{\text{LOSO}}), \hat{y} + q_{0.90}(e_{\text{LOSO}})]$$
 
@@ -427,24 +433,23 @@ Tracks physical model binaries and configuration artifacts generated by the ML p
 
 1. **`models/best_model.pkl`**: Serialized `joblib` dictionary bundle containing:
    - `model`: Trained scikit-learn Pipeline (SimpleImputer + OutlierClipper + Regressor).
-   - `model_name`: Best-performing model string (`'RandomForest'`).
-   - `feature_columns`: The 4 active satellite feature column names.
+   - `model_name`: Best-performing model string (`'XGBoost'`).
+   - `feature_columns`: The 10 active satellite and geospatial feature column names.
    - `visual_mode`: `'none'` (no deep vision features).
-   - `prediction_interval`: Empirical 80% error interval `[-0.1065, 0.0888]`.
-2. **`models/feature_columns.json`**: An ordered array of the 4 satellite feature column names enforcing deterministic column alignments during live inference:
+   - `prediction_interval`: Empirical 80% error interval `[-0.1179, 0.1271]`.
+2. **`models/feature_columns.json`**: An ordered array of the 10 feature column names enforcing deterministic column alignments during live inference:
    ```json
    [
-     "nightlight_mean",
-     "ndvi_mean",
-     "builtup_pct",
-     "population_density"
+     "nightlight_mean", "ndvi_mean", "builtup_pct", "population_density",
+     "elevation_mean_m", "slope_mean_deg", "rainfall_mm_year",
+     "lst_day_c", "cropland_pct", "travel_time_city_min"
    ]
    ```
 3. **`models/category_thresholds.json`**: Data-driven tertile boundaries derived strictly from training data:
    ```json
    {
-     "low_medium_boundary": 0.3341,
-     "medium_high_boundary": 0.6128,
+     "low_medium_boundary": 0.3198,
+     "medium_high_boundary": 0.4526,
      "derived_from": "training set deprivation_score tertiles"
    }
    ```
@@ -757,7 +762,7 @@ The interface adheres to a standardized three-tier structure:
 - **Purpose:** Introduces the GeoPoverty AI decision-support platform, summarizes national coverage metrics, and guides users to analytical tools.
 - **Key UI Components:**
   - **Hero Banner:** Displays system value proposition with quick-action CTA buttons (`Live Predictor` and `Interactive Map`).
-  - **Executive Stat Badges:** Real-time counters showing total geographic units analyzed (**564 Districts across 31 States**), automated test validation (**65 Passing Tests**), and active algorithm backbone (**RandomForest Pipeline**).
+  - **Executive Stat Badges:** Real-time counters showing total geographic units analyzed (**564 Districts across 31 States**), automated test validation (**278 Passing Tests**), and active algorithm backbone (**XGBoost 10-Feature Pipeline**).
   - **Capability Feature Cards:** Direct navigational cards highlighting Explainable AI (TreeSHAP attributions; Grad-CAM explored extension), Scenario Simulation, and Haversine DBSCAN Hotspot Detection.
 - **User Interactions:** Single-click routing to map exploration, model diagnostics, or district prediction search.
 
@@ -804,10 +809,10 @@ The interface adheres to a standardized three-tier structure:
 - **Purpose:** Provides complete transparency and explainability for a district's predicted score, establishing algorithmic trust through empirical feature contributions and out-of-state evaluation transparency.
 - **Key UI Components:**
   - **Header & Action Bar:** District identity, state jurisdiction, and an automated ReportLab PDF download button (`Generate District Report`).
-  - **Deprivation Scorecard (Top-Left):** Prominent continuous out-of-state estimate with 80% uncertainty interval (`estimate with 80% range`), categorical classification badge (`Low`, `Medium`, `High`), model provenance (`RandomForest`), and explicit note: *"The model did not see this state during training"*.
-  - **Comprehensive Geospatial Feature Table (Top-Right):** Tabulates raw satellite telemetry (VIIRS nocturnal luminosity, Sentinel-2 NDVI greenness, GHSL built-up coverage percentage, GHSL population density).
+  - **Deprivation Scorecard (Top-Left):** Prominent continuous out-of-state estimate with 80% uncertainty interval (`[-0.1179, +0.1271]`), categorical classification badge (`Low`, `Medium`, `High`), model provenance (`XGBoost`), and explicit note: *"The model did not see this state during training"*.
+  - **Comprehensive Geospatial Feature Table (Top-Right):** Tabulates the 13 satellite and geospatial indicators (VIIRS nocturnal luminosity, Sentinel-2 NDVI, GHSL built-up/population density, SRTM elevation/slope, CHIRPS rainfall, MODIS LST, WorldCover v200 cropland %, Oxford/MAP 2015 travel time, S2 scenes, and centroid coordinates).
   - **Local SHAP Feature Importance Waterfall (Bottom-Left):** Additive TreeSHAP attribution bars with plain-language interpretations (e.g., *"higher vegetation lowers the estimated deprivation"*). Mathematically guaranteed:
-    $$\text{base\_value} + \sum_{j=1}^4 \phi_j = \hat{y}_{\text{out-of-state}} \quad (\pm 10^{-4})$$
+    $$\text{base\_value} + \sum_{j=1}^{10} \phi_j = \hat{y}_{\text{out-of-state}} \quad (\pm 10^{-4})$$
     Accompanied by the disclaimer: *"Contributions show what drove this estimate; they describe the model, not causes."*
   - **Sentinel-2 Satellite Image Preview (Bottom-Right):** Real optical image patch if available for that state and district (`state_district_rgb.png`); otherwise surfaces *"No satellite image available"*. Grad-CAM is marked *"Not available: The current model uses satellite statistics only, not image features."*
 - **User Interactions:** Hovering over SHAP bars displays exact contribution deltas ($\phi_j$).

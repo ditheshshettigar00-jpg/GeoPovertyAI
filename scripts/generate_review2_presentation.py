@@ -217,7 +217,7 @@ def create_table(slide, left, top, width, height, headers, data, col_widths=None
             p.text = str(val)
             p.font.name = FONT_BODY
             p.font.size = Pt(9.5)
-            if "RandomForest" in str(row_values[0]):
+            if "XGBoost" in str(row_values[0]) or "All 10 Features" in str(row_values[0]):
                 p.font.bold = True
                 p.font.color.rgb = ACCENT_BLUE if c_idx == 0 else DARK_TEXT
             else:
@@ -275,7 +275,7 @@ def build_deck():
     p_title.space_after = Pt(12)
 
     p_sub = ttf.add_paragraph()
-    p_sub.text = "Integrating Sentinel-2, VIIRS Nightlights, and GHSL Settlement Telemetry with Spatial ML and TreeSHAP Explainability"
+    p_sub.text = "Integrating Sentinel-2, VIIRS Nightlights, GHSL, Terrain, Climate, and Land-Cover Telemetry with Spatial ML and TreeSHAP"
     p_sub.font.name = FONT_BODY
     p_sub.font.size = Pt(15)
     p_sub.font.color.rgb = LIGHT_MUTED
@@ -339,7 +339,7 @@ Traditional ground socioeconomic surveys (such as the Census or NFHS) are conduc
 
 In this 2nd Review presentation, I will strictly adhere to the departmental guidelines covering:
 1. Software Design Specification (SDS): System architecture, 9-table schema, and sequence workflows.
-2. Methodology: NFHS-5 ground truth index, 4 core satellite features, and our spatial leakage-free validation framework.
+2. Methodology: NFHS-5 ground truth index, 10 Google Earth Engine features, and our spatial leakage-free validation framework.
 3. Performance Metrics: Leave-One-State-Out (LOSO) benchmarks across 564 districts, ablation studies, and qualitative decision-support features.
 """)
 
@@ -357,9 +357,9 @@ In this 2nd Review presentation, I will strictly adhere to the departmental guid
     create_bullet_card(s2, Inches(0.8), top_pos, col_w, col_h,
         "Data & Preprocessing Tiers",
         [
-            ("Tier 1: Multi-Source Remote Sensing", "Ingests Sentinel-2 MSI (vegetation indices), NOAA/NASA VIIRS DNB (nightlights), and JRC GHSL (built-up & population grids)."),
+            ("Tier 1: Multi-Source Remote Sensing", "Ingests Sentinel-2, VIIRS, GHSL, SRTM DEM/Slope, CHIRPS Rainfall, MODIS LST, WorldCover v200, and Oxford/MAP 2015 travel time."),
             ("Ground Truth Benchmarking", "Ingests National Family Health Survey (NFHS-5) 5-dimensional socioeconomic survey indicators across 564 matched districts."),
-            ("Tier 2: Pipeline Feature Fusion", "Combines satellite indicators into a unified district feature vector with strict temporal anchoring (2019-11-01 to 2021-04-30)."),
+            ("Tier 2: Pipeline Feature Fusion", "Combines 10 satellite & geospatial indicators into a unified district vector anchored to 2019-11-01 to 2021-04-30 (plus 2015 travel-time baseline)."),
             ("Leakage-Free Preprocessing", "Pipeline-contained training-fold median imputation and 3.0×IQR outlier filtering to ensure zero cross-fold snooping.")
         ]
     )
@@ -367,7 +367,7 @@ In this 2nd Review presentation, I will strictly adhere to the departmental guid
     create_bullet_card(s2, Inches(4.82), top_pos, col_w, col_h,
         "Modeling & Explainability Tiers",
         [
-            ("Tier 3: Spatial ML Inference", "Deploys Random Forest (Best Model), XGBoost, Gradient Boosting, and Ridge regression models trained with spatial CV."),
+            ("Tier 3: Spatial ML Inference", "Deploys XGBoost (Best Model), Gradient Boosting, Random Forest, and Ridge regression models trained with spatial CV."),
             ("Spatial Generalization Engine", "Employs Leave-One-State-Out (LOSO) 31-fold cross-validation to assess generalization on entirely unseen states."),
             ("Tier 4: Game-Theoretic XAI", "Implements TreeSHAP (SHapley Additive exPlanations) for global feature rankings and local district waterfall attributions."),
             ("Spatial Clustering (DBSCAN)", "Haversine metric density clustering (150 km radius) to discover continuous geographic deprivation hot zones.")
@@ -409,7 +409,7 @@ The UI communicates with the backend exclusively through defined REST JSON inter
     schema_rows = [
         ["areas", "area_id", "None", "564 Indian districts, states, coordinates, GAUL boundary data"],
         ["ground_truth", "gt_id", "area_id", "NFHS-5 composite deprivation target and 5 raw indicator metrics"],
-        ["geospatial_features", "feature_id", "area_id", "Engineered 4-feature satellite telemetry (NDVI, NTL, Built-up, Pop)"],
+        ["geospatial_features", "feature_id", "area_id", "10 Earth Engine features (VIIRS, NDVI, GHSL, SRTM, CHIRPS, LST, WorldCover, MAP)"],
         ["satellite_data", "sat_id", "area_id", "Raster metadata, acquisition windows, cloud coverage fractions"],
         ["predictions", "prediction_id", "area_id", "Out-of-state predicted deprivation score, tertile categories"],
         ["explanations", "explain_id", "prediction_id", "SHAP base values, per-feature local attributions, feature ranks"],
@@ -436,7 +436,7 @@ Slide 3 details our component design and relational data model.
 Our database schema is organized into 9 normalized tables within SQLite 3:
 - The 'areas' table serves as the primary relational pivot via 'area_id', maintaining official boundaries, canonical names, and centroid coordinates for 564 districts.
 - 'ground_truth' stores the official NFHS-5 survey metrics and our composite index.
-- 'geospatial_features' holds the 4 satellite indicators.
+- 'geospatial_features' holds the 10 satellite and geospatial indicators.
 - 'predictions' and 'explanations' record our out-of-state model predictions, tertile classifications (Low, Medium, High), and SHAP attribution vectors.
 - 'users' and 'audit_logs' enforce Role-Based Access Control (Admin, Researcher, Public).
 
@@ -542,9 +542,9 @@ Slide 4 illustrates our interaction sequence and activity workflows.
 When a user interacts with the application—whether clicking a district polygon on the Leaflet map or testing hypothetical scenarios in our Policy Simulator:
 1. The client dispatches an asynchronous HTTP request to Flask endpoints such as /api/predict or /api/districts/<id>.
 2. The controller validates incoming payloads against feature_columns.json, checks authorization, and queries the database.
-3. The request is routed to our singleton PredictionService. The feature vector passes through our frozen Scikit-learn pipeline, executing median imputation and IQR clipping. The Random Forest model outputs the predicted deprivation score [0.0 to 1.0] and tertile category.
+3. The request is routed to our singleton PredictionService. The feature vector passes through our frozen Scikit-learn pipeline, executing IQR clipping and median imputation. The XGBoost model outputs the predicted deprivation score [0.0 to 1.0] and tertile category.
 4. Concurrently, the ExplainabilityService generates additive TreeSHAP values.
-5. A structured JSON payload is returned containing the score, empirical 80% prediction interval ([-0.1363, +0.1437] from LOSO residuals), and feature attributions. The UI asynchronously renders choropleth shading, Chart.js waterfall graphs, or triggers automated PDF dossier compilation.
+5. A structured JSON payload is returned containing the score, empirical 80% prediction interval ([-0.1179, +0.1271] from LOSO residuals), and feature attributions. The UI asynchronously renders choropleth shading, Chart.js waterfall graphs, or triggers automated PDF dossier compilation.
 
 This modular workflow ensures low response latency (<50 ms for live forward inference) while maintaining full traceability.
 """)
@@ -565,9 +565,9 @@ This modular workflow ensures low response latency (<50 ms for live forward infe
         [
             ("Sentinel-2 MSI Surface Reflectance", "Multispectral optical imagery at 30m native resolution. Cloud-masked using Scene Classification Layer (SCL 4-7); extracts District Mean NDVI = (NIR - Red) / (NIR + Red)."),
             ("NOAA/NASA VIIRS DNB", "Day/Night Band monthly composites at 500m resolution. Measures nocturnal luminosity (nW·cm⁻²·sr⁻¹), proxying electrification, commercial density, and infrastructure."),
-            ("JRC GHSL (GHS-BUILT-S)", "Global Human Settlement Layer at 100m resolution (epoch 2020). Measures built-up surface percentage across district polygons."),
-            ("JRC GHSL (GHS-POP)", "Spatial human settlement density grids at 100m resolution (epoch 2020), providing spatial population density (people/km²)."),
-            ("Temporal Window Synchronization", "All satellite telemetry strictly anchored to the NFHS-5 survey period (2019-11-01 to 2021-04-30), eliminating temporal misalignment artifacts.")
+            ("JRC GHSL (GHS-BUILT-S & POP)", "Global Human Settlement Layer at 100m (epoch 2020) for built-up surface percentage and spatial population density (people/km²)."),
+            ("Terrain, Climate & Access (6 Extra)", "NASA SRTM 30m elevation & slope, CHIRPS annualized rainfall, MODIS daytime LST (°C), ESA WorldCover v200 cropland %, and Oxford/MAP 2015 travel time."),
+            ("Temporal Synchronization & Caveat", "Time-varying telemetry anchored to 2019-11-01 – 2021-04-30; Oxford/MAP 2015 travel time is a static 2015 baseline (deprecated in GEE).")
         ]
     )
 
@@ -598,11 +598,7 @@ Ground Truth Target: We constructed a continuous deprivation score from official
 Each indicator is min-max normalized, and the overall deprivation score is their unweighted arithmetic mean in [0, 1]. 
 To validate this index against weighting bias, we performed PCA across all surveyed districts: PC1 explains 49% of total variance and has a 0.996 Spearman rank correlation with our equal-weight score. Leaving out any single indicator maintains rank correlations between 0.932 and 0.988, proving the composite is exceptionally stable.
 
-Remote Sensing Inputs: We ingests 4 independent sensor streams:
-- Sentinel-2 optical imagery at 30m resolution (SCL cloud-masked) for NDVI vegetation vigor.
-- NOAA/NASA VIIRS nighttime radiance at 500m resolution for nocturnal luminosity.
-- JRC GHSL built-up area and population density grids at 100m resolution (epoch 2020).
-All data is strictly synchronized to the survey window (Nov 2019 to Apr 2021).
+Remote Sensing & Geospatial Inputs: We combine 4 core satellite layers (Sentinel-2 NDVI, VIIRS nightlights, GHSL built-up & population) with 6 adopted physical/climate features (SRTM elevation & slope, CHIRPS rainfall, MODIS LST, WorldCover cropland, and Oxford/MAP 2015 travel time). Time-varying signals are synchronized to the survey window (Nov 2019 to Apr 2021).
 """)
 
     # =========================================================================
@@ -626,18 +622,18 @@ All data is strictly synchronized to the survey window (Nov 2019 to Apr 2021).
             ("End-to-End Pipeline Packaging", "All data transformations, imputation, clipping, and estimators encapsulated in sklearn.pipeline.Pipeline to prevent data snooping."),
             ("Training-Fold Median Imputation", "Missing values imputed strictly using median statistics calculated on the training partition of each CV fold."),
             ("Fold-Contained Outlier Clipping", "Interquartile range [Q1 - 3×IQR, Q3 + 3×IQR] calculated exclusively on training partitions; validation districts clipped passively."),
-            ("Deterministic Feature Order", "Feature vectors strictly aligned to models/feature_columns.json ('nightlight_mean', 'ndvi_mean', 'builtup_pct', 'population_density')."),
-            ("Uncertainty Estimation", "Empirical prediction intervals from LOSO residuals: 80% [-0.136, +0.144] and 90% [-0.162, +0.190] around predicted score.")
+            ("Deterministic Feature Order", "10 features ordered via models/feature_columns.json (NTL, NDVI, built-up, pop + elevation, slope, rainfall, LST, cropland, travel time)."),
+            ("Uncertainty Estimation", "Empirical prediction intervals from LOSO residuals: 80% [-0.118, +0.127] and 90% [-0.145, +0.153] around predicted score.")
         ]
     )
 
     create_bullet_card(s6, Inches(6.78), card_top, Inches(5.75), card_h,
-        "Scientific Feature Selection & Ablation Rationale",
+        "Scientific Feature Selection & Adoption Rationale",
         [
-            ("Why 4 Satellite Features?", "Extensive ablation proved 4 remote sensing features yield optimal spatial generalization without overfitting to localized sensor artifacts."),
-            ("Ablation of Deep Vision (VGG-16)", "Exploratory CNN deep visual features (VGG-16) produced poor standalone R² (0.0702) and degraded tabular models (R² dropped from 0.3273 to 0.2879) due to domain shifts on satellite tiles; intentionally excluded."),
-            ("Ablation of OSM Accessibility", "OpenStreetMap road/hospital distances exhibited extreme collinearity (|r| ≈ 0.96) and marginal R² change (±0.003), while lacking nationwide auditability; excluded to preserve scientific rigor."),
-            ("Parsimonious Generalization", "Final model relies on verified, publicly replicable earth observation datasets with complete nationwide coverage.")
+            ("Pre-Registered 6-Feature Adoption", "Adding terrain, climate, cropland, and travel time passed all 3 RF LOSO gates (+0.0857 R², +0.0559 repeated CV, 65% states improved), lifting XGBoost to R² = 0.4884."),
+            ("Ablation of Deep Vision (VGG-16)", "Exploratory CNN deep visual features (VGG-16) produced poor standalone R² (0.0702) and degraded tabular models (0.3273 -> 0.2879); intentionally excluded."),
+            ("Ablation of Legacy OSM Columns", "Untraceable OpenStreetMap columns exhibited extreme collinearity (|r| ≈ 0.96) and ΔR² ≈ 0.003; excluded in favor of reproducible Earth Engine travel time."),
+            ("Transparent Vintage Caveat", "Final 10-feature set uses reproducible public Earth Engine datasets across all 564 districts (noting MAP travel time reflects a static 2015 baseline).")
         ]
     )
 
@@ -646,16 +642,13 @@ Slide 6 covers our algorithmic pipeline architecture and feature selection ratio
 
 Our feature pipeline is encapsulated entirely inside Scikit-learn Pipeline objects.
 To prevent any data leakage:
-- Imputation uses training-fold medians only.
 - Outlier filtering applies a 3.0×IQR threshold computed exclusively on the training fold.
-- Features are strictly ordered: 'nightlight_mean', 'ndvi_mean', 'builtup_pct', 'population_density'.
+- Imputation uses training-fold medians only.
+- All 10 features follow the strict ordering in models/feature_columns.json.
 
-Now, an important technical decision we made: in early exploratory work, we evaluated deep visual features from a pretrained VGG-16 CNN and OpenStreetMap infrastructure accessibility metrics.
-However, empirical ablation revealed two critical findings:
-1. Deep visual features alone had an out-of-state R² of only 0.0702, and adding them to tabular models actually degraded R² from 0.3273 down to 0.2879 due to domain shift on 30m resolution satellite tiles.
-2. OSM road, school, and hospital distance features suffered from extreme collinearity (|r| ≈ 0.96) and contributed virtually zero performance gain (ΔR² ≈ 0.003), while introducing unverified crowd-sourced data quality issues.
-
-Therefore, following Occam's Razor and scientific best practices, we selected the parsimonious 4-feature satellite model, ensuring maximum nationwide auditability and stability.
+Now, an important technical decision we made: in early exploratory work, we evaluated VGG-16 embeddings and untraceable legacy OSM distances, and excluded both (VGG-16 degraded R² from 0.3273 to 0.2879; legacy OSM columns had |r| ≈ 0.96 collinearity).
+Instead, we pre-registered a rigorous LOSO adoption test for six reproducible Earth Engine features (SRTM elevation & slope, CHIRPS rainfall, MODIS daytime LST, WorldCover cropland, and Oxford/MAP 2015 travel time).
+All three adoption gates passed—raising RandomForest LOSO R² from 0.3360 to 0.4217 across 65% of states and lifting retrained XGBoost to R² = 0.4884. We explicitly note that the MAP travel-time layer is a static 2015 baseline.
 """)
 
     # =========================================================================
@@ -670,7 +663,7 @@ Therefore, following Occam's Razor and scientific best practices, we selected th
         [
             ("Tobler's First Law of Geography", "'Everything is related to everything else, but near things are more related than distant things.' Adjacent districts share climate, topography, infrastructure, and state policies."),
             ("The Flaw of Standard Random CV", "Randomly assigning districts to train/test folds places neighboring districts across both splits. The model memorizes regional patterns, producing artificially inflated metrics."),
-            ("Quantifying the Inflation (+37.7%)", "Standard Random 5-Fold CV yields an artificially high R² of 0.4628 and MAE of 0.0779. This is spurious spatial leakage, NOT genuine model generalization."),
+            ("Quantifying the Inflation (+35.3%)", "Standard Random 5-Fold CV on XGBoost yields an artificially high R² of 0.6606 and MAE of 0.0610. This +0.1722 gap is spurious spatial leakage, NOT genuine generalization."),
             ("Published Literature Failure", "Many published poverty mapping studies report inflated metrics due to random splits; GeoPoverty AI enforces strict spatial partitioning to guarantee peer-reviewed integrity.")
         ]
     )
@@ -680,8 +673,8 @@ Therefore, following Occam's Razor and scientific best practices, we selected th
         [
             ("Primary: Leave-One-State-Out (LOSO)", "31 Iterations: In each fold, all districts belonging to an entire administrative state are held out. The model is trained on the other 30 states and evaluated on the unseen state."),
             ("Genuine Generalization Test", "Simulates real-world deployment where the model predicts deprivation for un-surveyed regions or future census boundaries without local ground-truth hints."),
-            ("Displayed Scores Integrity", "Every district score displayed in the GeoPoverty AI web application is an out-of-state prediction from this honest LOSO process (True R² = 0.3360, MAE = 0.0883)."),
-            ("Secondary: Repeated GroupKFold", "5-fold cross-validation grouped by state_name, repeated 5 times with distinct random seeds (RepeatedGroupKFold), reporting mean ± std."),
+            ("Displayed Scores Integrity", "Every district score displayed in the GeoPoverty AI web application is an out-of-state prediction from this honest LOSO process (XGBoost R² = 0.4884, MAE = 0.0752)."),
+            ("Secondary: Repeated GroupKFold", "5-fold cross-validation grouped by state_name, repeated 5 times with distinct random seeds (XGBoost R² = 0.3888 ± 0.1048)."),
             ("Leakage-Free Guarantee", "Guarantees zero geographic, feature, or target leakage across all evaluation benchmarks.")
         ]
     )
@@ -692,7 +685,7 @@ Slide 7 addresses one of the most critical methodological contributions of our w
 In geospatial machine learning, standard random train/test splits are deeply flawed due to Tobler's First Law of Geography: 'Near things are more related than distant things'. Neighboring districts share similar climate, topography, infrastructure, and administrative schemes. 
 If district A is in the training set and neighboring district B is in the test set, the model memorizes local geography rather than learning generalizable socioeconomic signatures.
 
-When we ran standard random 5-fold cross-validation, the model produced an R² of 0.4628. However, this is an illusion of accuracy—an inflation of +37.7% due to spatial leakage.
+When we ran standard random 5-fold cross-validation, XGBoost produced an R² of 0.6606. However, this is an illusion of accuracy—an artificial +35.3% (+0.1722) boost over true LOSO (0.4884) due to spatial leakage.
 
 To establish genuine generalization, we engineered a rigorous Leave-One-State-Out (LOSO) cross-validation framework across 31 administrative states:
 - In each of the 31 iterations, all districts in an entire state are held out.
@@ -719,8 +712,8 @@ Every single district prediction in our system is an out-of-state estimate from 
             "Built-in temporal alignment to 2019-2021 survey."
         ], ACCENT_BLUE),
         ("Module 2: ML Inference Pipeline", "training/pipelines.py", [
-            "Trained & serialized Random Forest, XGBoost, GBDT, and Ridge regressors.",
-            "Pipeline-contained median imputation and 3.0×IQR outlier clipping.",
+            "Trained & serialized XGBoost (Best), GBDT, Random Forest, and Ridge regressors.",
+            "Pipeline-contained IQR clipping (3.0×IQR) and training-fold median imputation.",
             "Outputs continuous score [0, 1] & tertile category."
         ], ACCENT_PURPLE),
         ("Module 3: Game-Theoretic XAI", "explainability/shap_explain.py", [
@@ -804,10 +797,10 @@ All 6 core modules are implemented, tested, and integrated into our functional p
     loso_headers = ["Model", "R²", "MAE", "RMSE", "Spearman ρ", "Cat. Acc", "Top-20% Rec."]
     loso_data = [
         ["Dummy (Mean)", "-0.0565", "0.1142", "0.1371", "-0.6972", "31.9%", "0.9%"],
-        ["Ridge", "0.2700", "0.0914", "0.1140", "0.5542", "48.6%", "32.7%"],
-        ["RandomForest ★", "0.3360", "0.0883", "0.1087", "0.5745", "54.6%", "46.0%"],
-        ["GradientBoosting", "0.2951", "0.0912", "0.1120", "0.5539", "52.7%", "45.1%"],
-        ["XGBoost", "0.3074", "0.0905", "0.1110", "0.5643", "52.7%", "46.9%"]
+        ["Ridge", "0.3742", "0.0846", "0.1056", "0.6372", "57.5%", "51.3%"],
+        ["RandomForest", "0.4217", "0.0817", "0.1015", "0.6716", "58.0%", "45.1%"],
+        ["GradientBoosting", "0.4665", "0.0771", "0.0975", "0.6973", "60.8%", "47.8%"],
+        ["XGBoost ★", "0.4884", "0.0752", "0.0954", "0.7150", "61.2%", "47.8%"]
     ]
     t_widths = [Inches(1.8), Inches(0.85), Inches(0.85), Inches(0.85), Inches(1.1), Inches(0.95), Inches(1.1)]
     create_table(s9, Inches(0.8), Inches(1.5), Inches(7.5), Inches(2.3), loso_headers, loso_data, t_widths)
@@ -819,30 +812,30 @@ All 6 core modules are implemented, tested, and integrated into our functional p
     create_bullet_card(s9, Inches(8.5), Inches(1.5), Inches(4.03), Inches(5.45),
         "Model Selection & Key Findings",
         [
-            ("Random Forest Outperforms All", "Selected as primary production model: achieves highest R² (0.3360), lowest MAE (0.0883), and lowest RMSE (0.1087) on strict out-of-state holdout."),
-            ("22.7% Error Reduction", "Outperforms Dummy baseline by -22.7% MAE, confirming strong predictive signal from earth observation telemetry alone."),
-            ("High Rank Correlation (ρ = 0.5745)", "Demonstrates strong monotonic ranking ability, critical for targeting priority districts for development aid."),
-            ("Top-20% Recall (46.0%)", "Successfully identifies nearly half of India's most acutely deprived districts purely from satellite telemetry without any field surveys."),
-            ("Tree Ensembles vs. Linear", "RandomForest and XGBoost capture non-linear vegetation-luminosity interactions that linear Ridge regression misses (R² 0.336 vs 0.270).")
+            ("XGBoost Outperforms All", "Selected as primary 10-feature model: achieves highest R² (0.4884), lowest MAE (0.0752), and lowest RMSE (0.0954) on strict out-of-state holdout."),
+            ("34.2% Error Reduction", "Outperforms Dummy baseline by -34.2% MAE (0.0752 vs 0.1142), confirming strong predictive signal from 10 Earth Engine features."),
+            ("High Rank Correlation (ρ = 0.7150)", "Demonstrates strong monotonic ranking ability and 61.2% 3-class accuracy for prioritizing high-need districts."),
+            ("Top-20% Recall (47.8%)", "Successfully identifies nearly half of India's most acutely deprived fifth from physical and climate telemetry without survey covariates."),
+            ("Boosting Captures Interactions", "Adding climate & terrain helped XGBoost overtake RandomForest (0.4884 vs 0.4217; Ridge 0.3742).")
         ]
     )
 
     set_speaker_notes(s9, """
-Slide 9 presents our primary quantitative evaluation: the Leave-One-State-Out (LOSO) benchmark across 564 districts in 31 states.
+Slide 9 presents our primary quantitative evaluation: the 10-feature Leave-One-State-Out (LOSO) benchmark across 564 districts in 31 states.
 
 As shown in the table and chart:
 1. The Dummy Regressor (predicting the training mean of other states) yields an R² of -0.0565 and MAE of 0.1142.
-2. Ridge Regression achieves an R² of 0.2700, showing clear predictive ability.
-3. RandomForest Regressor clearly emerges as the champion model:
-   - Out-of-state R² of 0.3360
-   - MAE of 0.0883 (a 22.7% reduction in error vs. baseline)
-   - RMSE of 0.1087
-   - Spearman rank correlation of 0.5745
-   - 3-class Categorical Accuracy of 54.6%
-   - Top-20% Deprivation Recall of 46.0%
-4. XGBoost and GradientBoosting also perform strongly (R² 0.3074 and 0.2951), but Random Forest's variance reduction across geographically diverse states makes it the most reliable.
+2. Ridge Regression achieves an R² of 0.3742, showing clear linear signal.
+3. RandomForest reaches R² = 0.4217 (up from 0.3360 on 4 features) and GradientBoosting reaches 0.4665.
+4. XGBoost Regressor clearly emerges as the champion model:
+   - Out-of-state R² of 0.4884
+   - MAE of 0.0752 (a 34.2% reduction in error vs. baseline)
+   - RMSE of 0.0954
+   - Spearman rank correlation of 0.7150
+   - 3-class Categorical Accuracy of 61.2%
+   - Top-20% Deprivation Recall of 47.8%
 
-Capturing 46% of the most deprived districts purely from orbital sensors demonstrates remarkable decision-support utility for resource allocation.
+Adding climate, terrain, cropland, and travel-time features allowed regularized boosting to capture non-linear regional thresholds without overfitting.
 """)
 
     # =========================================================================
@@ -854,11 +847,12 @@ Capturing 46% of the most deprived districts purely from orbital sensors demonst
 
     abl_headers = ["Feature Configuration", "Features", "R²", "MAE", "RMSE", "Spearman ρ", "Top-20% Rec."]
     abl_data = [
-        ["All 4 Features (Full)", "4", "0.3360", "0.0883", "0.1087", "0.5745", "46.0%"],
-        ["Without Nightlight (VIIRS)", "3", "0.2894", "0.0911", "0.1125", "0.5430", "38.0%"],
-        ["Without Built-Up (GHSL)", "3", "0.2529", "0.0939", "0.1153", "0.4978", "39.8%"],
-        ["Without Population (GHSL)", "3", "0.1854", "0.0976", "0.1204", "0.4188", "28.3%"],
-        ["Without Vegetation (NDVI)", "3", "0.1567", "0.0988", "0.1225", "0.4032", "37.2%"]
+        ["All 10 Features (Full)", "10", "0.4884", "0.0752", "0.0954", "0.7150", "47.8%"],
+        ["Without Land Temp (LST)", "9", "0.3452", "0.0869", "0.1080", "0.5987", "47.8%"],
+        ["Without Elevation (SRTM)", "9", "0.4031", "0.0810", "0.1031", "0.6523", "47.8%"],
+        ["Without Built-Up (GHSL)", "9", "0.4189", "0.0804", "0.1017", "0.6634", "47.8%"],
+        ["Without Vegetation (NDVI)", "9", "0.4557", "0.0779", "0.0984", "0.6998", "50.4%"],
+        ["Without Nightlight (VIIRS)", "9", "0.4674", "0.0762", "0.0974", "0.7001", "45.1%"]
     ]
     abl_widths = [Inches(2.2), Inches(0.7), Inches(0.8), Inches(0.8), Inches(0.8), Inches(1.1), Inches(1.1)]
     create_table(s10, Inches(0.8), Inches(1.5), Inches(7.5), Inches(2.3), abl_headers, abl_data, abl_widths)
@@ -868,25 +862,25 @@ Capturing 46% of the most deprived districts purely from orbital sensors demonst
         s10.shapes.add_picture(f_chart_path, Inches(0.8), Inches(3.95), width=Inches(7.5), height=Inches(3.0))
 
     create_bullet_card(s10, Inches(8.5), Inches(1.5), Inches(4.03), Inches(5.45),
-        "Ablation Insights & Leakage Proof",
+        "Ablation Insights & Honest Caveats",
         [
-            ("Vegetation (NDVI) is #1 Driver", "Omitting Sentinel-2 NDVI causes the catastrophic collapse of R² from 0.3360 to 0.1567 (-53.4% drop), proving agricultural health is the strongest predictor of rural deprivation."),
-            ("Population Density (#2 Driver)", "Removing GHSL population density cuts R² to 0.1854 (-44.8%), confirming rural settlement dispersion correlates heavily with multidimensional poverty."),
-            ("Spatial Leakage Empirical Proof", "Random 5-Fold CV yields R² = 0.4628 vs LOSO R² = 0.3360. That +37.7% inflation proves the peril of spatial autocorrelation and validates our honest evaluation."),
-            ("Residual Error Analysis", "Highest prediction errors occur in topographically distinct regions (Goa, Tripura, Meghalaya, Jharkhand) where dense forests mask settlement patterns.")
+            ("Daytime LST is #1 Driver", "Omitting MODIS daytime LST drops XGBoost R² sharply from 0.4884 to 0.3452 (-0.1432), followed by Elevation (0.4031) and Built-Up (0.4189)."),
+            ("Neutral Single-Drop Caveat", "Removing rainfall, population, cropland, slope, or MAP travel time individually yields R² 0.4903–0.5044, though the 10-feature set passed our pre-registered gate."),
+            ("Spatial Leakage Empirical Proof", "Random 5-Fold CV yields R² = 0.6606 vs LOSO R² = 0.4884 (+35.3% artificial boost), validating state-held-out evaluation."),
+            ("Residual Error Geography", "Highest MAE occurs in Meghalaya (0.1632), Tripura (0.1306), Andhra Pradesh (0.1255), Mizoram (0.1253), and Jharkhand (0.1197).")
         ]
     )
 
     set_speaker_notes(s10, """
-Slide 10 presents our systematic feature ablation study and spatial error breakdown.
+Slide 10 presents our systematic feature ablation study and spatial error breakdown on the 10-feature XGBoost pipeline.
 
-By training models while selectively omitting one satellite feature at a time under Leave-One-State-Out evaluation:
-- Omitting Sentinel-2 NDVI causes R² to plummet from 0.3360 to 0.1567—a 53.4% drop in predictive power. This proves that vegetation index, reflecting rural agricultural viability and green cover, is the single most vital predictor.
-- Omitting GHSL population density cuts R² to 0.1854 (a 44.8% drop), showing that sparse settlement patterns strongly correlate with deprivation.
-- Dropping built-up area and nighttime lights reduces R² to 0.2529 and 0.2894 respectively.
+By training models while selectively omitting one feature group at a time under Leave-One-State-Out evaluation:
+- Omitting MODIS daytime land surface temperature (lst_day_c) causes R² to drop from 0.4884 to 0.3452 (-0.1432), making it our strongest single signal across Indian agro-climatic zones.
+- Omitting SRTM elevation drops R² to 0.4031 (-0.0853), and dropping built-up share reduces R² to 0.4189.
+- Dropping NDVI and nighttime lights reduces R² to 0.4557 and 0.4674 respectively.
+- We also state honestly that five features (rainfall, population density, cropland, slope, and static 2015 travel time) show neutral-to-slightly negative single-drop effect under XGBoost (0.4903 to 0.5044) even though the combined 10-feature set passed our pre-registered RandomForest adoption gate.
 
-This establishes that all four features provide non-redundant, complementary signals.
-On the right, we also show where residual errors are concentrated: predominantly northeastern and forested states (Goa, Tripura, Meghalaya, Jharkhand). In these regions, high canopy cover shields rural settlements from optical sensors, and micro-topography creates localized variance—providing clear avenues for our future spatial refinement.
+On the right, highest residual errors remain concentrated in Meghalaya, Tripura, Andhra Pradesh, Mizoram, and Jharkhand due to complex terrain, canopy cover, mining belts, and state-level welfare differences.
 """)
 
     # =========================================================================
@@ -1048,7 +1042,7 @@ Slide 11 highlights our qualitative evaluation and decision-support capabilities
 
     delivered_items = [
         ("Complete SDS Documentation", "Architectural decomposition, 9-table relational database schema, and detailed UML workflows fully formalized."),
-        ("Leakage-Free Spatial ML Engine", "Leave-One-State-Out (LOSO) 31-fold cross-validation pipeline trained, benchmarked, and frozen (RandomForest R² = 0.3360)."),
+        ("Leakage-Free Spatial ML Engine", "Leave-One-State-Out (LOSO) 31-fold cross-validation pipeline trained on 10 Earth Engine features (XGBoost R² = 0.4884, MAE = 0.0752)."),
         ("XAI & Spatial Clustering Engines", "TreeSHAP additive attributions and 150 km Haversine DBSCAN hotspot detection fully operational."),
         ("Full-Stack Decision Support System", "Flask 3.0.3 backend, Leaflet interactive choropleth GIS, Policy Simulator, and automated PDF dossier export active."),
         ("Scientifically Audited Dataset", "564 Indian districts matched with zero cross-state errors; sensitivity-verified equal-weighted NFHS-5 ground truth.")
@@ -1128,7 +1122,7 @@ In conclusion: for this 2nd Review milestone, we have accomplished all targeted 
 - We completed the detailed Software Design Specification (SDS).
 - We solved spatial entity reconciliation across 564 districts in 31 states.
 - We formulated and sensitivity-validated the continuous NFHS-5 deprivation index.
-- We proved the necessity of spatial cross-validation, demonstrating how random K-Fold inflates R² by +37.7%, and established an honest Leave-One-State-Out benchmark (RandomForest R² = 0.3360, MAE = 0.0883, Top-20% recall = 46.0%).
+- We proved the necessity of spatial cross-validation, demonstrating how random K-Fold inflates XGBoost R² by +35.3%, and established an honest 10-feature Leave-One-State-Out benchmark (XGBoost R² = 0.4884, MAE = 0.0752, Top-20% recall = 47.8%).
 - We integrated TreeSHAP explainability, Haversine DBSCAN spatial clustering, and an interactive GIS decision-support portal.
 
 For the Final Review phase, our roadmap includes sub-district spatial disaggregation, dynamic Earth Engine raster tile streaming, longitudinal drift analysis, and completing the comprehensive MCA dissertation.

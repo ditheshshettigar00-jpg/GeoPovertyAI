@@ -68,12 +68,12 @@ Run these two one-time commands in a separate terminal before the viva starts:
 - **URL:** [`http://127.0.0.1:5000/district/182`](http://127.0.0.1:5000/district/182)
 - **What to Click:** Click **"View District Profile"** from the map popup or navigate directly to `/district/182`.
 - **What to Point At:**
-  1. Point at the **Category Badge** (`Medium` deprivation, predicted score: `0.4423`, 80% range `[0.3060, 0.5860]`).
-  2. Point at Section 5A: **Satellite-Derived Indicators** table (7 indicators: nightlights, NDVI, built-up %, population density, S2 scenes, lat/long).
+  1. Point at the **Category Badge** (`High` deprivation, predicted score: `0.4910`, 80% range `[0.3731, 0.6181]`, XGBoost).
+  2. Point at Section 5A: **Satellite & Geospatial Indicators** table (13 indicators: 10 model inputs including nightlights, NDVI, built-up %, population density, elevation, slope, rainfall, land surface temperature, cropland %, and travel time to city, plus S2 scene count and lat/long centroid).
   3. Point at Section 5B: **NFHS-5 Survey Indicators** table (5 components: electricity, sanitation, clean fuel, stunting, anaemia).
 - **What to Say:**
   > *"On the district profile, every single number is an empirical metric—nothing is mocked or hardcoded.*
-  > *Section 5A shows all 7 satellite indicators with the district value, national percentile, and state median.*
+  > *Section 5A shows all 13 satellite and geospatial indicators with the district value, national percentile, and state median.*
   > *Section 5B displays the 5 ground-truth components from NFHS-5 that form our target score.*
   > *Notice our target construction rule: household electricity, sanitation, and clean cooking fuel enter the deprivation score as $100 - x$ so higher means greater deprivation, while child stunting and maternal anaemia enter directly. All 5 are min-max scaled and averaged."*
 
@@ -107,7 +107,7 @@ Run these two one-time commands in a separate terminal before the viva starts:
 - **What to Click:** Click **"Hidden Gaps"** in the navigation bar.
 - **What to Point At:**
   1. Point at the scatter plot showing Survey Deprivation vs. Satellite Estimate.
-  2. Point at the summary chips: **43 Hidden-Deprivation Candidates**, **46 Resilient Candidates**, **475 Consistent (84.2%)**.
+  2. Point at the summary chips: **39 Hidden-Deprivation Candidates**, **46 Resilient Candidates**, **479 Consistent (84.9%)**.
   3. Point at the two-stage candidate criteria in the methodology card.
 - **What to Say:**
   > *"This is our **Hidden Gap Detector**, one of our core research contributions.*
@@ -136,11 +136,11 @@ Run these two one-time commands in a separate terminal before the viva starts:
   3. Click **Simulate Scenario**.
 - **What to Point At:**
   1. Point at the before/after score gauge and change delta.
-  2. Point at the **Sub-MAE notice** if the delta is $< 0.0883$.
+  2. Point at the **Sub-MAE notice** if the delta is $< 0.0752$.
   3. Point at the **Mandatory Disclaimer banner** at the top.
 - **What to Say:**
   > *"The Scenario Explorer allows researchers to test model sensitivity under hypothetical input shifts.*
-  > *Notice two critical scientific safeguards: First, if the simulated change is smaller than our model's cross-validation MAE (0.0883), the system warns that the change is within the typical error margin.*
+  > *Notice two critical scientific safeguards: First, if the simulated change is smaller than our model's cross-validation MAE (0.0752), the system warns that the change is within the typical error margin.*
   > *Second, we display an unavoidable disclaimer: this is a **sensitivity proxy**, not a policy forecasting tool. Healthcare, schooling, and welfare programs are not in the model's feature space."*
 
 ---
@@ -148,7 +148,7 @@ Run these two one-time commands in a separate terminal before the viva starts:
 ### Step 9: Model Explainability & SHAP Attributions (4:05 - 4:30)
 - **URL:** [`http://127.0.0.1:5000/explanation`](http://127.0.0.1:5000/explanation)
 - **What to Click:** Click **"Explainability"**; view the global feature importance bar chart, then select `Pashchim Singhbhum` to view local SHAP values.
-- **What to Point At:** Point at the negative contribution of nighttime lights and positive contribution of low built-up area.
+- **What to Point At:** Point at the top SHAP drivers (e.g., daytime land surface temperature, elevation, built-up area, vegetation index, and nighttime lights).
 - **What to Say:**
   > *"Here we expose TreeSHAP feature attributions. Nighttime luminosity and built-up land percentage are the strongest drivers reducing predicted deprivation.*
   > *Again, we remind examiners and users that SHAP values are strictly associational, not causal."*
@@ -187,7 +187,7 @@ Run these two one-time commands in a separate terminal before the viva starts:
 |---|---|
 | **Port 5000 is already in use** | Run on a different port: `.\venv\Scripts\python backend/app.py --port 5001` or in PowerShell kill the PID holding 5000: `Get-Process -Id (Get-NetTCPConnection -LocalPort 5000).OwningProcess \| Stop-Process -Force` |
 | **`geopoverty.db` missing or corrupt** | Re-initialize in 3 commands: <br>`.\venv\Scripts\python database/init_db.py`<br>`.\venv\Scripts\python scripts/precompute_predictions.py`<br>`.\venv\Scripts\python scripts/create_admin.py --email admin@geopoverty.ai --password AdminPass123!` |
-| **Examiner asks to verify test suite live** | Run: `.\venv\Scripts\pytest -q` (proves all 270 automated tests pass in ~2.5 minutes). |
+| **Examiner asks to verify test suite live** | Run: `.\venv\Scripts\pytest -q` (proves all 278 automated tests pass). |
 | **Examiner asks: "Show me the training code"** | Open [`training/train_models.py`](../training/train_models.py) and [`training/pipelines.py`](../training/pipelines.py). Point out `LeaveOneGroupOut` on state codes and median imputation inside the pipeline. |
-| **Examiner asks: "Where are the model weights saved?"** | Open [`models/model_RandomForest.joblib`](../models/) and [`models/model_comparison_results.csv`](../models/model_comparison_results.csv). |
+| **Examiner asks: "Where are the model weights saved?"** | Open [`models/best_model.pkl`](../models/) and [`models/model_comparison_results.csv`](../models/model_comparison_results.csv) (`XGBoost`, plus [`models/model_XGBoost.joblib`](../models/)). |
 | **Admin credentials forgotten** | Reset or create a new admin instantly from CLI: `.\venv\Scripts\python scripts/create_admin.py --email admin@geopoverty.ai --password AdminPass123!` |

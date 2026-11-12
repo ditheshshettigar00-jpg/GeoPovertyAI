@@ -40,7 +40,9 @@
   - Wrapped inference in `training/inference.py:predict_with_interval(bundle, X)` to serve interval estimations alongside point predictions.
 - **Ablation & Explored Visual Extensions:**
   - Conducted systematic feature ablation across tabular indicators and explored VGG-16 deep convolutional features.
-  - Established that deep visual features evaluated on exploratory imagery degraded generalization performance under strict Leave-One-State-Out cross-validation (tabular-only $R^2 = 0.327$ vs. tabular + visual $R^2 = 0.288$), confirming that the 4 tabular remote-sensing indicators provide superior out-of-state generalization.
+  - Established that deep visual features evaluated on exploratory imagery degraded generalization performance under strict Leave-One-State-Out cross-validation (tabular-only $R^2 = 0.3273$ vs. tabular + visual $R^2 = 0.2879$), leading us to exclude CNN embeddings and retain interpretable tabular remote-sensing features (initially 4 core indicators yielding RandomForest LOSO $R^2 = 0.3360$).
+- **Extra Geospatial Features Adoption (Phase 3):**
+  - Evaluated six additional Earth Engine features (`elevation_mean_m`, `slope_mean_deg`, `rainfall_mm_year`, `lst_day_c`, `cropland_pct`, `travel_time_city_min`) under a pre-registered decision rule (`models/extra_feature_experiments/`). Passing all three gates (RF LOSO $R^2$ $+0.0857$, repeated CV $+0.0559$, 65% states improved), the 10-feature set was adopted end-to-end and retrained with **XGBoost** as the best model (LOSO $R^2 = 0.4884$, MAE $= 0.0752$).
 - **Categorical Tertile Boundaries:**
   - Established empirical tertile cut-offs (`low_medium_boundary`, `medium_high_boundary`) from the continuous target distribution, serializing them into `models/category_thresholds.json`.
 
@@ -49,7 +51,7 @@
 ## 3. Historical Reference Artifacts
 
 ### Key Output Files in `models/`
-- `best_model.pkl`: Fitted Pipeline bundle (`RandomForest`, imputer, clipper, scaler, prediction interval bounds).
+- `best_model.pkl`: Fitted Pipeline bundle (`XGBoost` in the current 10-feature production build; previously `RandomForest` in the 4-feature Phase 2 baseline, with imputer, clipper, scaler, and prediction interval bounds).
 - `model_comparison_results.csv`: LOSO benchmark comparing Dummy, Ridge, RandomForest, GradientBoosting, and XGBoost.
 - `repeated_groupkfold_results.csv`: Repeated state-grouped 5-fold cross-validation metrics.
 - `leaky_random_kfold_results.csv`: Empirical demonstration of spatial autocorrelation leakage under standard random K-fold splits.

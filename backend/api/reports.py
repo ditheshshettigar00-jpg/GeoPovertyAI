@@ -270,7 +270,7 @@ def district_report_data(area_id):
             "satellite": "true-colour Sentinel-2 composite, 2019-11-01 to 2021-04-30, for context only; the model uses tabular statistics, not image pixels",
             "nighttime_light": "NOAA/NASA VIIRS DNB Nighttime Lights",
             "built_up": "European Commission Global Human Settlement Layer (GHSL)",
-            "climate_terrain": "NASA SRTM DEM, UCSB CHIRPS, MODIS MOD11A2, ESA WorldCover 2020, Oxford/MAP 2015 Travel Time",
+            "climate_terrain": "NASA SRTM DEM, UCSB CHIRPS, MODIS MOD11A2, ESA WorldCover v200, Oxford/MAP 2015 Travel Time",
             "ground_truth": "National Family Health Survey 5 (NFHS-5), 2019-21",
         },
     })

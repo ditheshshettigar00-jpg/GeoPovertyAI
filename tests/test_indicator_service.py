@@ -7,7 +7,7 @@ Verifies:
    s2_image_count 322, latitude 22.4163, longitude 85.5136 (compared to CSV, never hard-coded twice).
 2. Survey values for area 182:
    electricity 83.3 / 69.4, sanitation 37.7 / 16.6, clean fuel 15.5 / 10.0, stunting 60.6 / 59.4, anaemia 72.6 / 72.8.
-3. Every one of the 564 districts returns 7 satellite and 5 survey items.
+3. Every one of the 564 districts returns 13 satellite/geospatial and 5 survey items.
 4. All 564 districts join successfully from final_training_table to nfhs5_districts_raw.
 5. get_feature_vector returns None, not 0.0, for a missing column or NaN value.
 6. Percentiles are strictly between 0 and 100.
@@ -32,7 +32,7 @@ def test_area_182_satellite_values_exact(client):
     data = res.get_json()
 
     sat_items = {s["key"]: s["value"] for s in data["satellite_indicators"]}
-    assert len(sat_items) == 7
+    assert len(sat_items) == 13
 
     # Load from CSV directly to compare dynamically without duplicating hardcoded values
     csv_path = os.path.join(PROCESSED_DIR, "final_training_table.csv")
@@ -50,6 +50,16 @@ def test_area_182_satellite_values_exact(client):
 
     assert sat_items["population_density"] == round(float(row["population_density"]), 1)
     assert sat_items["population_density"] == 241.1
+
+    for extra_key in (
+        "elevation_mean_m",
+        "slope_mean_deg",
+        "rainfall_mm_year",
+        "lst_day_c",
+        "cropland_pct",
+        "travel_time_city_min",
+    ):
+        assert sat_items[extra_key] == round(float(row[extra_key]), 2)
 
     assert sat_items["s2_image_count"] == int(round(float(row["s2_image_count"])))
     assert sat_items["s2_image_count"] == 322
@@ -117,8 +127,8 @@ def test_all_564_districts_join_to_nfhs():
     assert len(missing) == 0, f"Unjoined districts: {missing}"
 
 
-def test_all_564_districts_return_7_satellite_and_5_survey_items():
-    """Verifies that every district among all 564 returns 7 satellite and 5 survey items."""
+def test_all_564_districts_return_13_satellite_and_5_survey_items():
+    """Verifies that every district among all 564 returns 13 satellite/geospatial and 5 survey items."""
     final_path = os.path.join(PROCESSED_DIR, "final_training_table.csv")
     df = pd.read_csv(final_path)
     assert len(df) == 564
@@ -126,7 +136,7 @@ def test_all_564_districts_return_7_satellite_and_5_survey_items():
     for aid in df["area_id"]:
         sat = indicator_service.get_satellite_indicators(aid)
         surv = indicator_service.get_survey_indicators(aid)
-        assert len(sat) == 7, f"District {aid} has {len(sat)} satellite items, expected 7"
+        assert len(sat) == 13, f"District {aid} has {len(sat)} satellite items, expected 13"
         assert len(surv) == 5, f"District {aid} has {len(surv)} survey items, expected 5"
 
 
@@ -136,7 +146,7 @@ def test_get_feature_vector_returns_none_not_zero_for_missing_column(monkeypatch
     area_id = 182
     real_feats = model_service.get_feature_vector(area_id)
     assert real_feats is not None
-    # All 4 features in regular dataset are numeric
+    # All 10 features in regular dataset are numeric
     for v in real_feats.values():
         assert v is not None and not pd.isna(v)
 
@@ -207,7 +217,7 @@ def test_no_vgg_or_osm_in_report_json(client):
 
     data = res.get_json()
     assert "satellite_indicators" in data
-    assert len(data["satellite_indicators"]) == 7
+    assert len(data["satellite_indicators"]) == 13
     assert "survey_indicators" in data
     assert len(data["survey_indicators"]) == 5
 

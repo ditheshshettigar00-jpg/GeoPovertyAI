@@ -22,7 +22,7 @@ def _datasets_available():
 def test_area_profile_valid_id(client):
     """GET /api/area-profile/<valid id> returns 200 with all top-level keys;
 
-    model_inputs has exactly 4 items; no value anywhere is NaN.
+    model_inputs has 10 items; no value anywhere is NaN.
     """
     if not _datasets_available():
         pytest.skip("Required training table or NFHS ground truth CSV not found.")
@@ -42,7 +42,13 @@ def test_area_profile_valid_id(client):
     }
     assert expected_keys.issubset(data.keys())
 
-    assert len(data["model_inputs"]) == 4
+    assert len(data["model_inputs"]) == 10
+    input_keys = {item["key"] for item in data["model_inputs"]}
+    assert input_keys == {
+        "nightlight_mean", "ndvi_mean", "builtup_pct", "population_density",
+        "elevation_mean_m", "slope_mean_deg", "rainfall_mm_year",
+        "lst_day_c", "cropland_pct", "travel_time_city_min",
+    }
     for item in data["model_inputs"]:
         assert "key" in item
         assert "label" in item
@@ -153,7 +159,11 @@ def test_regression_guard_area_features(client):
     res = client.get("/api/area-features/182")
     assert res.status_code == 200
     data = res.get_json()
-    expected_features = ["nightlight_mean", "ndvi_mean", "builtup_pct", "population_density"]
+    expected_features = [
+        "nightlight_mean", "ndvi_mean", "builtup_pct", "population_density",
+        "elevation_mean_m", "slope_mean_deg", "rainfall_mm_year",
+        "lst_day_c", "cropland_pct", "travel_time_city_min",
+    ]
     for feat in expected_features:
         assert feat in data
 

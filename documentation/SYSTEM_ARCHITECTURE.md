@@ -25,17 +25,17 @@ GeoPoverty AI is architected as a **6-Tier Modular Geospatial AI Platform**. It 
                                         │ Predictions & Out-of-State Scores
 +---------------------------------------▼---------------------------------------+
 |                   TIER 3: PREDICTIVE MODELING & INFERENCE                     |
-|   Random Forest | XGBoost | Leave-One-State-Out CV (No Spatial Leakage)       |
+|   XGBoost (Best) | Random Forest | Ridge | Leave-One-State-Out CV             |
 +---------------------------------------▲---------------------------------------+
-                                        │ Fused Tabular Feature Vector (4 Satellite Features)
+                                        │ Fused Tabular Feature Vector (10 GEE Features)
 +---------------------------------------▼---------------------------------------+
 |                  TIER 2: PREPROCESSING & PIPELINE FEATURE FUSION               |
-|   4 Core Satellite Features | 3xIQR Outlier Filter | Training-Fold Median     |
+|   10 Earth Engine Features | 3xIQR Outlier Filter | Training-Fold Median      |
 +---------------------------------------▲---------------------------------------+
                                         │ Raw Geometries, Rasters, Survey Stats
 +---------------------------------------▼---------------------------------------+
 |                     TIER 1: MULTI-SOURCE INGESTION & DATA                     |
-|   Sentinel-2 MSI | VIIRS Nightlights | GHSL Built-Up & Population | NFHS-5    |
+|   Sentinel-2 | VIIRS | GHSL | SRTM | CHIRPS | MODIS LST | WorldCover | MAP    |
 +-------------------------------------------------------------------------------+
 ```
 
@@ -47,26 +47,26 @@ GeoPoverty AI is architected as a **6-Tier Modular Geospatial AI Platform**. It 
 flowchart TB
     subgraph S1["Tier 1: Multi-Source Remote Sensing & Geospatial Ingestion"]
         direction TB
-        D1["Sentinel-2 MSI<br/>(Cloud-Filtered Optical Bands)"]
-        D2["VIIRS DNB<br/>(Nocturnal Radiance Composite)"]
-        D3["GHSL Grids<br/>(Built-Up Land & Population Density, Epoch 2020)"]
+        D1["Sentinel-2 & VIIRS<br/>(NDVI, Nocturnal Radiance)"]
+        D2["GHSL Epoch 2020<br/>(Built-Up Share & Population Density)"]
+        D3["Climate, Terrain & Land Cover<br/>(SRTM, CHIRPS, MODIS LST, WorldCover, MAP 2015)"]
         D4["Socioeconomic Ground Truth<br/>(NFHS-5 Deprivation Index, 2019-21)"]
-        D5["Explored Extension:<br/>(OSM Accessibility & VGG-16 Visuals)"]
+        D5["Excluded Exploratory Inputs:<br/>(Untraceable OSM & VGG-16 Visuals)"]
     end
 
     subgraph S2["Tier 2: Preprocessing, Feature Extraction & Fusion"]
         direction TB
         P1["Raster Processing & NDVI:<br/>NDVI = (NIR - Red)/(NIR + Red)"]
-        P2["Satellite Statistics Vector<br/>(4 Core Satellite Features)"]
+        P2["Earth Engine Feature Vector<br/>(10 Tabular Satellite & Geospatial Features)"]
         P3["Pipeline Preprocessing Engine<br/>(Training-Fold Median Imputation + 3.0xIQR Filter)"]
     end
 
     subgraph S3["Tier 3: Spatial Cross-Validation & Predictive Modeling"]
         direction TB
         M1["Spatial State-Grouped Partitioning<br/>(Leave-One-State-Out - 31 Folds)"]
-        M2["Baseline Regressor<br/>(Ordinary Least Squares & Dummy Mean)"]
-        M3["Ensemble Regressor<br/>(Random Forest - Best Model)"]
-        M4["Gradient Booster<br/>(XGBoost Regressor)"]
+        M2["Baselines & Bagging<br/>(Dummy, Ridge, Random Forest)"]
+        M3["Gradient Booster<br/>(XGBoost - Best 10-Feature Model)"]
+        M4["GradientBoostingRegressor<br/>(Secondary GBDT Benchmark)"]
         M5["Out-of-State Deprivation Score (0.0 to 1.0)<br/>& Tertile Category (Low / Med / High)"]
     end
 
@@ -122,28 +122,34 @@ flowchart TB
 * **Socioeconomic Ground Truth:** Standardized deprivation scores ($Y \in [0.0, 1.0]$) derived from five NFHS-5 survey indicators (sanitation, electricity, clean cooking fuel, child stunting, and maternal anaemia).
 
 ### Layer 2: Preprocessing & Multimodal Feature Selection
-* **Active Model Features:** The final model uses **4 features only**:
-  1. `nightlight_mean`
-  2. `ndvi_mean`
-  3. `builtup_pct`
-  4. `population_density`
-* **Explored Extensions:**
-  * Deep visual features (VGG-16) were evaluated only in an exploratory run on the original project dataset (data/exploratory/original_table_with_visual_features.csv; 2023 imagery). In that run, leave-one-state-out R2 was 0.3273 without the visual features (using 7 tabular features: 4 satellite + 3 accessibility columns, not the final 4-feature model) and 0.2879 with them, and visual features alone gave 0.0702 (models/exploratory_visual_ablation/ablation_results.csv). They were not re-evaluated on the final 2019-21 data, and the final model does not use them.
-  * The accessibility columns in the original dataset (road density, school and hospital distance) could not be traced to an extraction script and were almost perfectly correlated with each other (|r| about 0.96); removing the accessibility columns changed R2 by about 0.003 (0.288 to 0.291) when the visual features were present, so they were not used. An OSM extraction script is included for future work but was not run nationally.
+* **Active Model Features:** The production model uses **10 Google Earth Engine features**:
+  1. `nightlight_mean` (VIIRS DNB)
+  2. `ndvi_mean` (Sentinel-2 NDVI)
+  3. `builtup_pct` (GHSL 2020)
+  4. `population_density` (GHSL 2020)
+  5. `elevation_mean_m` (SRTM DEM)
+  6. `slope_mean_deg` (SRTM Slope)
+  7. `rainfall_mm_year` (CHIRPS Daily)
+  8. `lst_day_c` (MODIS MOD11A2)
+  9. `cropland_pct` (ESA WorldCover v200)
+  10. `travel_time_city_min` (Oxford/MAP 2015 baseline; deprecated in GEE)
+* **Explored & Rejected Extensions:**
+  * Deep visual features (VGG-16) were evaluated only in an exploratory run (`data/exploratory/original_table_with_visual_features.csv`; 2023 imagery), where leave-one-state-out $R^2$ fell from `0.3273` (7 tabular features) to `0.2879` with VGG-16 (`0.0702` alone; `models/exploratory_visual_ablation/ablation_results.csv`), so VGG-16 was excluded.
+  * The accessibility columns in that exploratory dataset (road density, school and hospital distance) could not be traced to an extraction script and were collinear (`|r| \approx 0.96`), so they were excluded (replaced instead by reproducible Earth Engine travel time in the adopted 10-feature pipeline).
 * **Robust Preprocessing Inside Pipeline:** Missing values are handled via **training-fold median inside the pipeline** to prevent data leakage. Outliers are bounded with a relaxed $3.0 \times \text{IQR}$ threshold clipping within the pipeline.
 
 ### Layer 3: Geography-Aware Modeling & Cross-Validation
 * **Spatial Autocorrelation Defense:** Standard random K-Fold splits suffer from geographic data leakage. GeoPoverty AI enforces **Leave-One-State-Out (LOSO) Cross-Validation**, holding out entire contiguous states during validation.
 * **Model Engine:** 
-  * Linear & Ridge Regression (Baselines)
-  * Random Forest Regressor (**Best Model**, selected based on LOSO RMSE and MAE)
-  * Gradient Boosting & XGBoost Regressors
-* **Categorical Discretization:** Deprivation scores are categorized into `Low`, `Medium`, and `High` using empirical tertile boundaries established strictly on training folds.
+  * Dummy Mean & Ridge Regression (Baselines)
+  * Random Forest Regressor (LOSO $R^2 = 0.4217$ on 10 features; $0.3360$ on initial 4 features)
+  * **XGBoost Regressor** (**Best 10-Feature Model**, selected on LOSO $R^2 = 0.4884$, MAE $= 0.0752$, RMSE $= 0.0954$) & Gradient Boosting (`0.4665`)
+* **Categorical Discretization:** Deprivation scores are categorized into `Low`, `Medium`, and `High` using empirical tertile boundaries established strictly on the target distribution.
 * **Benchmark Metrics:** All model metrics are documented in [`documentation/RESULTS.md`](RESULTS.md), matching [`models/model_comparison_results.csv`](../models/model_comparison_results.csv).
 
 ### Layer 4: Explainable AI (XAI) & Spatial Analytics
 * **Tabular Explainability (SHAP):** Calculates game-theoretic Shapley values decomposing each district prediction:
-  $$\hat{y}_i = \phi_0 + \sum_{j=1}^{4} \phi_{ij}$$
+  $$\hat{y}_i = \phi_0 + \sum_{j=1}^{10} \phi_{ij}$$
   Ensures that $\phi_0 + \sum \phi_{ij} = \text{predicted\_score}$ within floating-point tolerance ($\le 10^{-4}$).
 * **Spatial Clustering (Haversine DBSCAN):** Executes density-based spatial clustering using the **Haversine metric with 150 km radius** (`eps = 150 / 6371 \approx 0.02354` radians, `min_samples = 3`) on district centroids for districts classified with 'High' deprivation.
 * **Grad-CAM Deactivation:** Marked as not available (`gradcam_available: false`) with reason: *"The current model uses satellite statistics only, not image features."*
@@ -159,7 +165,7 @@ flowchart TB
 ### Layer 6: User Interface & Decision Support Layer
 * **Choropleth Mapping:** Interactive Leaflet.js engine rendering district polygons with color ramps tied to out-of-state deprivation estimates.
 * **District Intelligence Dashboard:** Visualizes out-of-state prediction score with 80% uncertainty bounds, Sentinel-2 image, and horizontal SHAP contribution bars with plain-language explanations.
-* **What-If Scenario Simulator:** Interactive interface allowing policymakers to adjust the 4 satellite indicators and inspect predicted shifts in deprivation.
+* **What-If Scenario Simulator:** Interactive interface allowing policymakers to adjust the 10 satellite and geospatial indicators and inspect predicted shifts in deprivation.
 * **Role-Based Access Control (RBAC):** Tiered authorization (`PUBLIC`, `RESEARCHER`, `ADMIN`) with memory-based rate limiting (5 failed login attempts per 15 minutes).
 
 ### Layer 7: Role-Based Access Control & Security Architecture
@@ -216,7 +222,7 @@ sequenceDiagram
 [Raw Satellite Telemetry (Sentinel-2, VIIRS, GHSL)]
          │
          ▼
-[Feature Extraction & Pipeline Fusion] ────────► [final_training_table.csv (4 Features)]
+[Feature Extraction & Pipeline Fusion] ────────► [final_training_table.csv (10 Features)]
                                                                   │
          ┌────────────────────────────────────────────────────────┴────────────────────────┐
          ▼                                                                                 ▼
@@ -237,6 +243,6 @@ sequenceDiagram
 
 1. **Ingest:** Google Earth Engine extracts Sentinel-2 NDVI, VIIRS nocturnal radiance, and GHSL built-up & population grids.
 2. **Transform:** Tabular satellite statistics are merged into `final_training_table.csv` using state-contained district matching.
-3. **Train:** `train_models.py` executes Leave-One-State-Out cross-validation and serializes the best model bundle (`RandomForest`).
+3. **Train:** `train_models.py` executes Leave-One-State-Out cross-validation and serializes the best model bundle (`XGBoost`).
 4. **Precompute:** `scripts/precompute_predictions.py` fits per-state pipelines on other states to compute out-of-state estimates and additive SHAP explanations into SQLite.
 5. **Serve:** Flask REST endpoints deliver GeoJSON layers, analytical charts, PDF reports, and real-time What-If scenario evaluations to the web client.

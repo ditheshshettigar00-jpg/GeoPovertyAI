@@ -4,7 +4,7 @@ An explainable, multimodal Geospatial Artificial Intelligence (GeoAI) platform f
 
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Framework-Flask%203.0-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/Tests-270%20Passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-278%20Passed-brightgreen.svg)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 [![GitHub Repo](https://img.shields.io/badge/GitHub-GeoPovertyAI-181717.svg?logo=github)](https://github.com/ditheshshettigar00-jpg/GeoPovertyAI)
 
@@ -15,13 +15,13 @@ An explainable, multimodal Geospatial Artificial Intelligence (GeoAI) platform f
 Socioeconomic census and demographic surveys in developing nations are expensive and infrequent, typically conducted once every 5 to 10 years. In India, regional resource allocation often relies on outdated indicators. 
 
 **GeoPoverty AI** bridges this temporal and spatial gap through Earth Observation (EO) telemetry and machine learning:
-- **4 Tabular Satellite Features Only**: The final model strictly uses 4 tabular satellite features: `nightlight_mean`, `ndvi_mean`, `builtup_pct`, and `population_density`, extracted from satellite data for 2019-11-01 to 2021-04-30 (GHSL epoch 2020). Deep visual features (VGG-16) and Grad-CAM are **NOT** part of the final model. Deep visual features (VGG-16) were evaluated only in an exploratory run on the original project dataset (data/exploratory/original_table_with_visual_features.csv; 2023 imagery). In that run, leave-one-state-out R2 was 0.3273 without the visual features (using 7 tabular features: 4 satellite + 3 accessibility columns, not the final 4-feature model) and 0.2879 with them, and visual features alone gave 0.0702 (models/exploratory_visual_ablation/ablation_results.csv). They were not re-evaluated on the final 2019-21 data, and the final model does not use them. The accessibility columns in the original dataset (road density, school and hospital distance) could not be traced to an extraction script and were almost perfectly correlated with each other (|r| about 0.96); removing the accessibility columns changed R2 by about 0.003 (0.288 to 0.291) when the visual features were present, so they were not used. An OSM extraction script is included for future work but was not run nationally.
+- **10 Tabular Satellite & Geospatial Features**: The production model uses 10 Google Earth Engine features: 4 core remote-sensing indicators (`nightlight_mean`, `ndvi_mean`, `builtup_pct`, and `population_density` anchored to 2019-11-01 to 2021-04-30 / GHSL epoch 2020) plus 6 adopted terrain, climate, land-cover, and accessibility features (`elevation_mean_m`, `slope_mean_deg`, `rainfall_mm_year`, `lst_day_c`, `cropland_pct`, `travel_time_city_min`) that passed our pre-registered Leave-One-State-Out adoption gate (`RandomForest` LOSO $R^2$ rose `0.3360` $\rightarrow$ `0.4217`, repeated CV `0.2984` $\rightarrow$ `0.3543`, 65% of states improved). After retraining across all candidate models, **XGBoost** achieved the highest out-of-state performance (LOSO $R^2 = 0.4884$, MAE $= 0.0752$). Deep visual features (VGG-16) and Grad-CAM are **NOT** part of the final model: VGG-16 was evaluated only in an exploratory run (`data/exploratory/original_table_with_visual_features.csv`; 2023 imagery), where Leave-One-State-Out $R^2$ dropped from `0.3273` (7 tabular features) to `0.2879` with VGG-16 (`0.0702` alone; `models/exploratory_visual_ablation/ablation_results.csv`). Untraceable OSM accessibility columns (`|r|` $\approx 0.96$) from the original table were likewise excluded.
 - **Leakage-Free Spatial Validation**: Employs rigorous **Leave-One-State-Out (LOSO)** cross-validation and repeated state-grouped 5-fold CV to prevent spatial autocorrelation leakage (Tobler's First Law), testing models strictly on entire unseen administrative states. Preprocessing imputation is handled via **training-fold median inside the pipeline**.
 - **Explainable AI (XAI)**: Provides game-theoretic additive TreeSHAP values for every prediction, decomposing displayed **out-of-state estimates** into intuitive directional contributions.
 - **Decision Support Tools**: Includes an interactive Leaflet choropleth map, live What-If simulation with training distribution bounds checking, spatial hotspot clustering using **Haversine DBSCAN with 150 km radius** (`min_samples=3`), and automated district report generation.
 - **Hidden Gap Detector** (`/hidden-gaps`, `/api/residual-atlas`): Compares the NFHS-5 survey score with the out-of-state satellite estimate; a district is a candidate only if the survey score is outside the 80% interval AND the percentile-rank gap is at least 0.25; screening hint, not proof of hidden poverty.
 - **Scenario Explorer** (the What-If page: `/scenario-explorer`, `/whatif`, `/api/scenario`): Preset changes to satellite-derived features, with before/after estimate, 80% range and the message when a change is smaller than the model's typical error; a sensitivity tool, not a prediction of policy effects.
-- **District Indicators Panel** (`/district/<id>`, `/api/indicators/<id>`): All 7 satellite indicators and the 5 NFHS-5 component indicators for each district, with percentile and state/India medians.
+- **District Indicators Panel** (`/district/<id>`, `/api/indicators/<id>`): All 13 satellite/geospatial indicators and the 5 NFHS-5 component indicators for each district, with percentile and state/India medians.
 
 > **Scope & Ethical Boundary:** This platform estimates deprivation at the aggregate administrative district level against survey-based benchmarks. It does **not** track, identify, or profile individual households or persons. Scores reflect statistical associations with satellite observations, not absolute measures or causal determinants.
 
@@ -34,7 +34,7 @@ GeoPovertyAI/
 ├── backend/                  # Flask REST API, routing, security & services
 │   ├── api/                  # Endpoints: auth, prediction, explainability, reports, hotspots
 │   ├── services/             # Application services: database, ML inference, telemetry, residuals
-│   │   ├── indicator_service.py # Dynamic extraction of 7 satellite indicators & NFHS survey metrics
+│   │   ├── indicator_service.py # Dynamic extraction of 13 satellite/geospatial indicators & NFHS metrics
 │   │   ├── profile_service.py   # Grouped district profile, empirical percentiles & accessibility
 │   │   └── residual_service.py  # Hidden Gap Detector (NFHS-5 survey vs. out-of-state satellite residual atlas)
 │   └── app.py                # Application factory, session security, CORS configuration
@@ -67,7 +67,7 @@ GeoPovertyAI/
 │   ├── extract_geospatial_features.py # Earth Engine Sentinel-2, VIIRS & GHSL extraction
 │   └── download_satellite_patches.py  # Local Sentinel-2 patch retrieval
 ├── models/                   # Serialized model bundles and validation artifacts
-│   ├── best_model.pkl        # Fitted Pipeline bundle (RandomForest, preprocessing, interval)
+│   ├── best_model.pkl        # Fitted Pipeline bundle (XGBoost, preprocessing, interval)
 │   ├── loso_predictions.csv  # District-level out-of-state predictions and 80% error bounds
 │   ├── model_comparison_results.csv # Leave-one-state-out model comparison metrics
 │   ├── repeated_groupkfold_results.csv # Repeated state-grouped 5-fold CV metrics
@@ -84,7 +84,7 @@ GeoPovertyAI/
 │   ├── generate_results_doc.py # Dynamic results documentation generator
 │   ├── precompute_predictions.py # Offline LOSO prediction & SHAP precomputation
 │   └── refill_missing_features.py # Secondary Earth Engine extraction for large districts
-├── tests/                    # Automated testing suite (270 passing pytest tests)
+├── tests/                    # Automated testing suite (278 passing pytest tests)
 │   ├── conftest.py           # Shared test fixtures & test client setup
 │   ├── test_access_control.py # Role-based access control route matrix, parameter validation, self/last-admin protection (162 tests)
 │   ├── test_area_profile.py  # Grouped district profile schema, percentiles & survey flags (7 tests)
@@ -110,7 +110,7 @@ GeoPovertyAI/
 - **`/map`** — Interactive Leaflet choropleth map of India with district-level deprivation overlays.
 - **`/explanation`** — Model explainability center with game-theoretic TreeSHAP feature attributions.
 - **`/performance`** — Empirical benchmark results, LOSO cross-validation, and ablation tables.
-- **`/district/<int:area_id>`** — District Indicators panel: complete profile, 7 satellite indicators, and NFHS-5 survey components.
+- **`/district/<int:area_id>`** — District Indicators panel: complete profile, 13 satellite & geospatial indicators, and NFHS-5 survey components.
 - **`/report/<int:area_id>`** — In-browser district executive report preview with PDF download.
 - **`/compare`** — Side-by-side comparative analysis between two districts.
 - **`/matchmaker`** — Multi-criteria district matching and peer comparison tool.
@@ -126,8 +126,8 @@ GeoPovertyAI/
 - **`GET /api/areas`** — Retrieve all 564 districts with names, states, centroid coordinates, and predictions.
 - **`GET /api/predict/<int:area_id>`** — Predicted deprivation score, category, and 80% error interval for a district.
 - **`GET /api/area-profile/<int:area_id>`** — Full district profile including satellite features, percentiles, real accessibility, and NFHS components.
-- **`GET /api/indicators/<int:area_id>`** — 7 satellite indicators and 5 NFHS survey components (`?full=1` adds all 104 NFHS indicators).
-- **`GET /api/area-features/<int:area_id>`** — Raw 4 model features for a given district.
+- **`GET /api/indicators/<int:area_id>`** — 13 satellite & geospatial indicators and 5 NFHS survey components (`?full=1` adds all 104 NFHS indicators).
+- **`GET /api/area-features/<int:area_id>`** — Raw 10 model features for a given district.
 - **`POST /api/predict-live`** — Live model prediction and real-time TreeSHAP attributions for custom user inputs.
 - **`POST /api/scenario`** — Scenario Explorer simulation for an individual district, an entire state, or a hotspot cluster.
 - **`GET /api/scenario-presets`** — Standardized sensitivity presets (electrification, urbanisation, greening, combined).
@@ -403,8 +403,8 @@ pytest -v
 
 ## 8. Limitations & Scientific Disclaimers
 
-1. **Moderate Predictive Accuracy & Mean Compression:** The model achieves a Leave-One-State-Out $R^2$ of **0.3360** (MAE **0.0883**). Predictions compress toward the mean: highly deprived districts are under-estimated, while the least deprived districts are over-estimated.
-2. **Tabular Satellite Features Only (4 Features):** The final model uses 4 features only: `nightlight_mean`, `ndvi_mean`, `builtup_pct`, and `population_density`, extracted from satellite data for 2019-11-01 to 2021-04-30 (GHSL epoch 2020). Deep visual features (VGG-16) and Grad-CAM are NOT part of the final model. Deep visual features (VGG-16) were evaluated only in an exploratory run on the original project dataset (data/exploratory/original_table_with_visual_features.csv; 2023 imagery). In that run, leave-one-state-out R2 was 0.3273 without the visual features (using 7 tabular features: 4 satellite + 3 accessibility columns, not the final 4-feature model) and 0.2879 with them, and visual features alone gave 0.0702 (models/exploratory_visual_ablation/ablation_results.csv). They were not re-evaluated on the final 2019-21 data, and the final model does not use them. The accessibility columns in the original dataset (road density, school and hospital distance) could not be traced to an extraction script and were almost perfectly correlated with each other (|r| about 0.96); removing the accessibility columns changed R2 by about 0.003 (0.288 to 0.291) when the visual features were present, so they were not used. An OSM extraction script is included for future work but was not run nationally.
+1. **Moderate Predictive Accuracy & Mean Compression:** The 10-feature XGBoost model achieves a Leave-One-State-Out $R^2$ of **0.4884** (MAE **0.0752**, Spearman $\rho = 0.7150$). Predictions still compress toward the mean in extreme outlier states (e.g., Meghalaya, Tripura, Andhra Pradesh).
+2. **Tabular Remote-Sensing & Geospatial Features Only (10 Features) + Travel-Time Vintage:** The final model uses 10 features (`nightlight_mean`, `ndvi_mean`, `builtup_pct`, `population_density`, `elevation_mean_m`, `slope_mean_deg`, `rainfall_mm_year`, `lst_day_c`, `cropland_pct`, `travel_time_city_min`). Five features (`lst_day_c`, `elevation_mean_m`, `builtup_pct`, `ndvi_mean`, `nightlight_mean`) drive individual leave-one-out importance under XGBoost, while the remaining five are neutral-to-slightly negative individually despite improving ensemble fit together. `travel_time_city_min` relies on `Oxford/MAP/accessibility_to_cities_2015_v1_0` (static 2015 baseline, deprecated in Earth Engine) and is older than the 2019–21 NFHS-5 window. Deep visual features (VGG-16) and Grad-CAM are NOT part of the final model: VGG-16 was tested only on exploratory 2023 imagery (`0.3273` tabular vs `0.2879` tabular+VGG-16, `0.0702` alone; `models/exploratory_visual_ablation/ablation_results.csv`). Untraceable collinear OSM columns (`|r| \approx 0.96`) were excluded.
 3. **Historical Boundary Coverage:** Administrative polygons are derived from FAO GAUL 2015. Consequently, 564 of the 705 NFHS-5 districts are represented; newly created administrative units or heavily reorganized territories (Jammu & Kashmir, Ladakh, and NCT Delhi) are excluded.
 4. **Thin States & Small Sample Variance:** States with fewer than 3 districts (e.g., Goa with 2, Dadra & Nagar Haveli and Daman & Diu with 2, and Andaman & Nicobar Islands with 1) exhibit noisy Leave-One-State-Out error estimates.
 5. **Composite Survey Target:** The ground truth label is an artificial mathematical composite of five survey indicators, not a direct measurement of consumption poverty or household wealth.
@@ -425,7 +425,7 @@ pytest -v
 ```
 
 **Test Results:**
-- **270 passed** (100% pass rate) across:
+- **278 passed** (100% pass rate) across 11 modules (including `tests/test_extra_features.py` and the 10 core modules below):
   - `tests/test_access_control.py`: Role-based access control route matrix, parameter validation, self/last-admin protection (162 tests)
   - `tests/test_area_profile.py`: Grouped district profile schema, survey indicators, and empirical percentiles (7 tests)
   - `tests/test_hidden_gaps.py`: Residual thresholding, candidate criteria, and screening limits (9 tests)

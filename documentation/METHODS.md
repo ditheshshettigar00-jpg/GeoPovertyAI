@@ -6,13 +6,19 @@ This document details the data acquisition, feature engineering, ground truth co
 
 ## 1. Data Sources, Temporal Window, and Telemetry
 
-The final production model uses **4 features only**:
+The final production model uses **10 Google Earth Engine features** (4 core satellite features plus 6 adopted terrain, climate, land-cover, and accessibility features):
 - `nightlight_mean` (VIIRS nocturnal luminosity)
 - `ndvi_mean` (Sentinel-2 multispectral vegetation index)
 - `builtup_pct` (GHSL built-up land percentage)
 - `population_density` (GHSL human settlement population density)
+- `elevation_mean_m` (NASA SRTM 30 m mean elevation)
+- `slope_mean_deg` (NASA SRTM mean terrain slope)
+- `rainfall_mm_year` (UCSB CHIRPS annualized precipitation)
+- `lst_day_c` (MODIS MOD11A2 daytime land surface temperature)
+- `cropland_pct` (ESA WorldCover v200 cropland share)
+- `travel_time_city_min` (Oxford/MAP 2015 surface travel time to nearest >50k city)
 
-All remote sensing telemetry is strictly anchored to the NFHS-5 survey period (**2019-11-01 to 2021-04-30**), with GHSL at epoch **2020**.
+Time-varying satellite telemetry (`ndvi_mean`, `nightlight_mean`, `rainfall_mm_year`, `lst_day_c`) is strictly anchored to the NFHS-5 survey period (**2019-11-01 to 2021-04-30**), with GHSL at epoch **2020**, ESA WorldCover v200 at epoch **2021**, static terrain SRTM, and `Oxford/MAP/accessibility_to_cities_2015_v1_0` as a **2015 baseline** (deprecated in Earth Engine).
 
 | Feature / Target | Source & Sensor | Temporal Window / Epoch | Native Resolution | Aggregation Metric |
 |---|---|---|---|---|
@@ -21,13 +27,19 @@ All remote sensing telemetry is strictly anchored to the NFHS-5 survey period (*
 | **Nocturnal Radiance (`nightlight_mean`)** | NOAA/NASA VIIRS Day/Night Band (DNB) Monthly Composites | 2019-11-01 to 2021-04-30 | 500 m | District spatial mean ($nW \cdot cm^{-2} \cdot sr^{-1}$) |
 | **Built-Up Percentage (`builtup_pct`)** | JRC Global Human Settlement Layer (GHSL GHS-BUILT-S R2023A) | Epoch 2020 | 100 m | Percentage of district surface area (%) |
 | **Population Density (`population_density`)** | JRC Global Human Settlement Layer (GHSL GHS-POP R2023A) | Epoch 2020 | 100 m | Spatial density ($\text{people} / km^2$) |
+| **Mean Elevation (`elevation_mean_m`)** | NASA SRTM Digital Elevation Model (`USGS/SRTMGL1_003`) | Static terrain | 30 m (90 m export) | District mean metres above sea level (m) |
+| **Mean Terrain Slope (`slope_mean_deg`)** | Derived from NASA SRTM (`ee.Terrain.slope`) | Static terrain | 30 m (90 m export) | District mean terrain gradient (degrees) |
+| **Annual Rainfall (`rainfall_mm_year`)** | UCSB CHIRPS Daily (`UCSB-CHG/CHIRPS/DAILY`) | 2019-11-01 to 2021-04-30 | ~5.5 km | Mean daily precipitation rate $\times$ 365 (mm/yr) |
+| **Daytime Land Surface Temp (`lst_day_c`)** | NASA MODIS Terra 8-Day (`MODIS/061/MOD11A2`) | 2019-11-01 to 2021-04-30 | 1 km | Mean daytime LST in °C (`LST_Day_1km * 0.02 - 273.15`) |
+| **Cropland Share (`cropland_pct`)** | ESA WorldCover v200 (`ESA/WorldCover/v200`) | Epoch 2021 | 10 m (100 m export) | Percentage of district classified as cropland (class 40, %) |
+| **Travel Time to Nearest City (`travel_time_city_min`)** | Oxford/MAP Friction Surface (`Oxford/MAP/accessibility_to_cities_2015_v1_0`) | 2015 baseline (deprecated in GEE) | ~1 km | Mean travel time to nearest >50k urban center (minutes) |
 
 ### Remote Sensing Resolution & NDVI Scale
 - **Default Sentinel-2 Processing Scale:** District-wide median composites are computed via Google Earth Engine at a main scale of **30 m**. Scenes with 20% or more cloudy pixels are dropped, then the SCL band keeps classes 4 to 7.
 - **Refilled Districts Scale:** An export scale of **250 m** was used only for the 48 districts refilled by `scripts/refill_missing_features.py` to resolve Earth Engine server-side user memory quota and timeout limits over extensive district polygons while preserving regional vegetative gradients.
 
 ### Explored Feature Extensions
-- **Visual Features (VGG-16) & Grad-CAM:** Deep visual features (VGG-16) were evaluated only in an exploratory run on the original project dataset (data/exploratory/original_table_with_visual_features.csv; 2023 imagery). In that run, leave-one-state-out R2 was 0.3273 without the visual features (using 7 tabular features: 4 satellite + 3 accessibility columns, not the final 4-feature model) and 0.2879 with them, and visual features alone gave 0.0702 (models/exploratory_visual_ablation/ablation_results.csv). They were not re-evaluated on the final 2019-21 data, and the final model does not use them.
+- **Visual Features (VGG-16) & Grad-CAM:** Deep visual features (VGG-16) were evaluated only in an exploratory run on the original project dataset (`data/exploratory/original_table_with_visual_features.csv`; 2023 imagery). In that run, leave-one-state-out $R^2$ was `0.3273` without the visual features (using 7 exploratory tabular features prior to the clean 2019–21 dataset) and `0.2879` with them, and visual features alone gave `0.0702` (`models/exploratory_visual_ablation/ablation_results.csv`). They were excluded from the final pipeline.
 - **Accessibility Metrics (OpenStreetMap):** The accessibility columns in the original dataset (road density, school and hospital distance) could not be traced to an extraction script and were almost perfectly correlated with each other (|r| about 0.96); removing the accessibility columns changed R2 by about 0.003 (0.288 to 0.291) when the visual features were present, so they were not used. An OSM extraction script is included for future work but was not run nationally.
 
 ---
@@ -81,7 +93,7 @@ Administrative boundaries are obtained from the FAO Global Administrative Unit L
 ## 4. Spatial Validation & Modeling Architecture
 
 ### Spatial Data Leakage Prevention (Tobler's First Law)
-Standard random train/test cross-validation splits suffer from severe spatial autocorrelation leakage: adjacent districts share climate, topography, infrastructure, and administrative policies. Randomly allocating neighboring districts into train and test folds leads to artificially inflated accuracy (inflating $R^2$ by $+0.1268$ as shown in [`documentation/RESULTS.md`](RESULTS.md)).
+Standard random train/test cross-validation splits suffer from severe spatial autocorrelation leakage: adjacent districts share climate, topography, infrastructure, and administrative policies. Randomly allocating neighboring districts into train and test folds leads to artificially inflated accuracy (inflating $R^2$ by $+0.1722$ / $+35.3\%$ from $0.4884$ to $0.6606$ as shown in [`documentation/RESULTS.md`](RESULTS.md)).
 
 GeoPoverty AI implements two rigorous spatial validation schemes:
 1. **Leave-One-State-Out (LOSO) Cross-Validation (Primary):**
@@ -99,8 +111,8 @@ All data transformations are contained inside an end-to-end `sklearn.pipeline.Pi
 
 ### Empirical Prediction Intervals
 To provide honest uncertainty bounds for unobserved states, prediction intervals are computed directly from the empirical residuals of the Leave-One-State-Out cross-validation ($e_i = y_i - \hat{y}_i^{\text{LOSO}}$):
-- **80% Prediction Interval:** $[\hat{y} - 0.1363, \hat{y} + 0.1437]$ (clipped to $[0, 1]$).
-- **90% Prediction Interval:** $[\hat{y} - 0.1618, \hat{y} + 0.1905]$ (clipped to $[0, 1]$).
+- **80% Prediction Interval:** $[\hat{y} - 0.1179, \hat{y} + 0.1271]$ (clipped to $[0, 1]$).
+- **90% Prediction Interval:** $[\hat{y} - 0.1449, \hat{y} + 0.1532]$ (clipped to $[0, 1]$).
 
 ---
 
@@ -117,9 +129,9 @@ Spatial hotspot identification is executed via **Haversine DBSCAN with 150 km ra
 ## 6. Limitations & Scientific Disclaimers
 
 1. **Moderate Predictive Accuracy & Mean Compression:**
-   The model achieves a Leave-One-State-Out $R^2$ of **0.3360** (MAE **0.0883**, see [`documentation/RESULTS.md`](RESULTS.md)). Predictions exhibit compression toward the mean: highly deprived districts are systematically under-estimated, while the most affluent districts are over-estimated.
-2. **Sparse Tabular Feature Space:**
-   The final production model utilizes only 4 tabular features (NDVI, nighttime luminosity, built-up percentage, and population density). Infrastructure accessibility metrics (distance to roads, hospitals, schools) and VGG-16 deep visual embeddings were not used.
+   The 10-feature XGBoost model achieves a Leave-One-State-Out $R^2$ of **0.4884** (MAE **0.0752**, see [`documentation/RESULTS.md`](RESULTS.md)). While substantially stronger than the initial 4-feature RandomForest baseline ($R^2 = 0.3360$), predictions still exhibit compression toward the mean in outlier states (e.g., Meghalaya, Tripura, Andhra Pradesh).
+2. **Tabular Feature Scope, 2015 Travel-Time Vintage & Individual Redundancy:**
+   The production model utilizes 10 tabular Earth Engine features. Although adopting the 6 additional features improved full-set generalization across both RandomForest and XGBoost, individual leave-one-out ablation on XGBoost shows that predictive gains are concentrated in `lst_day_c`, `elevation_mean_m`, `builtup_pct`, `ndvi_mean`, and `nightlight_mean`, while `rainfall_mm_year`, `population_density`, `cropland_pct`, `slope_mean_deg`, and `travel_time_city_min` show neutral-to-slightly negative single-drop effects. Additionally, `travel_time_city_min` relies on `Oxford/MAP/accessibility_to_cities_2015_v1_0` (deprecated in Earth Engine and representing a 2015 baseline older than the 2019–21 survey). Exploratory VGG-16 deep visual embeddings and untraceable OSM columns were excluded.
 3. **Historical Boundary Limitations:**
    GAUL administrative boundaries date from 2015. Consequently, 564 of the 705 NFHS-5 districts are represented. Regions with major administrative reorganizations (notably Jammu & Kashmir, Ladakh, and NCT Delhi) are excluded from the current fused dataset.
 4. **Thin States & Small Sample Variance:**
@@ -141,7 +153,7 @@ Spatial hotspot identification is executed via **Haversine DBSCAN with 150 km ra
 The **Scenario Explorer** (`/scenarios`, aliased to `/whatif`) provides an interactive simulation harness to inspect how the production model responds to systematic perturbations in satellite-derived features.
 
 ### 1. Sensitivity Proxies vs. Policy Interventions
-Perturbations are defined and reported strictly as **proxies**, never policy interventions or causal simulations. The production model relies solely on four remote sensing proxies (`nightlight_mean`, `ndvi_mean`, `builtup_pct`, `population_density`). Real-world socioeconomic drivers such as education, public health infrastructure, child nutrition, and governance are not captured in the feature space.
+Perturbations are defined and reported strictly as **proxies**, never policy interventions or causal simulations. The production model relies on ten physical remote sensing and geospatial proxies (`nightlight_mean`, `ndvi_mean`, `builtup_pct`, `population_density`, `elevation_mean_m`, `slope_mean_deg`, `rainfall_mm_year`, `lst_day_c`, `cropland_pct`, `travel_time_city_min`). Real-world socioeconomic drivers such as education, public health infrastructure, child nutrition, and governance are not captured in the feature space.
 
 ### 2. Standardized Presets (`config.py`)
 Six standardized proxy scenarios are configured in `config.py`:
@@ -156,11 +168,11 @@ Six standardized proxy scenarios are configured in `config.py`:
 Users can evaluate scenarios for a single district, across all districts of an administrative state (31 states/UTs), or across contiguous high-deprivation spatial clusters identified by Haversine DBSCAN (150 km radius). Group evaluations compute:
 - **Mean Change & Median Change:** Distributional shifts across the target region.
 - **Category Transitions:** Count and percentage of districts transitioning across deprivation tiers (Low, Medium, High).
-- **Sub-MAE Insignificance Share:** Percentage of districts where |Delta| < MAE (0.0883). Changes smaller than the model's typical cross-validation error are explicitly marked as *within noise threshold*.
+- **Sub-MAE Insignificance Share:** Percentage of districts where |Delta| < MAE (0.0752). Changes smaller than the model's typical cross-validation error are explicitly marked as *within noise threshold*.
 
 ### 4. Bounding, Uncertainty & Mandatory Disclaimer
 - **Training Range Guardrails:** Any perturbed value exceeding the empirical training range triggers explicit non-extrapolation warnings.
-- **Prediction Intervals:** Every scenario estimate displays the calibrated 80% empirical prediction interval from `models/uncertainty.json` ([-0.1363, +0.1437]).
+- **Prediction Intervals:** Every scenario estimate displays the calibrated 80% empirical prediction interval from `models/uncertainty.json` ([-0.1179, +0.1271]).
 - **Mandatory System Note:** All endpoints and views enforce the explicit disclaimer:
   > *"This shows how the model's estimate responds to changes in satellite-derived features. It is not a prediction of the effect of a policy or programme. Schooling, health, nutrition and infrastructure are not in the model."*
 
@@ -171,8 +183,8 @@ Users can evaluate scenarios for a single district, across all districts of an a
 
 All district reports, profile views, and APIs expose real, empirical indicator telemetry. Values are never imputed with synthetic constants, never defaulted to 0.0, and never entered manually.
 
-### 8.1 Satellite-Derived Indicators (7)
-Extracted across administrative boundaries for all 564 districts in the training table:
+### 8.1 Satellite & Geospatial Indicators (13)
+Extracted across administrative boundaries for all 564 districts in the training table (10 model input features plus 3 spatial/acquisition metadata indicators):
 
 | Indicator (`key`) | Unit | India Median | Min | Max | Source | Period | Definition |
 |---|---|---|---|---|---|---|---|
@@ -180,6 +192,12 @@ Extracted across administrative boundaries for all 564 districts in the training
 | **Normalized Difference Vegetation Index (NDVI)** (`ndvi_mean`) | `index (-1 to 1)` | 0.4266 | 0.0795 | 0.8023 | Sentinel-2 SR median NDVI | 2019-11-01 to 2021-04-30 | District spatial median Normalized Difference Vegetation Index |
 | **Built-Up Surface Area** (`builtup_pct`) | `% of land area` | 1.2974 | 0.0075 | 40.5230 | GHSL built-up surface (epoch 2020) | Epoch 2020 | Spatial percentage of land covered by built-up settlements |
 | **Population Density** (`population_density`) | `people per km2` | 424.5 | 2.5 | 44741.3 | GHSL population grid (epoch 2020) | Epoch 2020 | Spatial human residential population density |
+| **Mean Terrain Elevation** (`elevation_mean_m`) | `metres` | 236.4 | 4.4 | 4841.0 | NASA SRTM 30 m DEM | Static terrain | District mean elevation above sea level |
+| **Mean Terrain Slope** (`slope_mean_deg`) | `degrees` | 2.39 | 0.97 | 31.57 | NASA SRTM slope | Static terrain | District mean terrain gradient angle |
+| **Annual Rainfall** (`rainfall_mm_year`) | `mm/year` | 1010.1 | 201.1 | 3204.4 | UCSB CHIRPS Daily | 2019-11-01 to 2021-04-30 | Annualized mean daily precipitation rate |
+| **Daytime Land Surface Temp** (`lst_day_c`) | `°C` | 29.9 | 0.55 | 39.9 | MODIS MOD11A2 | 2019-11-01 to 2021-04-30 | Mean daytime land surface temperature |
+| **Cropland Share** (`cropland_pct`) | `% of land area` | 54.3 | 0.00 | 92.7 | ESA WorldCover v200 | Epoch 2021 | Share of district land classed as cropland |
+| **Travel Time to Nearest City** (`travel_time_city_min`) | `minutes` | 31.4 | 0.0 | 950.7 | Oxford/MAP 2015 friction | 2015 baseline | Estimated surface travel time to nearest >50k city |
 | **Cloud-Free Sentinel-2 Scenes** (`s2_image_count`) | `scenes` | 286 | 18 | 1677 | usable Sentinel-2 scenes in window | 2019-11-01 to 2021-04-30 | Total usable cloud-free Sentinel-2 MSI observations |
 | **Centroid Latitude** (`latitude`) | `degrees` | 24.2595 | 7.5191 | 32.6557 | district centroid | GAUL 2015 | Centroid administrative latitude coordinate |
 | **Centroid Longitude** (`longitude`) | `degrees` | 79.4415 | 69.8004 | 96.3563 | district centroid | GAUL 2015 | Centroid administrative longitude coordinate |
@@ -209,28 +227,28 @@ The residual gap and percentile-rank gap are defined as:
 $$\text{gap}_i = y_i - \hat{y}_i^{\text{LOSO}}$$
 $$\text{rank\_gap}_i = \text{rank}(y_i) - \text{rank}(\hat{y}_i^{\text{LOSO}}) \quad \in [-1, +1]$$
 
-Because model predictions compress toward the national mean, the raw residual gap is strongly correlated with the survey score ($r = 0.787$). Relying on residual magnitude or uncertainty bounds alone would label almost every severely deprived district as "hidden deprivation" and every least-deprived district as "resilient."
+Because model predictions compress toward the national mean, the raw residual gap is strongly correlated with the survey score ($r = 0.6919$). Relying on residual magnitude or uncertainty bounds alone would label almost every severely deprived district as "hidden deprivation" and every least-deprived district as "resilient."
 
 To isolate structural discrepancies from mean compression, a district is classified as a **candidate** only when **BOTH** conditions hold simultaneously:
 1. **Uncertainty Interval Exceedance:** The survey score lies strictly outside the model's 80% out-of-state empirical prediction interval ($y_i < \text{low\_80}_i$ or $y_i > \text{high\_80}_i$).
 2. **Percentile-Rank Threshold:** The percentile-rank gap is at least 0.25 (25 percentile points) in the same direction:
    - **Hidden-deprivation candidate:** $y_i > \text{high\_80}_i$ AND $\text{rank\_gap}_i \ge +0.25$ (district is ranked at least 25 percentile points higher in deprivation than satellite telemetry predicts).
    - **Resilient candidate:** $y_i < \text{low\_80}_i$ AND $\text{rank\_gap}_i \le -0.25$ (district is ranked at least 25 percentile points lower in deprivation than satellite telemetry predicts).
-   - **Consistent:** All other districts (475 of 564, or 84.2%).
+   - **Consistent:** All other districts (479 of 564, or 84.9%).
 
 ### 9.2 Empirical Distribution Across India (564 Districts)
 - **Total evaluated districts ($N$):** 564
-- **Hidden-deprivation candidates:** 43
+- **Hidden-deprivation candidates:** 39
 - **Resilient candidates:** 46
-- **Consistent districts:** 475
+- **Consistent districts:** 479
 - **Districts outside 80% prediction interval:** 114 (20.21%)
-- **Residual gap standard deviation ($\sigma_{\text{gap}}$):** 0.1088
-- **Survey vs. prediction correlation ($r$):** 0.581
-- **Residual gap vs. survey correlation ($r$):** 0.787
+- **Residual gap standard deviation ($\sigma_{\text{gap}}$):** 0.0955
+- **Survey vs. prediction correlation ($r$):** 0.6993
+- **Residual gap vs. survey correlation ($r$):** 0.6919
 
 ### 9.3 Methodological Limits & Screening Scope
 - **Screening Hint, Not Proof:** A candidate classification reflects statistical disagreement between remote sensing indicators and survey metrics. It is a screening hint for local administrative verification, not proof of hidden poverty or of a causal deficit.
-- **Uncaptured Socioeconomic Dimensions:** The satellite model strictly observes physical settlement proxies (nighttime luminosity, vegetation cover, built-up surfaces, and population density). Discrepancies often stem from socioeconomic factors that satellites cannot observe, such as nutritional programs, schooling access, primary healthcare delivery, or localized social schemes.
+- **Uncaptured Socioeconomic Dimensions:** The satellite model strictly observes physical settlement, terrain, climate, land-cover, and surface travel-time proxies (10 geospatial features). Discrepancies often stem from socioeconomic factors that satellites cannot observe, such as nutritional programs, schooling access, primary healthcare delivery, or localized social schemes.
 - **Expected Statistical Variation:** For a calibrated model with an 80% interval, approximately 20% of districts naturally fall outside the bounds (here 20.21%). Interval exceedance alone is not anomalous.
 - **Small-State Reliability:** States with fewer than 5 districts (e.g., Goa with 2, Dadra & Nagar Haveli and Daman & Diu with 2, and Andaman & Nicobar Islands with 1) exhibit high Leave-One-State-Out error variance and are explicitly marked as unreliable in state-level systematic bias tables.
 - **Aggregate Level Only:** Analyses apply exclusively to administrative district aggregates. No household- or person-level inference is possible.

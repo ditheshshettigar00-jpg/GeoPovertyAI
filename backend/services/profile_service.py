@@ -104,7 +104,7 @@ MODEL_INPUT_SPECS = [
         "label": "Cropland Share",
         "unit": "%",
         "description": (
-            "Percentage of district land classified as cropland in ESA WorldCover v100 (epoch 2020, 10 m)."
+            "Percentage of district land classified as cropland in ESA WorldCover v200 (epoch 2021, 10 m)."
         ),
     },
     {
@@ -407,7 +407,7 @@ def get_area_profile(area_id: int) -> Optional[Dict[str, Any]]:
     row = rows.iloc[0]
     total_districts = len(final_df)
 
-    # 1. Model inputs (exactly 4 satellite features)
+    # 1. Model inputs (10 satellite and geospatial features)
     model_inputs = []
     for spec in MODEL_INPUT_SPECS:
         k = spec["key"]

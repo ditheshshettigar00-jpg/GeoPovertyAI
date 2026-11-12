@@ -101,11 +101,16 @@ GeoPovertyAI/
 ## 4. End-to-End Data Pipeline & Feature Engineering
 
 ### 4.1 Data Sources & Active Features
-The final production model uses **4 features only**, anchored to the NFHS-5 survey window (**2019-11-01 to 2021-04-30**):
+The final production model uses **10 Google Earth Engine features**, anchored to the NFHS-5 survey window (**2019-11-01 to 2021-04-30** where time-varying):
 1. **`nightlight_mean`**: VIIRS Day/Night Band monthly radiance ($nW \cdot cm^{-2} \cdot sr^{-1}$).
-2. **`ndvi_mean`**: Cloud-filtered Sentinel-2 surface reflectance (100 m / 250 m scale).
+2. **`ndvi_mean`**: Cloud-filtered Sentinel-2 surface reflectance (30 m / 250 m scale).
 3. **`builtup_pct`**: Global Human Settlement Layer built-up land percentage (GHSL epoch 2020).
 4. **`population_density`**: GHSL human population density grid (GHSL epoch 2020).
+5. **`elevation_mean_m`** & **`slope_mean_deg`**: NASA SRTM 30 m terrain elevation and derived slope.
+6. **`rainfall_mm_year`**: UCSB CHIRPS daily precipitation annualized across the 2019–21 survey window.
+7. **`lst_day_c`**: MODIS MOD11A2 daytime land surface temperature across the 2019–21 survey window.
+8. **`cropland_pct`**: ESA WorldCover v200 cropland share (epoch 2021).
+9. **`travel_time_city_min`**: Oxford/MAP surface travel time to nearest >50k city (2015 baseline; deprecated in Earth Engine).
 
 *Explored extensions not in final model:* Deep visual features (VGG-16) were evaluated only in an exploratory run on the original project dataset (data/exploratory/original_table_with_visual_features.csv; 2023 imagery). In that run, leave-one-state-out R2 was 0.3273 without the visual features (using 7 tabular features: 4 satellite + 3 accessibility columns, not the final 4-feature model) and 0.2879 with them, and visual features alone gave 0.0702 (models/exploratory_visual_ablation/ablation_results.csv). They were not re-evaluated on the final 2019-21 data, and the final model does not use them. The accessibility columns in the original dataset (road density, school and hospital distance) could not be traced to an extraction script and were almost perfectly correlated with each other (|r| about 0.96); removing the accessibility columns changed R2 by about 0.003 (0.288 to 0.291) when the visual features were present, so they were not used. An OSM extraction script is included for future work but was not run nationally.
 
@@ -128,7 +133,7 @@ The final production model uses **4 features only**, anchored to the NFHS-5 surv
 * **Primary Evaluation Scheme:** **Leave-One-State-Out (LOSO) Cross-Validation**. Entire administrative states are held out as independent test blocks (31 folds across 564 districts).
 * **Secondary Scheme:** Repeated State-Grouped 5-Fold Cross-Validation (`RepeatedGroupKFold`, 5 repeats).
 * **Evaluation Metrics:** Evaluated by MAE, RMSE, $R^2$, and Spearman rank correlation $\rho$. All empirical numbers are reported directly from [`models/model_comparison_results.csv`](../models/model_comparison_results.csv) and tabulated in [`documentation/RESULTS.md`](RESULTS.md).
-* **Best Model:** `RandomForestRegressor` selected as the highest-performing architecture by LOSO RMSE and MAE.
+* **Best Model:** `XGBRegressor` (XGBoost) selected as the highest-performing 10-feature architecture by LOSO $R^2$ (`0.4884`), MAE (`0.0752`), and RMSE (`0.0954`).
 
 ---
 
@@ -137,14 +142,14 @@ The final production model uses **4 features only**, anchored to the NFHS-5 surv
 ### 6.1 Tabular Explainability: SHAP (SHapley Additive exPlanations)
 * Implemented via `explainability/shap_explain.py` wrapping the Scikit-Learn Pipeline with `shap.TreeExplainer`.
 * **Additive Decomposition Guarantee:** For every district $i$:
-  $$\hat{y}_i = \phi_0 + \sum_{j=1}^{4} \phi_{ij}$$
+  $$\hat{y}_i = \phi_0 + \sum_{j=1}^{10} \phi_{ij}$$
   Where $\phi_0$ is the base expected value from training and $\phi_{ij}$ are the exact feature attributions.
 * In [`scripts/precompute_predictions.py`](../scripts/precompute_predictions.py), SHAP values are precomputed per state using the exact LOSO pipeline fitted on other states, ensuring additive consistency with stored out-of-state predicted scores.
 * District pages display plain-language explanations alongside contribution bars with the explicit notice: *"Contributions show what drove this estimate; they describe the model, not causes."*
 
 ### 6.2 Explored Vision Extension: Grad-CAM
 * Grad-CAM was explored as an extension for convolutional feature extractors in `explainability/gradcam.py`.
-* Because the final model relies exclusively on 4 tabular satellite statistics, Grad-CAM is deactivated in the web interface and API (`gradcam_available: false` with reason: *"The current model uses satellite statistics only, not image features"*). The reference implementation is retained for future image-based models.
+* Because the final model relies exclusively on 10 tabular satellite and geospatial statistics, Grad-CAM is deactivated in the web interface and API (`gradcam_available: false` with reason: *"The current model uses satellite statistics only, not image features"*). The reference implementation is retained for future image-based models.
 
 ---
 
@@ -195,13 +200,13 @@ The final production model uses **4 features only**, anchored to the NFHS-5 surv
 3. **District Deep-Dive (`district.html`):** Scorecard with out-of-state estimate, 80% range, plain-language SHAP bars, and Sentinel-2 satellite image (or *"No satellite image available"*).
 4. **Comparative Analysis (`compare.html`):** Side-by-side evaluation of 2 to 5 districts across satellite indicators.
 5. **Spatial Hotspots (`hotspots.html`):** Interactive visualization of Haversine DBSCAN clusters.
-6. **Policy Scenario Simulator (`whatif.html`):** Sliders allowing live simulation of shifts across the 4 satellite indicators using the final model.
+6. **Policy Scenario Simulator (`whatif.html`):** Sliders allowing live simulation of shifts across the 10 satellite and geospatial indicators using the final model.
 
 ---
 
 ## 11. Testing & Quality Assurance
 
-* **PyTest Suite:** **65 automated unit and integration tests** passing with 0 failures:
+* **PyTest Suite:** **278 automated unit and integration tests** passing across 11 modules (including [`tests/test_extra_features.py`](../tests/test_extra_features.py), [`tests/test_area_profile.py`](../tests/test_area_profile.py), [`tests/test_indicator_service.py`](../tests/test_indicator_service.py), [`tests/test_hidden_gaps.py`](../tests/test_hidden_gaps.py), [`tests/test_scenario_explorer.py`](../tests/test_scenario_explorer.py), [`tests/test_report_page.py`](../tests/test_report_page.py), [`tests/test_access_control.py`](../tests/test_access_control.py), plus the Phase 1–3 suites below).
   - `tests/test_phase2.py`: Spatial cross-validation integrity, pipeline imputation, prediction intervals (10 tests).
   - `tests/test_phase3.py`: Additive SHAP equality ($\le 10^{-4}$), Grad-CAM deactivation, satellite image safety (7 tests).
   - `tests/test_pipeline.py`: Feature fusion, API endpoints, authentication, district matching (26 tests).

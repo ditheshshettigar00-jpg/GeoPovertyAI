@@ -14,76 +14,70 @@ function syncSlider(key, val) {
 function updateBadge(key, val) {
     if (key === 'nightlight_mean') document.getElementById('badge_ntl').textContent = val.toFixed(2) + ' nW';
     if (key === 'ndvi_mean') document.getElementById('badge_ndvi').textContent = val.toFixed(2);
-    if (key === 'builtup_pct') document.getElementById('badge_builtup').textContent = val.toFixed(1);
+    if (key === 'builtup_pct') document.getElementById('badge_builtup').textContent = val.toFixed(1) + ' %';
     if (key === 'population_density') document.getElementById('badge_pop').textContent = Math.round(val) + ' /km²';
-    if (key === 'hospital_distance_km') document.getElementById('badge_hospital').textContent = val.toFixed(2) + ' km';
-    if (key === 'road_density_km_per_sqkm') document.getElementById('badge_road').textContent = val.toFixed(2) + ' km/km²';
-    if (key === 'school_distance_km') document.getElementById('badge_school').textContent = val.toFixed(2) + ' km';
+    if (key === 'lst_day_c') document.getElementById('badge_lst').textContent = val.toFixed(1) + ' °C';
+    if (key === 'elevation_mean_m') document.getElementById('badge_elev').textContent = Math.round(val) + ' m';
+    if (key === 'slope_mean_deg') document.getElementById('badge_slope').textContent = val.toFixed(1) + '°';
+    if (key === 'rainfall_mm_year') document.getElementById('badge_rain').textContent = Math.round(val) + ' mm/yr';
+    if (key === 'cropland_pct') document.getElementById('badge_crop').textContent = val.toFixed(1) + ' %';
+    if (key === 'travel_time_city_min') document.getElementById('badge_travel').textContent = Math.round(val) + ' min';
 }
 
-function syncTextureVal(val) {
-    val = parseFloat(val);
-    document.getElementById('num_visual_texture').value = val.toFixed(2);
-    document.getElementById('badge_texture').textContent = val.toFixed(2);
-}
-
-function syncTextureSlider(val) {
-    val = parseFloat(val);
-    document.getElementById('slider_visual_texture').value = val.toFixed(2);
-    document.getElementById('badge_texture').textContent = val.toFixed(2);
-}
-
-// --- Preset Profiles ---
+// --- Preset Profiles (10 Real Satellite & Geospatial Model Inputs) ---
 const PRESETS = {
     rural: {
-        nightlight_mean: 0.8, ndvi_mean: 0.58, builtup_pct: 75.0, population_density: 180.0,
-        hospital_distance_km: 14.5, road_density_km_per_sqkm: 0.85, school_distance_km: 4.8, visual_texture: 0.18
+        nightlight_mean: 0.45, ndvi_mean: 0.46, builtup_pct: 0.5, population_density: 210.0,
+        lst_day_c: 31.5, elevation_mean_m: 320.0, slope_mean_deg: 4.5, rainfall_mm_year: 1150.0,
+        cropland_pct: 62.0, travel_time_city_min: 75.0
     },
     semiurban: {
-        nightlight_mean: 3.2, ndvi_mean: 0.38, builtup_pct: 220.0, population_density: 650.0,
-        hospital_distance_km: 4.5, road_density_km_per_sqkm: 2.10, school_distance_km: 1.8, visual_texture: 0.35
+        nightlight_mean: 1.85, ndvi_mean: 0.41, builtup_pct: 2.8, population_density: 680.0,
+        lst_day_c: 29.8, elevation_mean_m: 190.0, slope_mean_deg: 2.1, rainfall_mm_year: 980.0,
+        cropland_pct: 55.0, travel_time_city_min: 25.0
     },
     metro: {
-        nightlight_mean: 11.5, ndvi_mean: 0.18, builtup_pct: 490.0, population_density: 1850.0,
-        hospital_distance_km: 1.8, road_density_km_per_sqkm: 3.90, school_distance_km: 0.8, visual_texture: 0.52
+        nightlight_mean: 16.50, ndvi_mean: 0.22, builtup_pct: 24.0, population_density: 6500.0,
+        lst_day_c: 32.0, elevation_mean_m: 85.0, slope_mean_deg: 1.4, rainfall_mm_year: 850.0,
+        cropland_pct: 12.0, travel_time_city_min: 3.0
     },
     arid: {
-        nightlight_mean: 1.1, ndvi_mean: 0.12, builtup_pct: 60.0, population_density: 90.0,
-        hospital_distance_km: 18.0, road_density_km_per_sqkm: 0.60, school_distance_km: 6.2, visual_texture: 0.14
+        nightlight_mean: 0.70, ndvi_mean: 0.16, builtup_pct: 0.6, population_density: 95.0,
+        lst_day_c: 36.2, elevation_mean_m: 260.0, slope_mean_deg: 2.2, rainfall_mm_year: 340.0,
+        cropland_pct: 38.0, travel_time_city_min: 85.0
     }
 };
 
 function applyPreset(name) {
     const p = PRESETS[name];
     if (!p) return;
-    for (let k in p) {
-        if (k === 'visual_texture') {
-            syncTextureVal(p[k]);
-            document.getElementById('slider_visual_texture').value = p[k];
-        } else {
-            syncVal(k, p[k]);
-            document.getElementById(`slider_${k}`).value = p[k];
-        }
+    for (const k in p) {
+        syncVal(k, p[k]);
+        const sliderEl = document.getElementById(`slider_${k}`);
+        if (sliderEl) sliderEl.value = p[k];
     }
     runLivePrediction();
 }
 
+function readFeatureInput(id, fallback) {
+    const parsed = parseFloat(document.getElementById(id)?.value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 // --- Live Prediction API Call ---
 async function runLivePrediction() {
-    const texVal = parseFloat(document.getElementById('num_visual_texture')?.value) || 0.28;
     const payload = {
-        nightlight_mean: parseFloat(document.getElementById('num_nightlight_mean')?.value) || 0.0,
-        ndvi_mean: parseFloat(document.getElementById('num_ndvi_mean')?.value) || 0.0,
-        builtup_pct: parseFloat(document.getElementById('num_builtup_pct')?.value) || 0.0,
-        population_density: parseFloat(document.getElementById('num_population_density')?.value) || 0.0,
-        hospital_distance_km: parseFloat(document.getElementById('num_hospital_distance_km')?.value) || 4.5,
-        road_density_km_per_sqkm: parseFloat(document.getElementById('num_road_density_km_per_sqkm')?.value) || 2.1,
-        school_distance_km: parseFloat(document.getElementById('num_school_distance_km')?.value) || 2.0,
+        nightlight_mean: readFeatureInput('num_nightlight_mean', 0.87),
+        ndvi_mean: readFeatureInput('num_ndvi_mean', 0.43),
+        builtup_pct: readFeatureInput('num_builtup_pct', 1.3),
+        population_density: readFeatureInput('num_population_density', 425.0),
+        lst_day_c: readFeatureInput('num_lst_day_c', 29.9),
+        elevation_mean_m: readFeatureInput('num_elevation_mean_m', 236.0),
+        slope_mean_deg: readFeatureInput('num_slope_mean_deg', 2.4),
+        rainfall_mm_year: readFeatureInput('num_rainfall_mm_year', 1010.0),
+        cropland_pct: readFeatureInput('num_cropland_pct', 54.3),
+        travel_time_city_min: readFeatureInput('num_travel_time_city_min', 31.0),
     };
-    // Map texture slider into vgg_feat_1..vgg_feat_16 vector:
-    for (let i = 1; i <= 16; i++) {
-        payload[`vgg_feat_${i}`] = parseFloat((texVal * (0.8 + 0.02 * i)).toFixed(4));
-    }
 
     const resPanel = document.getElementById('liveResultPanel');
     resPanel.style.display = 'block';
@@ -227,35 +221,30 @@ async function onDistrictChange(areaId) {
         catBadge.textContent = predRes.predicted_category;
         catBadge.className = `category-pill cat-${predRes.predicted_category.toLowerCase()}`;
 
-        // 4 Model Inputs
+        // 10 Model Inputs
         document.getElementById('distNtlText').textContent = (featRes.nightlight_mean != null ? featRes.nightlight_mean.toFixed(2) : 'N/A') + ' nW';
         document.getElementById('distNdviText').textContent = featRes.ndvi_mean != null ? featRes.ndvi_mean.toFixed(2) : 'N/A';
         document.getElementById('distBuiltupText').textContent = (featRes.builtup_pct != null ? featRes.builtup_pct.toFixed(1) : 'N/A') + '%';
         if (document.getElementById('distPopText')) {
             document.getElementById('distPopText').textContent = featRes.population_density != null ? Math.round(featRes.population_density) + ' /km²' : 'N/A';
         }
-
-        // Accessibility Features (from profile service)
-        let hospVal = null, roadVal = null, schoolVal = null;
-        if (profRes && profRes.accessibility && profRes.accessibility.available) {
-            profRes.accessibility.items.forEach(it => {
-                if (it.key === 'hospital_distance_km') hospVal = it.value;
-                if (it.key === 'road_density_km_per_sqkm') roadVal = it.value;
-                if (it.key === 'school_distance_km') schoolVal = it.value;
-            });
+        if (document.getElementById('distLstText')) {
+            document.getElementById('distLstText').textContent = featRes.lst_day_c != null ? featRes.lst_day_c.toFixed(1) + ' °C' : 'N/A';
         }
-
-        const hospEl = document.getElementById('distHospText');
-        const roadEl = document.getElementById('distRoadText');
-        const schoolEl = document.getElementById('distSchoolText');
-
-        if (hospEl) hospEl.textContent = hospVal != null ? hospVal.toFixed(2) + ' km' : 'Not surveyed';
-        if (roadEl) roadEl.textContent = roadVal != null ? roadVal.toFixed(2) + ' km/km²' : 'Not surveyed';
-        if (schoolEl) schoolEl.textContent = schoolVal != null ? schoolVal.toFixed(2) + ' km' : 'Not surveyed';
-
-        const texEl = document.getElementById('distTexText');
-        if (texEl) {
-            texEl.textContent = featRes.vgg_feat_1 != null ? featRes.vgg_feat_1.toFixed(2) : 'N/A';
+        if (document.getElementById('distElevText')) {
+            document.getElementById('distElevText').textContent = featRes.elevation_mean_m != null ? Math.round(featRes.elevation_mean_m) + ' m' : 'N/A';
+        }
+        if (document.getElementById('distSlopeText')) {
+            document.getElementById('distSlopeText').textContent = featRes.slope_mean_deg != null ? featRes.slope_mean_deg.toFixed(1) + '°' : 'N/A';
+        }
+        if (document.getElementById('distRainText')) {
+            document.getElementById('distRainText').textContent = featRes.rainfall_mm_year != null ? Math.round(featRes.rainfall_mm_year) + ' mm/yr' : 'N/A';
+        }
+        if (document.getElementById('distCropText')) {
+            document.getElementById('distCropText').textContent = featRes.cropland_pct != null ? featRes.cropland_pct.toFixed(1) + '%' : 'N/A';
+        }
+        if (document.getElementById('distTravelText')) {
+            document.getElementById('distTravelText').textContent = featRes.travel_time_city_min != null ? Math.round(featRes.travel_time_city_min) + ' min' : 'N/A';
         }
 
         // Satellite Image Preview
@@ -285,10 +274,9 @@ function loadDistrictIntoCustom() {
     for (let k in selectedDistrictFeatures) {
         if (document.getElementById(`num_${k}`)) {
             syncVal(k, selectedDistrictFeatures[k]);
+            const sEl = document.getElementById(`slider_${k}`);
+            if (sEl) sEl.value = selectedDistrictFeatures[k];
         }
-    }
-    if (selectedDistrictFeatures.vgg_feat_1) {
-        syncTextureVal(selectedDistrictFeatures.vgg_feat_1);
     }
     switchTab('custom');
     runLivePrediction();
