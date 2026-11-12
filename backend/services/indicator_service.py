@@ -94,6 +94,12 @@ def _load_cache():
         "ndvi_mean",
         "builtup_pct",
         "population_density",
+        "elevation_mean_m",
+        "slope_mean_deg",
+        "rainfall_mm_year",
+        "lst_day_c",
+        "cropland_pct",
+        "travel_time_city_min",
         "s2_image_count",
         "latitude",
         "longitude",
@@ -124,9 +130,10 @@ def _load_cache():
 
 def get_satellite_indicators(area_id: int) -> List[Dict[str, Any]]:
     """
-    Returns the 7 satellite-derived telemetry indicators for the given district.
+    Returns the 13 satellite and geospatial telemetry indicators for the given district.
     Columns: nightlight_mean, ndvi_mean, builtup_pct, population_density,
-             s2_image_count, latitude, longitude.
+             elevation_mean_m, slope_mean_deg, rainfall_mm_year, lst_day_c,
+             cropland_pct, travel_time_city_min, s2_image_count, latitude, longitude.
     """
     cache = _load_cache()
     final_by_id = cache["final_by_id"]
@@ -179,6 +186,66 @@ def get_satellite_indicators(area_id: int) -> List[Dict[str, Any]]:
             "definition": "Spatial residential population density from European Commission JRC GHSL population grid.",
             "disp_decimals": 0,
             "raw_decimals": 1,
+        },
+        {
+            "key": "elevation_mean_m",
+            "label": "Mean Elevation",
+            "unit": "m",
+            "source": "NASA SRTM 30 m DEM",
+            "period": "Static DEM",
+            "definition": "Mean terrain elevation above sea level across the district polygon from NASA SRTM.",
+            "disp_decimals": 1,
+            "raw_decimals": 2,
+        },
+        {
+            "key": "slope_mean_deg",
+            "label": "Mean Terrain Slope",
+            "unit": "deg",
+            "source": "NASA SRTM DEM slope",
+            "period": "Static DEM",
+            "definition": "Mean terrain slope angle derived from SRTM elevation gradients.",
+            "disp_decimals": 2,
+            "raw_decimals": 2,
+        },
+        {
+            "key": "rainfall_mm_year",
+            "label": "Annual Rainfall",
+            "unit": "mm/year",
+            "source": "UCSB CHIRPS daily precipitation",
+            "period": period_str,
+            "definition": "Annualized mean precipitation across the survey window from CHIRPS v2.0.",
+            "disp_decimals": 0,
+            "raw_decimals": 2,
+        },
+        {
+            "key": "lst_day_c",
+            "label": "Daytime Land Surface Temp",
+            "unit": "deg C",
+            "source": "MODIS MOD11A2 8-day LST",
+            "period": period_str,
+            "definition": "Mean daytime land surface temperature across the survey window from MODIS Terra.",
+            "disp_decimals": 1,
+            "raw_decimals": 2,
+        },
+        {
+            "key": "cropland_pct",
+            "label": "Cropland Share",
+            "unit": "% of land area",
+            "source": "ESA WorldCover v100 (10 m)",
+            "period": "Epoch 2020",
+            "definition": "Share of district land covered by cropland in ESA WorldCover 2020.",
+            "disp_decimals": 1,
+            "raw_decimals": 2,
+        },
+        {
+            "key": "travel_time_city_min",
+            "label": "Travel Time to Nearest City",
+            "unit": "minutes",
+            "source": "Oxford/MAP 2015 friction surface",
+            "period": "2015 baseline",
+            "definition": "Estimated surface travel time to nearest city (>50k pop) from 2015 accessibility map.",
+            "disp_decimals": 1,
+            "raw_decimals": 2,
         },
         {
             "key": "s2_image_count",

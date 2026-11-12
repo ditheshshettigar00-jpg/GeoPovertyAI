@@ -707,7 +707,7 @@
                 </p>
 
                 <!-- 5A Satellite-derived indicators -->
-                <h3 style="font-size:1.05rem; color:#1b4332; margin:16px 0 8px;">5A. Satellite-Derived Indicators (7)</h3>
+                <h3 style="font-size:1.05rem; color:#1b4332; margin:16px 0 8px;">5A. Satellite & Geospatial Indicators (13)</h3>
                 <p style="font-size:0.82rem; color:#6b6b6b; margin:0 0 10px;">
                     Earth observation telemetry extracted for the district boundary over the survey period (2019-11-01 to 2021-04-30).
                 </p>
@@ -1219,7 +1219,7 @@
         } else {
             gcDiv.innerHTML = `<div class="unavail-box"><div class="ico">🗺️</div>
             <strong>Grad-CAM Heatmap Not Available</strong>
-            <p>Run the explainability module (<code>explainability/gradcam.py</code>) to generate the heatmap.</p></div>`;
+            <p>${d.gradcam_reason || 'The active production model uses tabular satellite and geospatial statistics only, not CNN image features.'}</p></div>`;
         }
 
         // ── Data Sources ──────────────────────────────────────────────────────
@@ -1228,9 +1228,8 @@
             'Satellite Imagery': d.data_sources?.satellite,
             'Nighttime Lights': d.data_sources?.nighttime_light,
             'Built-Up & Population': d.data_sources?.built_up,
-            'Road/POI Network': d.data_sources?.road_osm,
+            'Climate, Terrain & Access': d.data_sources?.climate_terrain,
             'Ground Truth (Labels)': d.data_sources?.ground_truth,
-            'Deep Visual Features': d.data_sources?.deep_features,
         };
         for (const [name, val] of Object.entries(srcMap)) {
             if (val) {

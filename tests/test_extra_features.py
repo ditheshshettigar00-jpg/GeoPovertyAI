@@ -60,6 +60,6 @@ def test_evaluation_smoke_run_with_noise_is_not_adopted():
     base = json.load(open(os.path.join(MODELS_DIR, "feature_columns.json")))
     df["noise_a"] = np.random.default_rng(0).normal(size=len(df))
     res = run(df, base, ["noise_a"], model="Ridge", repeats=1, per_feature=False)
-    assert list(res["feature_set"]) == ["baseline (4 features)", "baseline + ALL extra"]
+    assert list(res["feature_set"]) == [f"baseline ({len(base)} features)", "baseline + ALL extra"]
     assert res.loc[0, "d_loso_r2"] == 0
     assert verdict(res, 0.02, 0.55)[0] is False

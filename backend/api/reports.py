@@ -63,22 +63,34 @@ def _load_model_comparison_metrics():
     """
     path = os.path.join(MODELS_DIR, "model_comparison_results.csv")
     metrics = {
-        "model_name": "RandomForest",
-        "r2": 0.3360,
-        "mae": 0.0883,
-        "rmse": 0.1087,
-        "cat_accuracy": 0.5461,
+        "model_name": "XGBoost",
+        "r2": 0.4884,
+        "mae": 0.0752,
+        "rmse": 0.0954,
+        "cat_accuracy": 0.6117,
         "baseline_mae": 0.1142,
         "validation_scheme": "leave-one-state-out validation: each state predicted by a model that never saw it",
     }
+    meta_path = os.path.join(MODELS_DIR, "run_metadata.json")
+    if os.path.exists(meta_path):
+        try:
+            with open(meta_path, "r", encoding="utf-8") as mf:
+                meta = json.load(mf)
+            if meta.get("best_model"):
+                metrics["model_name"] = meta["best_model"]
+        except Exception:
+            pass
     if os.path.exists(path):
         try:
             import pandas as pd
             df = pd.read_csv(path)
-            rf_row = df[df["model"] == "RandomForest"]
+            best_row = df[df["model"] == metrics["model_name"]]
+            if best_row.empty:
+                best_row = df[df["model"] == "XGBoost"]
             dummy_row = df[df["model"] == "Dummy"]
-            if not rf_row.empty:
-                r = rf_row.iloc[0]
+            if not best_row.empty:
+                r = best_row.iloc[0]
+                metrics["model_name"] = str(r["model"])
                 metrics["r2"] = round(float(r["r2"]), 4)
                 metrics["mae"] = round(float(r["mae"]), 4)
                 metrics["rmse"] = round(float(r["rmse"]), 4)
@@ -96,14 +108,26 @@ FEATURE_LABELS = {
     "ndvi_mean": "Normalized Difference Vegetation Index (NDVI, Sentinel-2)",
     "builtup_pct": "Built-Up Surface Area (GHSL, % of land area)",
     "population_density": "Population Density (GHSL, people per km2)",
+    "elevation_mean_m": "Mean Elevation (SRTM, m)",
+    "slope_mean_deg": "Mean Terrain Slope (SRTM, deg)",
+    "rainfall_mm_year": "Annual Rainfall (CHIRPS, mm/yr)",
+    "lst_day_c": "Daytime Land Surface Temperature (MODIS, deg C)",
+    "cropland_pct": "Cropland Share (ESA WorldCover, %)",
+    "travel_time_city_min": "Travel Time to Nearest City (Oxford/MAP 2015, min)",
 }
 
 # SHAP top-feature canonical explanations, ordered by typical importance rank
 SHAP_FEATURE_NOTES = {
-    "nightlight_mean": "Nighttime radiance is one of the strongest signals of economic activity. Low values strongly push the predicted deprivation score upward.",
+    "lst_day_c": "Daytime surface temperature reflects aridity and agro-climatic regimes linked with rural livelihood conditions.",
+    "elevation_mean_m": "Terrain elevation separates high-altitude plateau/mountain geographies from lowland plains.",
     "builtup_pct": "Built-up surface density reflects urbanisation. Sparse settlement patterns are associated with higher predicted deprivation.",
-    "ndvi_mean": "High vegetation (NDVI) in a district with low nightlights may indicate rural, agrarian areas, which the model links to elevated deprivation.",
-    "population_density": "Population density interacts with infrastructure availability. Sparse populations far from services tend to receive higher predicted scores.",
+    "ndvi_mean": "Vegetation index (NDVI) in low-nightlight areas often correlates with agrarian land cover and deprivation.",
+    "nightlight_mean": "Nighttime radiance tracks electrification and economic activity; lower radiance typically pushes predicted deprivation upward.",
+    "population_density": "Population density captures settlement concentration and infrastructure proximity.",
+    "slope_mean_deg": "Terrain slope captures hilly topography where physical connectivity can be constrained.",
+    "rainfall_mm_year": "Annual precipitation indexes agro-climatic regime and water availability.",
+    "cropland_pct": "Cropland share measures agricultural land dominance versus urban or forest cover.",
+    "travel_time_city_min": "Surface travel time (2015 baseline) reflects spatial remoteness from major urban centers.",
 }
 
 DISCLAIMER = (
@@ -243,9 +267,10 @@ def district_report_data(area_id):
         "satellite_indicators": indicator_service.get_satellite_indicators(area_id),
         "survey_indicators": indicator_service.get_survey_indicators(area_id),
         "data_sources": {
-            "satellite": "true-colour Sentinel-2 composite, 2019-11-01 to 2021-04-30, for context only; the model uses satellite statistics, not image pixels",
+            "satellite": "true-colour Sentinel-2 composite, 2019-11-01 to 2021-04-30, for context only; the model uses tabular statistics, not image pixels",
             "nighttime_light": "NOAA/NASA VIIRS DNB Nighttime Lights",
             "built_up": "European Commission Global Human Settlement Layer (GHSL)",
+            "climate_terrain": "NASA SRTM DEM, UCSB CHIRPS, MODIS MOD11A2, ESA WorldCover 2020, Oxford/MAP 2015 Travel Time",
             "ground_truth": "National Family Health Survey 5 (NFHS-5), 2019-21",
         },
     })
@@ -363,7 +388,7 @@ def generate_district_report_pdf(area_id):
         ["Prediction Model", model_name],
         ["Satellite Image Source", "true-colour Sentinel-2 composite, 2019-11-01 to 2021-04-30, for context only; the model uses satellite statistics, not image pixels"],
         ["Ground Truth Source", "National Family Health Survey 5 (NFHS-5), 2019-21"],
-        ["Satellite Telemetry Features", "VIIRS Nocturnal Radiance + Sentinel-2 NDVI + GHSL Settlement Grids"],
+        ["Satellite Telemetry Features", "VIIRS, Sentinel-2 NDVI, GHSL, SRTM, CHIRPS, MODIS LST, WorldCover, MAP 2015"],
         ["Data Mode", area.get("data_mode", "real").upper()],
     ]
     info_table = Table(info_data, colWidths=[5 * cm, PAGE_W - 2 * MARGIN - 5 * cm])
@@ -673,8 +698,7 @@ def generate_district_report_pdf(area_id):
             ))
     else:
         story.append(Paragraph(
-            "<i>No Grad-CAM heatmap is currently available for this district. "
-            "Run the explainability module to generate Grad-CAM outputs.</i>",
+            "<i>Grad-CAM is not available because the production model uses tabular satellite and geospatial statistics only (not image features).</i>",
             S_BODY
         ))
     story.append(Spacer(1, 16))

@@ -2,5 +2,11 @@
   "nightlight_mean",
   "ndvi_mean",
   "builtup_pct",
-  "population_density"
+  "population_density",
+  "elevation_mean_m",
+  "slope_mean_deg",
+  "rainfall_mm_year",
+  "lst_day_c",
+  "cropland_pct",
+  "travel_time_city_min"
 ]

@@ -1,16 +1,16 @@
 {
   "data_file": "final_training_table.csv",
-  "data_sha256_16": "08df9088e37c6006",
+  "data_sha256_16": "0e078d00646c6a7e",
   "n_rows": 564,
   "n_states": 31,
-  "n_features": 4,
+  "n_features": 10,
   "visual_mode": "none",
   "seed": 42,
   "tuning": "none",
-  "best_model": "RandomForest",
+  "best_model": "XGBoost",
   "data_mode": "real",
   "sklearn": "1.5.1",
   "pandas": "2.2.2",
   "numpy": "1.26.4",
-  "timestamp_utc": "2026-10-30T07:24:03.206650+00:00"
+  "timestamp_utc": "2026-11-12T06:03:48.055821+00:00"
 }

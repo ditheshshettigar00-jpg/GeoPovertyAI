@@ -187,8 +187,8 @@ def main():
             )
             prediction_id = cur.lastrowid
 
-            # Compute local SHAP explanation for this district
-            local_expl = local_explanation(explainer, X_test, local_i, top_n=8)
+            # Compute local SHAP explanation for this district (include all features so base + sum == score)
+            local_expl = local_explanation(explainer, X_test, local_i, top_n=len(feature_cols))
 
             # Ensure base + sum(SHAP) = stored predicted_score exactly
             # Any tiny diff between pipeline float and rounded CSV is absorbed into base_value

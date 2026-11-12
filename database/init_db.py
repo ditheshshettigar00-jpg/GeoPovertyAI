@@ -32,6 +32,19 @@ def migrate_db(conn: sqlite3.Connection) -> None:
             cur.execute("ALTER TABLE predictions ADD COLUMN predicted_high REAL;")
         if "prediction_type" not in existing_cols:
             cur.execute("ALTER TABLE predictions ADD COLUMN prediction_type TEXT DEFAULT 'leave-one-state-out';")
+    cur.execute("PRAGMA table_info(geospatial_features);")
+    geo_cols = [row[1] for row in cur.fetchall()]
+    if geo_cols:
+        for col_name in (
+            "elevation_mean_m",
+            "slope_mean_deg",
+            "rainfall_mm_year",
+            "lst_day_c",
+            "cropland_pct",
+            "travel_time_city_min",
+        ):
+            if col_name not in geo_cols:
+                cur.execute(f"ALTER TABLE geospatial_features ADD COLUMN {col_name} REAL;")
 
 
 def init_db(db_path: str = DB_PATH, schema_path: str = SCHEMA_PATH) -> None:

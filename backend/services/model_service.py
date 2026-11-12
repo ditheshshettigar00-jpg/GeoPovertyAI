@@ -115,16 +115,16 @@ def get_model_mae() -> float:
         csv_path = os.path.join(MODELS_DIR, "model_comparison_results.csv")
         if os.path.exists(csv_path):
             df = pd.read_csv(csv_path)
-            model_name = _model_bundle.get("model_name", "RandomForest") if _model_bundle else "RandomForest"
+            model_name = _model_bundle.get("model_name", "XGBoost") if _model_bundle else "XGBoost"
             row = df[df["model"].str.lower() == str(model_name).lower()]
             if not row.empty and "mae" in row.columns:
                 return float(row["mae"].iloc[0])
-            row_rf = df[df["model"] == "RandomForest"]
+            row_rf = df[df["model"] == "XGBoost"]
             if not row_rf.empty and "mae" in row_rf.columns:
                 return float(row_rf["mae"].iloc[0])
     except Exception:
         pass
-    return 0.0883
+    return 0.0752
 
 
 def get_uncertainty_interval_80() -> tuple:
@@ -138,7 +138,7 @@ def get_uncertainty_interval_80() -> tuple:
                 return float(unc["80"]["lower"]), float(unc["80"]["upper"])
     except Exception:
         pass
-    return -0.1363, 0.1437
+    return -0.1179, 0.1271
 
 
 def apply_preset_to_features(features: dict, preset_id: str) -> dict:
@@ -451,6 +451,12 @@ def predict_custom_features(feature_dict: dict) -> dict:
             "ndvi_mean": "Vegetation Index (NDVI)",
             "builtup_pct": "Built-up Surface Density",
             "population_density": "Population Density",
+            "elevation_mean_m": "Mean Elevation (m)",
+            "slope_mean_deg": "Mean Terrain Slope (deg)",
+            "rainfall_mm_year": "Annual Rainfall (mm/yr)",
+            "lst_day_c": "Daytime Land Surface Temp (°C)",
+            "cropland_pct": "Cropland Share (%)",
+            "travel_time_city_min": "Travel Time to Nearest City (min)",
             "road_density_km_per_sqkm": "Road Network Density",
             "school_distance_km": "Distance to Nearest School",
             "hospital_distance_km": "Distance to Nearest Hospital",

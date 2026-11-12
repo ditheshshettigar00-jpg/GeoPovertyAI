@@ -2,8 +2,8 @@
 {% block title %}Explanation - GeoPoverty AI{% endblock %}
 {% block content %}
 <h1>Explainability</h1>
-<p>SHAP shows which features drove a district's score. Grad-CAM shows which parts of the satellite
-   image mattered most to the CNN's visual features.</p>
+<p>TreeSHAP shows which of the 10 satellite and geospatial features drove each district's score
+   (statistical associations, not causes). Grad-CAM is inactive because VGG-16 image features are excluded from the production model.</p>
 
 <div class="card">
     <label for="areaSelect"><strong>District:</strong></label>

@@ -67,6 +67,54 @@ MODEL_INPUT_SPECS = [
             "population grid (epoch 2020), indicating human settlement density."
         ),
     },
+    {
+        "key": "elevation_mean_m",
+        "label": "Mean Elevation",
+        "unit": "m",
+        "description": (
+            "District mean terrain elevation above sea level from NASA SRTM Digital Elevation Data (30 m)."
+        ),
+    },
+    {
+        "key": "slope_mean_deg",
+        "label": "Mean Terrain Slope",
+        "unit": "deg",
+        "description": (
+            "District mean terrain slope in degrees computed from NASA SRTM elevation gradients."
+        ),
+    },
+    {
+        "key": "rainfall_mm_year",
+        "label": "Annual Rainfall",
+        "unit": "mm/year",
+        "description": (
+            "Annualized mean precipitation across the district from UCSB CHIRPS daily rainfall (2019-11 to 2021-04)."
+        ),
+    },
+    {
+        "key": "lst_day_c",
+        "label": "Daytime Land Surface Temp",
+        "unit": "°C",
+        "description": (
+            "Mean daytime land surface temperature in degrees Celsius from MODIS MOD11A2 8-day composites (2019-11 to 2021-04)."
+        ),
+    },
+    {
+        "key": "cropland_pct",
+        "label": "Cropland Share",
+        "unit": "%",
+        "description": (
+            "Percentage of district land classified as cropland in ESA WorldCover v100 (epoch 2020, 10 m)."
+        ),
+    },
+    {
+        "key": "travel_time_city_min",
+        "label": "Travel Time to Nearest City",
+        "unit": "min",
+        "description": (
+            "Mean estimated surface travel time to the nearest urban center (>50k population) from Oxford/MAP 2015 friction surface (static 2015 baseline)."
+        ),
+    },
 ]
 
 SURVEY_COMPONENT_SPECS = [

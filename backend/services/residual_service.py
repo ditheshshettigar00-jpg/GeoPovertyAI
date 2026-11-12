@@ -19,8 +19,9 @@ least-deprived one. The rank condition asks whether the district is ordered diff
 satellite estimate, which is less affected by that compression. It is still a screening hint.
 
 Roughly 20% of districts fall outside an 80% interval for a well-calibrated model, so a flag is not
-evidence of a cause. A gap can reflect model error, label noise, or deprivation that the four satellite
-features (nightlight, NDVI, built-up share, population density) cannot capture.
+evidence of a cause. A gap can reflect model error, label noise, or deprivation that the ten satellite
+and geospatial features (nightlight, NDVI, built-up share, population density, elevation, slope, rainfall,
+LST, cropland share, and travel time to cities) cannot capture.
 
 Reads precomputed artefacts only (models/loso_predictions.csv, data/processed/final_training_table.csv);
 it never calls or changes the model.
@@ -157,7 +158,7 @@ def get_residual_atlas(direction: str = "all", state: str = None, limit: int = 2
             "Districts where the survey ranking and the satellite-based estimate disagree. A district is listed "
             "only if its survey score is outside the 80% out-of-state interval AND its rank differs by at least "
             f"{int(RANK_THRESHOLD * 100)} percentile points. A gap can reflect model error or deprivation that the "
-            "four satellite features cannot capture (for example nutrition or schooling). About 20% of districts "
+            "ten satellite and geospatial features cannot capture (for example nutrition or schooling). About 20% of districts "
             "fall outside an 80% interval for a well-calibrated model, so these are screening hints for local "
             "verification, not proof of hidden poverty or of a cause. Aggregate district level only."
         ),

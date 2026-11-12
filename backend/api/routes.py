@@ -259,7 +259,7 @@ def scenario_targets():
 @api_bp.route("/indicators/<int:area_id>", methods=["GET"])
 def get_indicators(area_id):
     """
-    Returns complete real indicators (7 satellite, 5 survey) for the district.
+    Returns complete real indicators (13 satellite/geospatial, 5 survey) for the district.
     Query param ?full=1 adds all ~104 NFHS indicators.
     """
     from backend.services import indicator_service

@@ -474,7 +474,7 @@
                 </button>
                 <div class="custom-sliders" id="customSlidersBox">
                     <p style="font-size:0.78rem; color:#64748b; margin-top:0; margin-bottom:0.75rem;">
-                        Manually modify the 4 satellite inputs for this district. Overrides the active preset.
+                        Manually modify the 10 satellite and geospatial inputs for this district. Overrides the active preset.
                     </p>
                     <div id="slidersList"></div>
                 </div>
@@ -600,7 +600,13 @@ const FEATURE_NAMES = {
     'nightlight_mean': 'Nighttime Lights (nW/cm²/sr)',
     'ndvi_mean': 'Vegetation Index (NDVI)',
     'builtup_pct': 'Built-up Land Share (%)',
-    'population_density': 'Population Density (/km²)'
+    'population_density': 'Population Density (/km²)',
+    'elevation_mean_m': 'Mean Elevation (m)',
+    'slope_mean_deg': 'Mean Terrain Slope (deg)',
+    'rainfall_mm_year': 'Annual Rainfall (mm/yr)',
+    'lst_day_c': 'Daytime Land Surface Temp (°C)',
+    'cropland_pct': 'Cropland Share (%)',
+    'travel_time_city_min': 'Travel Time to City (min)'
 };
 
 async function init() {
@@ -759,14 +765,25 @@ function renderCustomSliders(features) {
     const list = document.getElementById('slidersList');
     list.innerHTML = '';
 
-    for (let k of ['nightlight_mean', 'ndvi_mean', 'builtup_pct', 'population_density']) {
+    const orderedKeys = [
+        'nightlight_mean', 'ndvi_mean', 'builtup_pct', 'population_density',
+        'lst_day_c', 'elevation_mean_m', 'slope_mean_deg', 'rainfall_mm_year',
+        'cropland_pct', 'travel_time_city_min'
+    ];
+    for (let k of orderedKeys) {
         if (features[k] === undefined) continue;
         const val = features[k];
 
         let min = 0, max = Math.max(val * 2.5, 20), step = 0.05;
         if (k === 'ndvi_mean') { min = 0.0; max = 0.95; step = 0.01; }
-        if (k === 'builtup_pct') { min = 0.0; max = Math.max(val * 3, 50); step = 0.1; }
-        if (k === 'population_density') { min = 0.0; max = Math.max(val * 2.5, 1000); step = 1; }
+        else if (k === 'builtup_pct') { min = 0.0; max = Math.max(val * 3, 50); step = 0.1; }
+        else if (k === 'population_density') { min = 0.0; max = Math.max(val * 2.5, 1000); step = 1; }
+        else if (k === 'elevation_mean_m') { min = 0.0; max = Math.max(val * 1.5, 5000); step = 10; }
+        else if (k === 'slope_mean_deg') { min = 0.0; max = 35; step = 0.1; }
+        else if (k === 'rainfall_mm_year') { min = 100; max = 3500; step = 10; }
+        else if (k === 'lst_day_c') { min = 0; max = 45; step = 0.2; }
+        else if (k === 'cropland_pct') { min = 0; max = 100; step = 0.5; }
+        else if (k === 'travel_time_city_min') { min = 0; max = Math.max(val * 2, 1000); step = 1; }
 
         const row = document.createElement('div');
         row.className = 'slider-row';

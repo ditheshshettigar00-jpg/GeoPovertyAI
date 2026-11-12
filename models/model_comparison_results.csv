@@ -1,6 +1,6 @@
 model,r2,mae,rmse,spearman,cat_accuracy,top20_recall,n,beats_mean_baseline,mae_vs_baseline_pct,cv_scheme,tuning
 Dummy,-0.0565,0.1142,0.1371,-0.6972,0.3191,0.0088,564.0,False,0.0,leave-one-state-out,none
-Ridge,0.27,0.0914,0.114,0.5542,0.4858,0.3274,564.0,True,-20.0,leave-one-state-out,none
-RandomForest,0.336,0.0883,0.1087,0.5745,0.5461,0.4602,564.0,True,-22.7,leave-one-state-out,none
-GradientBoosting,0.2951,0.0912,0.112,0.5539,0.5266,0.4513,564.0,True,-20.1,leave-one-state-out,none
-XGBoost,0.3074,0.0905,0.111,0.5643,0.5266,0.469,564.0,True,-20.7,leave-one-state-out,none
+Ridge,0.3742,0.0846,0.1056,0.6372,0.5745,0.5133,564.0,True,-25.9,leave-one-state-out,none
+RandomForest,0.4217,0.0817,0.1015,0.6716,0.5798,0.4513,564.0,True,-28.4,leave-one-state-out,none
+GradientBoosting,0.4665,0.0771,0.0975,0.6973,0.6082,0.4779,564.0,True,-32.4,leave-one-state-out,none
+XGBoost,0.4884,0.0752,0.0954,0.715,0.6117,0.4779,564.0,True,-34.2,leave-one-state-out,none

@@ -23,10 +23,13 @@
 
 <div class="card">
     <h2 style="margin-top:0">Pipeline</h2>
-    <p>Ground truth (district-level socioeconomic indicators) &rarr; satellite imagery (Sentinel-2)
-       &rarr; VGG-16 feature extraction &rarr; nighttime-light / NDVI / built-up / population features
-       (Google Earth Engine) &rarr; road/accessibility features (OpenStreetMap) &rarr; feature fusion
-       &rarr; Random Forest / XGBoost &rarr; SHAP + Grad-CAM explanations &rarr; this dashboard.</p>
+    <p>Ground truth (NFHS-5 2019&ndash;21 socioeconomic indicators across 564 districts) &rarr;
+       10 satellite &amp; geospatial features (VIIRS nightlights, Sentinel-2 NDVI, GHSL built-up &amp;
+       population, SRTM elevation &amp; slope, CHIRPS rainfall, MODIS land surface temperature,
+       ESA WorldCover cropland, and Oxford/MAP 2015 travel time via Google Earth Engine) &rarr;
+       spatial Leave-One-State-Out cross-validation (Ridge, Random Forest, Gradient Boosting, XGBoost)
+       &rarr; TreeSHAP explanations &rarr; this dashboard.
+       (Exploratory VGG-16 image embeddings were tested and excluded after lowering out-of-state R&sup2;.)</p>
 </div>
 
 <div class="card">

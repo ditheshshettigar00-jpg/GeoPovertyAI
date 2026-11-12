@@ -155,6 +155,30 @@ function getPlainLanguageShap(feature, contribution, actualValue) {
             return isLower
                 ? 'lower population density lowers the estimated deprivation'
                 : 'higher population density raises the estimated deprivation';
+        case 'lst_day_c':
+            return isLower
+                ? 'daytime land surface temperature lowers the estimated deprivation'
+                : 'daytime land surface temperature raises the estimated deprivation';
+        case 'elevation_mean_m':
+            return isLower
+                ? 'terrain elevation lowers the estimated deprivation'
+                : 'terrain elevation raises the estimated deprivation';
+        case 'slope_mean_deg':
+            return isLower
+                ? 'terrain slope lowers the estimated deprivation'
+                : 'terrain slope raises the estimated deprivation';
+        case 'rainfall_mm_year':
+            return isLower
+                ? 'annual rainfall level lowers the estimated deprivation'
+                : 'annual rainfall level raises the estimated deprivation';
+        case 'cropland_pct':
+            return isLower
+                ? 'cropland share lowers the estimated deprivation'
+                : 'cropland share raises the estimated deprivation';
+        case 'travel_time_city_min':
+            return isLower
+                ? 'travel time to nearest city lowers the estimated deprivation'
+                : 'travel time to nearest city raises the estimated deprivation';
         default:
             const cleanName = formatFeatureName(feature).toLowerCase();
             return isLower
@@ -387,11 +411,11 @@ function renderIndicatorsPanel(data) {
     // ── Section 1: Satellite & geospatial inputs (used by the model) ─────────
     const sec1 = createEl('details', 'di-section');
     sec1.open = true;
-    const sum1 = createEl('summary', 'di-summary', '1. Satellite-derived indicators (7)');
+    const satList = data.satellite_indicators || [];
+    const sum1 = createEl('summary', 'di-summary', `1. Satellite & geospatial indicators (${satList.length})`);
     sec1.appendChild(sum1);
     const body1 = createEl('div', 'di-body');
 
-    const satList = data.satellite_indicators || [];
     if (satList.length > 0) {
         const tblWrap1 = createEl('div', 'di-table-wrap');
         const tbl1 = createEl('table', 'di-table');

@@ -1,5 +1,11 @@
 feature_group,r2_without_group,r2_drop_when_removed
-nightlight,0.2894,0.0466
-vegetation,0.1567,0.1793
-built_up,0.2529,0.0831
-population,0.1854,0.1506
+nightlight,0.4674,0.021
+vegetation,0.4557,0.0327
+built_up,0.4189,0.0695
+population,0.4943,-0.0058
+elevation,0.4031,0.0853
+slope,0.4906,-0.0022
+rainfall,0.5044,-0.016
+land_surface_temp,0.3452,0.1432
+cropland,0.4926,-0.0042
+travel_time,0.4903,-0.0019

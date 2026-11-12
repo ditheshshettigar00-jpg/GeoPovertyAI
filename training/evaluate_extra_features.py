@@ -44,7 +44,8 @@ def evaluate_set(df, cols, model, repeats, seed):
 
 
 def run(df, base_cols, extra_cols, model="RandomForest", repeats=5, seed=RANDOM_SEED, per_feature=True):
-    candidates = {"baseline (4 features)": base_cols}
+    base_label = f"baseline ({len(base_cols)} features)"
+    candidates = {base_label: base_cols}
     if len(extra_cols) > 1 or not per_feature:
         candidates["baseline + ALL extra"] = base_cols + extra_cols
     if per_feature:
@@ -61,7 +62,7 @@ def run(df, base_cols, extra_cols, model="RandomForest", repeats=5, seed=RANDOM_
     b = res.iloc[0]
     res["d_loso_r2"] = res["loso_r2"] - b["loso_r2"]
     res["d_repeated_r2"] = res["repeated_r2_mean"] - b["repeated_r2_mean"]
-    base_mae = state_mae["baseline (4 features)"]
+    base_mae = state_mae[base_label]
     res["states_improved"] = [float((state_mae[n].reindex(base_mae.index) < base_mae).mean())
                               for n in res["feature_set"]]
     return res
@@ -90,11 +91,13 @@ def main():
     ap.add_argument("--max-missing", type=float, default=0.20, help="skip features missing in more than this share")
     args = ap.parse_args()
 
-    base_cols = json.load(open(os.path.join(MODELS_DIR, "feature_columns.json")))
+    raw_base_cols = json.load(open(os.path.join(MODELS_DIR, "feature_columns.json")))
     train = pd.read_csv(args.data).dropna(subset=["deprivation_score"])
     extra = pd.read_csv(args.extra)
     extra_cols = [c for c in extra.columns if c not in ("area_id", "area_name", "gaul_state_name")]
-    df = train.merge(extra[["area_id"] + extra_cols], on="area_id", how="left").reset_index(drop=True)
+    base_cols = [c for c in raw_base_cols if c not in extra_cols]
+    to_merge = [c for c in extra_cols if c not in train.columns]
+    df = train.merge(extra[["area_id"] + to_merge], on="area_id", how="left").reset_index(drop=True) if to_merge else train.reset_index(drop=True)
 
     miss = df[extra_cols].isna().mean()
     print("Share missing per extra feature:\n" + miss.round(3).to_string())
@@ -109,7 +112,7 @@ def main():
     res = run(df, base_cols, extra_cols, args.model, args.repeats, args.seed)
 
     pub = os.path.join(MODELS_DIR, "model_comparison_results.csv")
-    if os.path.exists(pub) and args.model in pd.read_csv(pub, index_col=0).index:
+    if len(base_cols) == len(raw_base_cols) and os.path.exists(pub) and args.model in pd.read_csv(pub, index_col=0).index:
         published = pd.read_csv(pub, index_col=0).loc[args.model, "r2"]
         ok = abs(res.loc[0, "loso_r2"] - published) < 5e-4
         print(f"Sanity check: baseline LOSO R2 {res.loc[0, 'loso_r2']:.4f} vs published {published:.4f} -> "

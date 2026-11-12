@@ -155,6 +155,8 @@ def main():
     p = argparse.ArgumentParser(description="Build the real training table (real data only, no imputation)")
     p.add_argument("--geo", default=os.path.join(PROCESSED_DIR, "real_geospatial_features.csv"))
     p.add_argument("--accessibility", default=os.path.join(PROCESSED_DIR, "real_accessibility_features.csv"))
+    p.add_argument("--extra", default=os.path.join(PROCESSED_DIR, "extra_geospatial_features.csv"))
+    p.add_argument("--no-extra", action="store_true", help="Skip merging extra geospatial features")
     p.add_argument("--visual", default=os.path.join(PROCESSED_DIR, "vgg16_features.csv"))
     p.add_argument("--ground-truth", default=os.path.join(GROUND_TRUTH_DIR, "real_ground_truth.csv"))
     p.add_argument("--aliases", default=DISTRICT_ALIASES_CSV)
@@ -251,9 +253,31 @@ def main():
     table = table.drop(columns=["_sk", "_dk"]).reset_index(drop=True)
     table["area_id"] = np.arange(1, len(table) + 1)
 
+    if not args.no_extra:
+        if not os.path.exists(args.extra):
+            raise FileNotFoundError(
+                f"Missing extra geospatial features file: {args.extra}. "
+                "Run scripts/extract_extra_features.py or pass --no-extra."
+            )
+        extra = pd.read_csv(args.extra)
+        extra_cols = [c for c in extra.columns if c not in ("area_id", "area_name", "gaul_state_name")]
+        table["_esk"] = table["gaul_state_name"].astype(str).str.strip().str.lower()
+        table["_edk"] = table["area_name"].astype(str).str.strip().str.lower()
+        extra["_esk"] = extra["gaul_state_name"].astype(str).str.strip().str.lower()
+        extra["_edk"] = extra["area_name"].astype(str).str.strip().str.lower()
+        if extra.duplicated(["_esk", "_edk"]).any():
+            raise ValueError("Duplicate (gaul_state_name, area_name) rows found in extra features file.")
+        table = table.merge(extra[["_esk", "_edk"] + extra_cols], on=["_esk", "_edk"], how="left")
+        table = table.drop(columns=["_esk", "_edk"])
+        missing_extra = {c: int(table[c].isna().sum()) for c in extra_cols if table[c].isna().any()}
+        if missing_extra:
+            raise ValueError(f"Missing extra feature values after merge: {missing_extra}")
+
     lead = ["area_id", "area_name", "state_name", "gaul_state_name", "nfhs_district_name",
             "latitude", "longitude", "data_mode", "match_method"]
-    table = table[lead + [c for c in table.columns if c not in lead]]
+    tail = [c for c in ("deprivation_score", "data_source", "data_year") if c in table.columns]
+    middle = [c for c in table.columns if c not in lead and c not in tail]
+    table = table[lead + middle + tail]
     table.to_csv(args.out, index=False)
 
     print(f"\nSaved {len(table)} districts, {table['state_name'].nunique()} states -> {args.out}")

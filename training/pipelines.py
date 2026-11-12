@@ -30,6 +30,12 @@ FEATURE_GROUPS = {
     "vegetation": ["ndvi_mean"],
     "built_up": ["builtup_pct"],
     "population": ["population_density"],
+    "elevation": ["elevation_mean_m"],
+    "slope": ["slope_mean_deg"],
+    "rainfall": ["rainfall_mm_year"],
+    "land_surface_temp": ["lst_day_c"],
+    "cropland": ["cropland_pct"],
+    "travel_time": ["travel_time_city_min"],
     "accessibility": ["road_density_km_per_sqkm", "school_distance_km", "hospital_distance_km"],
     "visual": "prefix:vgg_feat_",
 }
