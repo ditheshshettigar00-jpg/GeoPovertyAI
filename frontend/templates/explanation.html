@@ -3,7 +3,7 @@
 {% block content %}
 <h1>Explainability</h1>
 <p>TreeSHAP shows which of the 10 satellite and geospatial features drove each district's score
-   (statistical associations, not causes). Grad-CAM is inactive because VGG-16 image features are excluded from the production model.</p>
+   (statistical associations, not causes). Satellite imagery is shown for visual context only.</p>
 
 <div class="card">
     <label for="areaSelect"><strong>District:</strong></label>
@@ -27,7 +27,7 @@
             <div id="shapBars"></div>
         </div>
         <div class="card">
-            <h2 style="margin-top:0">🛰️ Satellite Image & Visual Attention</h2>
+            <h2 style="margin-top:0">🛰️ Satellite Image (context)</h2>
             <div id="gradcamContent"></div>
         </div>
     </div>
@@ -127,8 +127,8 @@ async function loadExplanation(areaId) {
     if (!data.satellite_available && !data.gradcam_available) {
         satHtml = `<div style="background:#f8fafc; border:1px dashed #cbd5e1; padding:24px 16px; border-radius:8px; color:#64748b; text-align:center;">
             <div style="font-size:2rem; margin-bottom:6px;">🛰️</div>
-            <div style="font-weight:600; color:#334155; font-size:0.9rem; margin-bottom:4px;">No Satellite Imagery Cached</div>
-            <p style="font-size:0.8rem; margin:0;">Imagery patch for this district has not been downloaded from Earth Engine yet.</p>
+            <div style="font-weight:600; color:#334155; font-size:0.9rem; margin-bottom:4px;">No cloud-free Sentinel-2 imagery available for this district</div>
+            <p style="font-size:0.8rem; margin:0;">The prediction does not depend on this image.</p>
         </div>`;
     }
 
