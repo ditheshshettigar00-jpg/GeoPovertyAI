@@ -664,15 +664,12 @@ def generate_district_report_pdf(area_id):
             "<i>SHAP explanation data is not available for this district.</i>", S_BODY))
     story.append(Spacer(1, 10))
 
-    # ------- Section 7 - Grad-CAM Explanation --------------------------------
-    story.append(Paragraph("7. Grad-CAM Visual Attention Map", S_SECTION))
+    # ------- Section 7 - Visual Explanation (Grad-CAM) -----------------------
+    story.append(Paragraph("7. Visual Explanation (Grad-CAM not applicable)", S_SECTION))
     story.append(Paragraph(
-        "Grad-CAM (Gradient-weighted Class Activation Mapping) generates a saliency heatmap "
-        "that highlights which spatial regions of the Sentinel-2 satellite image most strongly "
-        "activated the convolutional visual feature extractor. "
-        "Warmer (red/yellow) regions indicate areas that contributed most to the extracted "
-        "visual representation. This does not directly indicate poverty, but shows which "
-        "visual patterns drove the CNN's output features.",
+        "The production model uses tabular satellite and geospatial statistics, not raw images, "
+        "so the explanation in Section 6 (SHAP) is the model's actual explanation. "
+        "Grad-CAM applies only to image-based models.",
         S_BODY_J
     ))
     if has_gradcam:
@@ -698,7 +695,7 @@ def generate_district_report_pdf(area_id):
             ))
     else:
         story.append(Paragraph(
-            "<i>Grad-CAM is not available because the production model uses tabular satellite and geospatial statistics only (not image features).</i>",
+            "<i>The model uses satellite-derived statistics, not raw images, so predictions are explained with SHAP feature contributions. Grad-CAM applies only to image-based models.</i>",
             S_BODY
         ))
     story.append(Spacer(1, 16))

@@ -801,13 +801,11 @@
 
             <!-- ── Section 7: Grad-CAM ────────────────────────────────────── -->
             <div class="rpt-section">
-                <h2>7. Grad-CAM Visual Attention Map</h2>
+                <h2>7. Visual Explanation (Grad-CAM not applicable)</h2>
                 <p style="font-size:0.84rem; color:#6b6b6b; margin:0 0 14px;">
-                    Grad-CAM highlights which spatial regions of the Sentinel-2 patch most
-                    strongly activated the VGG-16 visual feature extractor. Warmer (red/yellow)
-                    regions had the highest influence on the extracted visual features. This
-                    does <strong>not</strong> directly indicate poverty — it shows which visual
-                    patterns drove the CNN's representation.
+                    The production model uses tabular satellite and geospatial statistics, not raw
+                    images, so the explanation in Section 6 (SHAP) is the model's actual
+                    explanation. Grad-CAM applies only to image-based models.
                 </p>
                 <div id="gradcamContainer"></div>
                 <div class="heatmap-legend" id="heatmapLegend" style="display:none;">
@@ -1218,8 +1216,8 @@
             el('heatmapLegend').style.display = 'flex';
         } else {
             gcDiv.innerHTML = `<div class="unavail-box"><div class="ico">🗺️</div>
-            <strong>Grad-CAM Heatmap Not Available</strong>
-            <p>${d.gradcam_reason || 'The active production model uses tabular satellite and geospatial statistics only, not CNN image features.'}</p></div>`;
+            <strong>Grad-CAM Not Applicable</strong>
+            <p>The model uses satellite-derived statistics, not raw images, so predictions are explained with SHAP feature contributions. Grad-CAM applies only to image-based models.</p></div>`;
         }
 
         // ── Data Sources ──────────────────────────────────────────────────────
